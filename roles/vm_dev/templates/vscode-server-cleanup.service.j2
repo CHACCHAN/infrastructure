@@ -4,5 +4,5 @@ Description=Clean up old VSCode Server (Remote-SSH) versions
 
 [Service]
 Type=oneshot
-User={{ vm_ssh_user }}
+User={{ ansible_user }}
 ExecStart=/usr/local/bin/vscode-server-cleanup.sh

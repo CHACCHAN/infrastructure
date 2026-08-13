@@ -1,0 +1,27 @@
+# マニフェスト(複数ドキュメント可)をServer-Side Applyする共通部品。
+# 呼び出し側(各k8s_<app>ロール)が描画済みYAML文字列を k8s_definition で渡す:
+#
+#   - name: マニフェストを描画する
+#     ansible.builtin.set_fact:
+#       k8s_myapp_definition: "{{ lookup('ansible.builtin.template', 'myapp.yaml.j2') }}"
+#   - name: マニフェストを収束させる
+#     ansible.builtin.import_role: {name: k8s, tasks_from: apply}
+#     vars:
+#       k8s_definition: "{{ k8s_myapp_definition }}"
+#
+# 描画(lookup)を呼び出し側で行うのは、テンプレート検索パスが「実行中のロール」を
+# 指すため。このファイル内でlookupするとベースロール側を探してしまう。
+#
+# field_managerをkubectlに固定し、kubectl --server-side との併用でも
+# フィールド所有権が分裂しないようにする(K1で確立した方式)。
+---
+- name: マニフェストをServer-Side Applyする
+  kubernetes.core.k8s:
+    state: present
+    apply: true
+    server_side_apply:
+      field_manager: kubectl
+      force_conflicts: "{{ force | default(false) | bool }}"
+    definition: "{{ k8s_definition }}"
+  # Secret等を含む適用では--diffでも中身を出さない(呼び出し側がtrueを渡す)
+  no_log: "{{ k8s_apply_no_log | default(false) }}"

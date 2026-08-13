@@ -3,12 +3,12 @@
 - name: 必須変数が正しく渡されているか検証する
   ansible.builtin.assert:
     that:
-      - vm_ssh_user is defined
-      - (vm_ssh_user | default('', true)) | length > 0
+      - ansible_user is defined
+      - (ansible_user | default('', true)) | length > 0
     fail_msg: >-
-      vm_ssh_user が指定されていません。
+      ansible_user が指定されていません。
       sudoグループへの追加やkubeconfigの配置先に使うため、
-      -e "vm_ssh_user=<ユーザ名>" で指定してください。
+      -e "ansible_user=<ユーザ名>" で指定してください。
     quiet: true
 
 # 共通の assert_debian.yml はディストリビューションしか見ないため、
@@ -63,9 +63,9 @@
 - name: ワーカーの参加先が自分自身になっていないことを検証する
   ansible.builtin.assert:
     that:
-      - kubernetes_server_ip != vm_ip
+      - kubernetes_server_ip != ansible_host
     fail_msg: >-
-      ワーカー(agent)の kubernetes_server_ip に自分自身({{ vm_ip }})が指定されています。
+      ワーカー(agent)の kubernetes_server_ip に自分自身({{ ansible_host }})が指定されています。
       参加先には「既に構築済みの別のコントロールプレーン」を指定してください。
     quiet: true
   when:
@@ -88,7 +88,7 @@
     # 自分自身を指している場合は1台目のコントロールプレーンとして扱う
     kubernetes_join_existing: >-
       {{ ((kubernetes_server_ip | default('', true)) | length > 0)
-         and (kubernetes_server_ip != vm_ip) }}
+         and (kubernetes_server_ip != ansible_host) }}
     kubernetes_service_name: "{{ 'k3s' if kubernetes_role_resolved == 'server' else 'k3s-agent' }}"
     # ノード名はKubernetesのオブジェクト名になるため小文字にする
     kubernetes_node_name_resolved: "{{ kubernetes_node_name | default(ansible_hostname | lower, true) }}"
@@ -122,7 +122,7 @@
       - (kubernetes_flannel_iface_resolved | length) > 0
     fail_msg: >-
       kubernetes_node_ip に指定された {{ kubernetes_node_ip }} を持つNICが
-      {{ vm_ip }} に見つかりません
+      {{ ansible_host }} に見つかりません
       (このVMが持っているIPアドレス: {{
         ansible_facts.interfaces | map('extract', ansible_facts) | select('defined')
         | selectattr('ipv4', 'defined') | map(attribute='ipv4.address') | list | join(', ')
@@ -137,7 +137,7 @@
 - name: APIサーバー証明書に追加するSANを決定する
   ansible.builtin.set_fact:
     kubernetes_tls_san_resolved: >-
-      {{ (kubernetes_tls_san + [vm_ip]) | unique }}
+      {{ (kubernetes_tls_san + [ansible_host]) | unique }}
   when: kubernetes_role_resolved == 'server'
 
 # agentにはkubeconfigが無いため、Readyかどうかはコントロールプレーン側から確認する。
@@ -149,7 +149,7 @@
 - name: 構築する内容を表示する
   ansible.builtin.debug:
     msg: >-
-      {{ vm_ip }} を k3s の
+      {{ ansible_host }} を k3s の
       {{ 'コントロールプレーン(server)' if kubernetes_role_resolved == 'server' else 'ワーカー(agent)' }}
       として構築します
       / ノード名 {{ kubernetes_node_name_resolved }}

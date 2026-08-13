@@ -6,11 +6,11 @@
 - name: 必須変数が正しく渡されているか検証する
   ansible.builtin.assert:
     that:
-      - vm_ssh_user is defined
-      - (vm_ssh_user | default('', true)) | length > 0
+      - ansible_user is defined
+      - (ansible_user | default('', true)) | length > 0
     fail_msg: >-
-      vm_ssh_user が指定されていません。
-      -e "vm_ssh_user=<ユーザ名>" で指定してください。
+      ansible_user が指定されていません。
+      -e "ansible_user=<ユーザ名>" で指定してください。
     quiet: true
 
 - name: 設置ディレクトリが絶対パスであることを検証する
@@ -131,7 +131,7 @@
 - name: 構築する内容を表示する
   ansible.builtin.debug:
     msg: >-
-      {{ vm_ip }} に cloudflare-ddns-ui {{ cloudflare_ddns_ui_version }} を構築します
+      {{ ansible_host }} に cloudflare-ddns-ui {{ cloudflare_ddns_ui_version }} を構築します
       / 更新対象 {{ cloudflare_ddns_ui_records_resolved | join(', ') }}
       / ゾーン {{ cloudflare_ddns_ui_zones_resolved.keys() | join(', ') }}
       / 確認間隔 {{ cloudflare_ddns_ui_interval }}秒

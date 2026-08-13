@@ -14,9 +14,9 @@
 - name: RDPセッションでXFCEが起動するよう.xsessionを配置する
   ansible.builtin.template:
     src: xsession.j2
-    dest: "/home/{{ vm_ssh_user }}/.xsession"
-    owner: "{{ vm_ssh_user }}"
-    group: "{{ vm_ssh_user }}"
+    dest: "/home/{{ ansible_user }}/.xsession"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: "0755"
   become: true
 

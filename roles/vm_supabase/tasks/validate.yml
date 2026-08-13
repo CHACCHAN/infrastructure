@@ -5,11 +5,11 @@
 - name: 必須変数が正しく渡されているか検証する
   ansible.builtin.assert:
     that:
-      - vm_ssh_user is defined
-      - (vm_ssh_user | default('', true)) | length > 0
+      - ansible_user is defined
+      - (ansible_user | default('', true)) | length > 0
     fail_msg: >-
-      vm_ssh_user が指定されていません。
-      -e "vm_ssh_user=<ユーザ名>" で指定してください。
+      ansible_user が指定されていません。
+      -e "ansible_user=<ユーザ名>" で指定してください。
     quiet: true
 
 - name: 設置ディレクトリが絶対パスであることを検証する
@@ -56,7 +56,7 @@
     # ブラウザ・クライアントから見たURL。未指定ならVMのIPとKongのポートから組み立てる
     supabase_public_url_resolved: >-
       {{ supabase_public_url
-         | default('http://' ~ vm_ip ~ ':' ~ (supabase_kong_http_port | string), true) }}
+         | default('http://' ~ ansible_host ~ ':' ~ (supabase_kong_http_port | string), true) }}
 
 - name: 認証のコールバックURLを決定する
   ansible.builtin.set_fact:
@@ -67,10 +67,10 @@
 - name: 構築する内容を表示する
   ansible.builtin.debug:
     msg: >-
-      {{ vm_ip }} に Supabase(セルフホスト)を構築します
+      {{ ansible_host }} に Supabase(セルフホスト)を構築します
       / ソース {{ supabase_ref }}
       / compose {{ supabase_compose_files | join(', ') }}
       / 公開URL {{ supabase_public_url_resolved }}
-      / Postgres {{ vm_ip }}:{{ supabase_postgres_port }}
+      / Postgres {{ ansible_host }}:{{ supabase_postgres_port }}
       (トランザクションプーラー {{ supabase_pooler_proxy_port_transaction }})
       / 非対称鍵 {{ '生成する' if (supabase_enable_asymmetric_keys | bool) else '使わない' }}

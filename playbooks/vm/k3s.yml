@@ -20,9 +20,6 @@
     ansible_ssh_private_key_file: "{{ pve_ssh_prikey }}"
     # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
     ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-    # 旧ロール群はvm_ssh_user変数名を参照するため橋渡しする(N7以降で正規化)
-    vm_ssh_user: "{{ pve_ssh_user }}"
-    vm_ip: "{{ ansible_host }}"
     # 新inventoryでは先頭をコントロールプレーン、後続をワーカーとして宣言する。
     kubernetes_node_role: "{{ 'server' if inventory_hostname == groups['k8s'][0] else 'agent' }}"
     # トークン取得用SSHは管理ネットワーク、k3s APIは占有ネットワークを使う。
@@ -71,7 +68,7 @@
 
     - name: 実行元の端末からAPIサーバーに接続できることを確認する
       ansible.builtin.wait_for:
-        host: "{{ vm_ip }}"
+        host: "{{ ansible_host }}"
         port: "{{ kubernetes_server_port }}"
         timeout: 300
         state: started
@@ -84,13 +81,13 @@
         msg: "{{ kubernetes_summary_server if kubernetes_role_resolved == 'server' else kubernetes_summary_agent }}"
       vars:
         kubernetes_summary_server:
-          - "コントロールプレーン {{ kubernetes_node_name_resolved }} ({{ vm_ip }}) を構築しました"
-          - "VM内での操作: ssh -i <秘密鍵> {{ vm_ssh_user }}@{{ vm_ip }} 'kubectl get nodes -o wide'"
+          - "コントロールプレーン {{ kubernetes_node_name_resolved }} ({{ ansible_host }}) を構築しました"
+          - "VM内での操作: ssh -i <秘密鍵> {{ ansible_user }}@{{ ansible_host }} 'kubectl get nodes -o wide'"
           - "手元にkubeconfigを持ってくる:
-             scp -i <秘密鍵> {{ vm_ssh_user }}@{{ vm_ip }}:.kube/config ~/.kube/config-{{ kubernetes_node_name_resolved }}"
+             scp -i <秘密鍵> {{ ansible_user }}@{{ ansible_host }}:.kube/config ~/.kube/config-{{ kubernetes_node_name_resolved }}"
           - "ワーカーはinventory/hosts.ymlのk8sグループへコントロールプレーンより後に追加し、
              ansible-playbook playbooks/vm/k3s.yml を再実行します"
         kubernetes_summary_agent:
-          - "ワーカー {{ kubernetes_node_name_resolved }} ({{ vm_ip }}) を
+          - "ワーカー {{ kubernetes_node_name_resolved }} ({{ ansible_host }}) を
              https://{{ kubernetes_server_node_ip }}:{{ kubernetes_server_port }} のクラスタに参加させました"
           - "確認: コントロールプレーン {{ kubernetes_server_ip }} で kubectl get nodes -o wide"

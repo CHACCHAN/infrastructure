@@ -18,9 +18,6 @@
     ansible_ssh_private_key_file: "{{ pve_ssh_prikey }}"
     # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
     ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-    # 旧ロール群はvm_ssh_user変数名を参照するため橋渡しする(N7以降で正規化)
-    vm_ssh_user: "{{ pve_ssh_user }}"
-    vm_ip: "{{ ansible_host }}"
     # 別play間のset_factを廃し、vault値をロールの公開変数へ直接渡す。
     supabase_dashboard_password: "{{ vault_supabase_user_password | default('') }}"
   pre_tasks:
@@ -44,7 +41,7 @@
     # 多数のコンテナが順に復帰するためAPIの実応答まで待つ。
     - name: 実行元の端末からAPIに接続できることを確認する
       ansible.builtin.uri:
-        url: "http://{{ vm_ip }}:{{ supabase_kong_http_port | default(8000) }}/auth/v1/health"
+        url: "http://{{ ansible_host }}:{{ supabase_kong_http_port | default(8000) }}/auth/v1/health"
         headers:
           apikey: "{{ supabase_secrets.ANON_KEY }}"
         status_code: [200]
@@ -62,10 +59,10 @@
           - "ダッシュボード: {{ supabase_public_url_resolved }}/"
           - "ログイン: {{ supabase_dashboard_username | default('supabase') }} /
              パスワードはVM内の {{ supabase_project_dir }}/.env(DASHBOARD_PASSWORD)"
-          - "APIキーの確認: ssh -i <秘密鍵> {{ vm_ssh_user }}@{{ vm_ip }}
+          - "APIキーの確認: ssh -i <秘密鍵> {{ ansible_user }}@{{ ansible_host }}
              \"sudo grep -E '^(ANON_KEY|SERVICE_ROLE_KEY)=' {{ supabase_project_dir }}/.env\""
-          - "Postgres(セッション): {{ vm_ip }}:{{ supabase_postgres_port | default(5432) }}
-             / トランザクション: {{ vm_ip }}:{{ supabase_pooler_proxy_port_transaction | default(6543) }}"
+          - "Postgres(セッション): {{ ansible_host }}:{{ supabase_postgres_port | default(5432) }}
+             / トランザクション: {{ ansible_host }}:{{ supabase_pooler_proxy_port_transaction | default(6543) }}"
           - "運用: cd {{ supabase_project_dir }} && sudo docker compose ps / logs -f <サービス名>"
           - "⚠ {{ supabase_project_dir }}/.env と volumes/db/data は対です。
              バックアップは両方まとめて取得してください"

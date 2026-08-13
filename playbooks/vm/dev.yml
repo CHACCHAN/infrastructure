@@ -16,9 +16,6 @@
     ansible_ssh_private_key_file: "{{ pve_ssh_prikey }}"
     # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
     ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-    # 旧ロール群はvm_ssh_user変数名を参照するため橋渡しする(N7以降で正規化)
-    vm_ssh_user: "{{ pve_ssh_user }}"
-    vm_ip: "{{ ansible_host }}"
   pre_tasks:
     - name: SSH接続を待つ
       ansible.builtin.wait_for_connection:

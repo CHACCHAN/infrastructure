@@ -18,9 +18,6 @@
     ansible_ssh_private_key_file: "{{ pve_ssh_prikey }}"
     # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
     ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-    # 旧ロール群はvm_ssh_user変数名を参照するため橋渡しする(N7以降で正規化)
-    vm_ssh_user: "{{ pve_ssh_user }}"
-    vm_ip: "{{ ansible_host }}"
     # 別play間のset_factを廃し、vault値をロールの公開変数へ直接渡す。
     cloudflare_ddns_ui_zone_id: "{{ vault_cloudflare_zone_id }}"
     cloudflare_ddns_ui_api_token: "{{ vault_cloudflare_api_token }}"
@@ -45,7 +42,7 @@
     # 待ち受けを絞っている場合はVMの外から見えないのが正しいため確認しない。
     - name: 実行元の端末からWeb UIに接続できることを確認する
       ansible.builtin.uri:
-        url: "http://{{ vm_ip }}:{{ cloudflare_ddns_ui_http_port | default(8080) }}/"
+        url: "http://{{ ansible_host }}:{{ cloudflare_ddns_ui_http_port | default(8080) }}/"
         status_code: [200]
       delegate_to: localhost
       become: false
@@ -59,7 +56,7 @@
     - name: 接続先を表示する
       ansible.builtin.debug:
         msg:
-          - "{{ 'Web UI: http://' ~ vm_ip ~ ':' ~ (cloudflare_ddns_ui_http_port | default(8080))
+          - "{{ 'Web UI: http://' ~ ansible_host ~ ':' ~ (cloudflare_ddns_ui_http_port | default(8080))
                 ~ '/(⚠ 認証がありません。レコードの削除まで行える画面です)'
                 if (cloudflare_ddns_ui_published | bool)
                 else 'Web UI: 待ち受けを ' ~ (cloudflare_ddns_ui_http_bind | default('0.0.0.0'))
@@ -69,5 +66,5 @@
              (直接編集する場合は
              {{ cloudflare_ddns_ui_install_dir | default('/opt/cloudflare-ddns-ui') }}/config/config.json。
              Web UIでの変更も次回実行で上書きされます)"
-          - "ログ: ssh -i <秘密鍵> {{ vm_ssh_user }}@{{ vm_ip }}
+          - "ログ: ssh -i <秘密鍵> {{ ansible_user }}@{{ ansible_host }}
              'sudo tail -f {{ cloudflare_ddns_ui_install_dir | default('/opt/cloudflare-ddns-ui') }}/logs/ddns.log'"

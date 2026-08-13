@@ -1,8 +1,8 @@
-# vm_ssh_userをsudo(管理者)グループに追加する
+# 接続ユーザー(ansible_user)をsudo(管理者)グループに追加する
 ---
-- name: "SSHユーザーをsudoグループに追加する({{ vm_ssh_user }})"
+- name: "SSHユーザーをsudoグループに追加する({{ ansible_user }})"
   ansible.builtin.user:
-    name: "{{ vm_ssh_user }}"
+    name: "{{ ansible_user }}"
     groups: sudo
     append: true
   become: true

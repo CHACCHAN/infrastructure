@@ -21,9 +21,9 @@
 
 # 所属していればqemu:///systemへの接続時にpolkitのパスワード入力を求められない
 # (dockerグループと同様、反映にはログインし直しが必要)
-- name: "管理者権限なしで仮想マシンを操作できるようlibvirtグループに追加する({{ vm_ssh_user }})"
+- name: "管理者権限なしで仮想マシンを操作できるようlibvirtグループに追加する({{ ansible_user }})"
   ansible.builtin.user:
-    name: "{{ vm_ssh_user }}"
+    name: "{{ ansible_user }}"
     groups: libvirt
     append: true
   become: true

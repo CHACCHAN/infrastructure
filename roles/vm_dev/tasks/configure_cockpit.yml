@@ -9,7 +9,7 @@
 
 - name: Cockpitユーザーの既定値を設定する
   ansible.builtin.set_fact:
-    development_cockpit_user: "{{ cockpit_user | default(vm_ssh_user) }}"
+    development_cockpit_user: "{{ cockpit_user | default(ansible_user) }}"
 
 - name: Cockpitサービスを有効化・起動する
   ansible.builtin.systemd:

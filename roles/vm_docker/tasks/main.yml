@@ -40,9 +40,9 @@
     state: started
   become: true
 
-- name: "管理者権限なしでdockerコマンドを使えるようグループに追加する({{ vm_ssh_user }})"
+- name: "管理者権限なしでdockerコマンドを使えるようグループに追加する({{ ansible_user }})"
   ansible.builtin.user:
-    name: "{{ vm_ssh_user }}"
+    name: "{{ ansible_user }}"
     groups: docker
     append: true
   become: true

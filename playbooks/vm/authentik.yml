@@ -16,9 +16,6 @@
     ansible_ssh_private_key_file: "{{ pve_ssh_prikey }}"
     # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
     ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-    # 旧ロール群はvm_ssh_user変数名を参照するため橋渡しする(N7以降で正規化)
-    vm_ssh_user: "{{ pve_ssh_user }}"
-    vm_ip: "{{ ansible_host }}"
   pre_tasks:
     - name: SSH接続を待つ
       ansible.builtin.wait_for_connection:
@@ -39,7 +36,7 @@
 
     - name: 実行元の端末からWebUIに接続できることを確認する
       ansible.builtin.uri:
-        url: "http://{{ vm_ip }}:{{ authentik_http_port | default(9000) }}/-/health/ready/"
+        url: "http://{{ ansible_host }}:{{ authentik_http_port | default(9000) }}/-/health/ready/"
         status_code: [200, 204]
       delegate_to: localhost
       become: false
@@ -52,6 +49,6 @@
     - name: 接続先を表示する
       ansible.builtin.debug:
         msg:
-          - "初期セットアップ(初回のみ): http://{{ vm_ip }}:{{ authentik_http_port | default(9000) }}/if/flow/initial-setup/"
-          - "ログイン画面: http://{{ vm_ip }}:{{ authentik_http_port | default(9000) }}/"
-          - "HTTPS: https://{{ vm_ip }}:{{ authentik_https_port | default(9443) }}/ (自己署名証明書のため警告が出ます)"
+          - "初期セットアップ(初回のみ): http://{{ ansible_host }}:{{ authentik_http_port | default(9000) }}/if/flow/initial-setup/"
+          - "ログイン画面: http://{{ ansible_host }}:{{ authentik_http_port | default(9000) }}/"
+          - "HTTPS: https://{{ ansible_host }}:{{ authentik_https_port | default(9443) }}/ (自己署名証明書のため警告が出ます)"
