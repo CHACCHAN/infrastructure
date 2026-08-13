@@ -1,0 +1,76 @@
+# Cockpit上でKVM/libvirtの仮想マシンを管理するプラグイン。
+# 依存(libvirt-dbus, virtinst)と推奨(python3-gi等)はaptが自動解決するため列挙しない。
+---
+- name: 仮想化パッケージとCockpit Machinesをインストールする
+  ansible.builtin.apt:
+    name:
+      - qemu-system-x86
+      - libvirt-daemon-system
+      - libvirt-clients
+      - cockpit-machines
+    state: present
+  become: true
+
+# trixieのlibvirtはモジュール分割(virtqemud等)ではなく単一の libvirtd.service を使う
+- name: 仮想化デーモン(libvirtd)を有効化・起動する
+  ansible.builtin.systemd:
+    name: libvirtd.service
+    enabled: true
+    state: started
+  become: true
+
+# 所属していればqemu:///systemへの接続時にpolkitのパスワード入力を求められない
+# (dockerグループと同様、反映にはログインし直しが必要)
+- name: "管理者権限なしで仮想マシンを操作できるようlibvirtグループに追加する({{ vm_ssh_user }})"
+  ansible.builtin.user:
+    name: "{{ vm_ssh_user }}"
+    groups: libvirt
+    append: true
+  become: true
+
+# Debianは default ネットワーク(NAT/virbr0)を定義するだけでautostartを設定しないため、
+# そのままでは再起動のたびに非アクティブになり仮想マシン作成時に選択できない。
+- name: 既定ネットワーク(default)の状態を取得する
+  ansible.builtin.command:
+    cmd: virsh net-info default
+  become: true
+  register: development_libvirt_default_net
+  changed_when: false
+  failed_when: false
+  when: development_libvirt_default_network_autostart | bool
+
+- name: 既定ネットワーク(default)を自動起動するよう設定する
+  ansible.builtin.command:
+    cmd: virsh net-autostart default
+  become: true
+  when:
+    - development_libvirt_default_network_autostart | bool
+    - development_libvirt_default_net.rc | default(1) == 0
+    - development_libvirt_default_net.stdout | default('') is search('Autostart:\s+no')
+  changed_when: true
+
+- name: 既定ネットワーク(default)を起動する
+  ansible.builtin.command:
+    cmd: virsh net-start default
+  become: true
+  when:
+    - development_libvirt_default_network_autostart | bool
+    - development_libvirt_default_net.rc | default(1) == 0
+    - development_libvirt_default_net.stdout | default('') is search('Active:\s+no')
+  changed_when: true
+
+# ネストした仮想化が無効だと /dev/kvm が無い。ホスト側の設定が未了でも
+# 構成全体は失敗させず、何をすべきかだけを表示する。
+- name: KVMが利用可能か確認する
+  ansible.builtin.stat:
+    path: /dev/kvm
+  register: development_kvm_device
+
+- name: ホスト側でネストした仮想化の有効化が必要な旨を表示する
+  ansible.builtin.debug:
+    msg: >-
+      /dev/kvm が見つかりません。Cockpit Machinesのインストールは完了していますが、
+      ハードウェア支援が無いため仮想マシンはTCG(ソフトウェアエミュレーション)で
+      動作し著しく低速です。インベントリでこのVMに pve_vm_cpu_type: host を宣言して
+      playbooks/pve/provision.yml を再実行し、ネストした仮想化を有効化してください。
+  when: not development_kvm_device.stat.exists

@@ -8,3 +8,8 @@ pve_vm_disk_size: 400
 pve_ssh_user: supabase
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_supabase.pub
 pve_ssh_prikey: ~/.ssh/id_ed25519_supabase
+
+# --- Supabaseの設定 ---
+supabase_public_url: https://api.cc-chacchan.com
+supabase_api_external_url: https://api.cc-chacchan.com
+supabase_kong_http_port: 8000

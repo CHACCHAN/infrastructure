@@ -8,3 +8,9 @@ pve_vm_disk_size: 8
 pve_ssh_user: ddns
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_cloudflare_ddns_ui.pub
 pve_ssh_prikey: ~/.ssh/id_ed25519_cloudflare_ddns_ui
+
+# --- Cloudflare DDNS UIの設定 ---
+cloudflare_ddns_ui_records:
+  - auth.cc-chacchan.com
+  - wg.cc-chacchan.com
+cloudflare_ddns_ui_zone_domain: cc-chacchan.com

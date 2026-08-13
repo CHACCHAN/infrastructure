@@ -1,0 +1,41 @@
+# ロールのテンプレート(docker-compose.yml.j2)を配置してコンテナを起動する。
+# 各サービスロールのmain.ymlから import_tasks(相対パス)で呼ぶ前提。
+# import_roleにすると role_path がvm_dockerロール側を指し、呼び出し元ロールの
+# テンプレートを見つけられなくなるため、あえてファイルパスでimportしている。
+#
+# 呼び出し側(各ロールのmain.yml)が import_tasks の vars で渡すもの:
+#   svc_name           : 表示用のサービス名(例: Authentik)
+#   svc_install_dir    : docker-compose.yml を置くディレクトリ
+#   svc_config_changed : .env等の設定ファイルがこの実行で変わったか(bool)。
+#                        composeはマウント先や.envの変更を再作成の理由として
+#                        扱わないため、trueなら明示的にコンテナを作り直す
+---
+- name: Compose定義(docker-compose.yml)を配置する
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/docker-compose.yml.j2"
+    dest: "{{ svc_install_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  register: vm_compose_file
+
+- name: "コンテナを起動する: {{ svc_name }}"
+  community.docker.docker_compose_v2:
+    project_src: "{{ svc_install_dir }}"
+    state: present
+    pull: missing
+    remove_orphans: true
+    recreate: >-
+      {{ 'always'
+         if (vm_compose_file is changed or (svc_config_changed | bool))
+         else 'auto' }}
+  become: true
+  register: vm_compose_up
+
+- name: 起動したコンテナを表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ vm_compose_up.containers
+         | default([]) | map(attribute='Service', default='?') | list | sort | join(', ') }}
+      のコンテナを起動しました({{ svc_install_dir }})。

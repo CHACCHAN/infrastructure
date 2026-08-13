@@ -8,3 +8,12 @@ pve_vm_disk_size: 8
 pve_ssh_user: wg
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_wg_easy.pub
 pve_ssh_prikey: ~/.ssh/id_ed25519_wg_easy
+
+# --- wg-easyの設定 ---
+wg_easy_init_host: wg.cc-chacchan.com
+wg_easy_oauth_providers: oidc
+wg_easy_oauth_oidc_server: https://auth.cc-chacchan.com/application/o/wg-easy/
+wg_easy_oauth_oidc_name: Authentik
+wg_easy_version: "15.4.0-beta.1"
+wg_easy_insecure: false
+wg_easy_init_dns: 172.16.11.3

@@ -7,4 +7,4 @@ collections:
     version: ">=2.0.0"
   - name: kubernetes.core
     version: ">=6.5.0"
-  - name: community.docker # roles/docker の docker_compose_v2 で使用
+  - name: community.docker # roles/vm_docker の docker_compose_v2 で使用

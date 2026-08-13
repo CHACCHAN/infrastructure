@@ -1,0 +1,60 @@
+# タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
+# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+---
+technitium_install_dir: /opt/technitium-dns
+technitium_container_name: dns-server
+
+technitium_image: docker.io/technitium/dns-server
+technitium_version: "15.4.0"
+
+# --- 公開ポート(VM側のポート。コンテナ内は53/5380/53443で固定) ---
+technitium_dns_port: 53
+technitium_http_port: 5380
+technitium_https_port: 53443
+# WebコンソールのHTTPS(自己署名証明書)。DNSサービス自体のDoT/DoHとは別物
+technitium_enable_https_console: false
+
+# DoT(853)・DoH(443)・DHCP(67)などを足す場合に使う。
+# 例: [{port: 853, proto: tcp}, {port: 853, proto: udp}]
+# VM側とコンテナ側で同じポート番号になる(ずらせない)。
+technitium_extra_ports: []
+
+# DHCPサーバーとしても使う場合に true。ポート公開をやめVMのネットワークを直接使う
+# (DHCPはブロードキャストのためNAT越しでは動かない)。
+technitium_use_host_network: false
+
+# --- DNSサーバーの初期設定(反映されるのは初回起動時のみ。後述) ---
+technitium_server_domain: dns-server
+
+# 再帰問い合わせを許す範囲: Allow / Deny / AllowOnlyForPrivateNetworks / UseSpecifiedNetworkACL
+# 既定はTechnitium公式と同じくプライベートネットワークのみ(オープンリゾルバ化を防ぐため)。
+technitium_recursion: AllowOnlyForPrivateNetworks
+# UseSpecifiedNetworkACL のときだけ使う。例: ['192.168.10.0/24', '!192.168.10.2']
+technitium_recursion_network_acl: []
+
+# 空なら自分で再帰的に名前解決する(上位DNSに転送しない)。
+# 例: ['1.1.1.1', '8.8.8.8']
+technitium_forwarders: []
+# Udp / Tcp / Tls / Https / HttpsJson
+technitium_forwarder_protocol: Udp
+
+# 広告・トラッカーのブロック
+technitium_enable_blocking: false
+technitium_block_list_urls: []
+
+technitium_log_using_local_time: true
+technitium_log_max_days: 365
+
+# 上記以外の環境変数を .env に追記する場合に使う(初回起動時のみ反映される)。
+# 例: {"DNS_SERVER_PREFER_IPV6": "true"}
+# 指定できる項目: https://hub.docker.com/r/technitium/dns-server
+technitium_extra_env: {}
+
+# イメージ取得前に必要とする空き容量(GiB)
+technitium_min_free_disk_gb: 3
+
+# Webコンソールの起動待ち
+technitium_ready_retries: 30
+technitium_ready_delay: 5
+
+# 既定値なし: technitium_admin_password(未指定なら自動生成)

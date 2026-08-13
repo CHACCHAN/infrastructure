@@ -206,16 +206,16 @@ pve_vm_nets:
 | --- | --- | --- |
 | N0 | インベントリ新レイアウト(hosts.yml + group_vars、既存インベントリと並存)+ devcontainer環境変数 | lintのみ(実VM操作なし) — **完了** |
 | N1 | `pve` ロール + `playbooks/pve/power.yml` | VM 990 起動→再実行(changed=0)→停止→再実行(changed=0) — **完了** |
-| R0 | リポジトリ再構成: `ansible/*`をルートへ、docs統合、`.legacy/`集約、ansible.cfg調整(§3.1) | ansible-inventory --graph / 新旧playbookのsyntax-check / power.yml実機の冪等再確認 |
-| N2 | `pve_vm` の configure/cloudinit/disks | VM 990 のcores/nameserver変更→復元。resizeは+1G |
-| N3 | `pve_template` + `provision.yml`(テンプレ部) | テンプレ 9990 を新規構築 |
-| N4 | `pve_vm` clone + `provision.yml` 完成 | hosts.yml に test-clone(991)を宣言→provision→検証 |
-| N5 | `destroy.yml` | 991 と 9990 を削除 |
-| N6 | ②ドメイン整備: `common`→`roles/vm`、`docker`→`vm_docker`、サービスロール→`vm_<サービス>` へ改名し、旧services+vmsを `playbooks/vm/` へ統合(新provision接続、pv_*機構の廃止) | development VM(992)で一気通貫→削除 |
-| N7 | 旧 `proxmox_*` ロール・`playbooks/proxmox|services|vms/` 削除、`.legacy/inventories/` 削除、docs全面更新 | 新旧比較(990 vs 991のconfig突合)完了後 |
-| K1 | `playbooks/k8s/apply.yml` | `--check --diff` が現クラスタと差分ゼロ |
-| K2 | `apply-vault.yml` | `--check --diff` のみ(稼働Secret保護) |
-| K3 | `kubernetes/README.md` 更新 | — |
+| R0 | リポジトリ再構成: `ansible/*`をルートへ、docs統合、`.legacy/`集約、ansible.cfg調整(§3.1) | graph / syntax-check / power.yml冪等 全てOK — **完了** |
+| N2 | `pve_vm` の configure/cloudinit/disks | VM 990 で変更→復元→再実行3回changed=0 — **完了** |
+| N3 | `pve_template` + `provision.yml`(テンプレ部) | テンプレ 9990 新規構築+再実行changed=0 — **完了** |
+| N4 | `pve_vm` clone + `provision.yml` 完成 | 991をテンプレ自動構築(90001)から一気通貫、再実行changed=0 — **完了** |
+| N5 | `destroy.yml` | confirm不一致の拒否を確認後、991と9990を削除 — **完了** |
+| N6 | ②ドメイン整備: `common`→`roles/vm`、`docker`→`vm_docker`、サービスロール→`vm_<サービス>` へ改名し、旧services+vmsを `playbooks/vm/` へ統合(新provision接続、pv_*機構の廃止) | dev VM 992 で一気通貫(ok=77 failed=0)。再実行はchanged=1(仕様の最終再起動のみ)。992破棄・インベントリ掃除済み — **完了** |
+| N7 | 旧 `proxmox_*` ロール・`playbooks/proxmox/` 削除、旧docsの `.legacy/docs/` 退避、docs全面更新(README・docs/pve.md・docs/vm.md・docs/k8s.md) | 新実装からの旧ロール参照ゼロをgrepで機械確認後に削除。全14playbook syntax-check OK — **完了**(`.legacy/` 自体の削除はPhase 3で990比較後に判断) |
+| K1 | `playbooks/k8s/apply.yml` | SSA所有権移行を`-e force=true`で1回実施(差分ゼロ確認済み)、以後 `--check --diff` 差分ゼロ / apply changed=0 — **完了** |
+| K2 | `apply-vault.yml` | `--check` でdry-run検証まで — **完了**(実適用は手元vaultの鮮度を利用者が確認してから) |
+| K3 | `kubernetes/README.md` 更新 | 適用手順をAnsible経由(apply/apply-vault)へ更新 — **完了** |
 
 ## 8. リスクと安全策
 

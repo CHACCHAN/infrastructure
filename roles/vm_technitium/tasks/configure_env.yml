@@ -1,0 +1,51 @@
+# 管理者パスワードは「-e の指定 > 既存の.env > 自動生成」の順で決める。
+# .envの値が実際に効くのは config/dns.config が無い初回起動時だけなので、
+# 再実行で.envだけ書き換えてもWebコンソールのパスワードは変わらない。
+# 手元の.envと実際のパスワードがずれないよう、再実行時は既存の値を引き継ぐ。
+#
+# 秘密情報を扱うタスクはno_logで出力を抑止している(失敗しても詳細は出ない)。
+---
+- name: 既存の.envファイルを読み込む
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: load_existing_env
+  vars:
+    svc_env_path: "{{ technitium_install_dir }}/.env"
+
+- name: 既存の.envから引き継ぐ値を取り出す
+  ansible.builtin.set_fact:
+    technitium_env_admin_password: >-
+      {{ (vm_existing_env
+          | regex_search('^DNS_SERVER_ADMIN_PASSWORD=(.*)$', '\1', multiline=True)
+          | default([], true)) | join('') }}
+  no_log: true
+
+- name: 使用する管理者パスワードを決定する
+  ansible.builtin.set_fact:
+    technitium_admin_password_resolved: >-
+      {{ technitium_admin_password | default(technitium_env_admin_password, true)
+         | default(lookup('ansible.builtin.password', '/dev/null',
+                          length=32, chars=['ascii_letters', 'digits']), true) }}
+  no_log: true
+
+# dockerグループ読み取り可にしておくと `docker compose ps` 等がsudoなしで通る
+# (dockerグループはもともとroot相当の権限を持つため実質的な権限の増加は無い)。
+- name: 初期設定(.env)を配置する
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ technitium_install_dir }}/.env"
+    owner: root
+    group: docker
+    mode: "0640"
+  become: true
+  no_log: true
+  register: technitium_env_file
+
+- name: 管理者パスワードの保存先を表示する
+  ansible.builtin.debug:
+    msg: >-
+      Webコンソールの管理者(admin)のパスワードは
+      {{ technitium_install_dir }}/.env にあります
+      (sudo grep DNS_SERVER_ADMIN_PASSWORD {{ technitium_install_dir }}/.env)。
+      パスワードを変更する場合はWebコンソール側で変更してください
+      (.envを書き換えても反映されません)。

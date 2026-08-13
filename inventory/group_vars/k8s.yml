@@ -11,3 +11,9 @@ pve_vm_nets:
 pve_ssh_user: k3s
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_k3s.pub
 pve_ssh_prikey: ~/.ssh/id_ed25519_k3s
+
+# --- k3sの設定 ---
+# vm_k3sはトークン取得に管理IP、ノード間通信に占有ネットワークIPを使い分ける。
+kubernetes_server_ip: "{{ hostvars[groups['k8s'][0]].ansible_host }}"
+kubernetes_server_node_ip: >-
+  {{ hostvars[groups['k8s'][0]].cluster_ip | regex_replace('/.*$', '') }}

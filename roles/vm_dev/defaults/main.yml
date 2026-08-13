@@ -1,0 +1,25 @@
+# タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
+# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+---
+# VSCode Server(Remote-SSH)の古い版を何日放置したら削除するか / 実行頻度(OnCalendar書式)
+development_vscode_cleanup_retention_days: 14
+development_vscode_cleanup_schedule: weekly
+
+# libvirtのdefaultネットワーク(NAT/virbr0)を自動起動するか。
+# 192.168.122.0/24 が既存ネットワークと衝突する場合はfalseにする
+development_libvirt_default_network_autostart: true
+
+# 既定のブラウザ(vm_gui_required=trueのときのみ使用)。
+# Firefoxを既定にする場合は firefox-esr / firefox-esr.desktop を指定する
+development_default_browser_bin: /usr/bin/google-chrome-stable
+development_default_browser_desktop: google-chrome.desktop
+
+# PackageKitのオフライン誤検知を回避するダミー接続(実通信には使わない)。
+# インターフェース名はカーネルの制限(15文字)のため短縮形
+development_packagekit_dummy_conn_name: packagekit-online-workaround
+development_packagekit_dummy_ifname: packagekit-fix
+# 実在しないプライベートアドレス。衝突する場合は変更する
+development_packagekit_dummy_ip4: 10.99.99.1/24
+development_packagekit_dummy_gw4: 10.99.99.254
+# eth0側の既定経路(metric 0)を奪わないよう十分大きな値にする
+development_packagekit_dummy_route_metric: 20000

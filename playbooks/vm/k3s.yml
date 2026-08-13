@@ -1,0 +1,96 @@
+# k3s VM群を宣言から一気通貫でKubernetesクラスタへ収束させるPlaybook。
+# 実行例: ansible-playbook playbooks/vm/k3s.yml
+---
+# 1. Proxmox側: テンプレート→クローン→設定→cloud-init→起動まで収束
+- name: VMを収束させる
+  ansible.builtin.import_playbook: ../pve/provision.yml
+  vars:
+    target: k8s
+
+# 2. VM内部: SSHでコントロールプレーンから順にセットアップ
+- name: k3sをセットアップする
+  hosts: k8s
+  gather_facts: false
+  # ワーカーは先行するコントロールプレーンから参加トークンを取得する。
+  # inventory/hosts.ymlの記載順を維持し、必ず1台ずつ処理する。
+  order: inventory
+  serial: 1
+  vars:
+    ansible_user: "{{ pve_ssh_user }}"
+    ansible_ssh_private_key_file: "{{ pve_ssh_prikey }}"
+    # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+    # 旧ロール群はvm_ssh_user変数名を参照するため橋渡しする(N7以降で正規化)
+    vm_ssh_user: "{{ pve_ssh_user }}"
+    vm_ip: "{{ ansible_host }}"
+    # 新inventoryでは先頭をコントロールプレーン、後続をワーカーとして宣言する。
+    kubernetes_node_role: "{{ 'server' if inventory_hostname == groups['k8s'][0] else 'agent' }}"
+    # トークン取得用SSHは管理ネットワーク、k3s APIは占有ネットワークを使う。
+    kubernetes_node_ip: "{{ cluster_ip | regex_replace('/.*$', '') }}"
+    kubernetes_server_ssh_user: "{{ hostvars[groups['k8s'][0]].pve_ssh_user }}"
+    kubernetes_server_ssh_prikey: "{{ hostvars[groups['k8s'][0]].pve_ssh_prikey }}"
+  pre_tasks:
+    - name: SSH接続を待つ
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ vm_ssh_wait_timeout | default(600) }}"
+
+    # play冒頭の自動ファクト収集はpre_tasksより先に走ってしまうため、
+    # SSH到達を待ってから明示的に収集する
+    - name: ファクトを収集する
+      ansible.builtin.setup:
+
+    # vm_k3sはdelegate_toで管理IPを直接参照するため、その名前でも接続情報を登録する。
+    - name: コントロールプレーンを参加先グループへ登録する
+      ansible.builtin.add_host:
+        name: "{{ kubernetes_server_ip }}"
+        groups: kubernetes_servers
+        ansible_host: "{{ kubernetes_server_ip }}"
+        ansible_user: "{{ kubernetes_server_ssh_user }}"
+        ansible_ssh_private_key_file: "{{ kubernetes_server_ssh_prikey }}"
+        ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+      changed_when: false
+
+  roles:
+    - vm_k3s
+  post_tasks:
+    # カーネル更新とswap無効化を反映し、k3sの自動復帰まで確認する。
+    - name: 構成を反映するためVMを再起動する
+      ansible.builtin.import_role:
+        name: vm
+        tasks_from: reboot_vm
+
+    - name: 再起動後にk3sサービスが復帰することを確認する
+      ansible.builtin.systemd:
+        name: "{{ kubernetes_service_name }}"
+      become: true
+      register: kubernetes_service_after_reboot
+      retries: 30
+      delay: 10
+      until: kubernetes_service_after_reboot.status.ActiveState == 'active'
+      when: vm_reboot_after_setup | default(true) | bool
+
+    - name: 実行元の端末からAPIサーバーに接続できることを確認する
+      ansible.builtin.wait_for:
+        host: "{{ vm_ip }}"
+        port: "{{ kubernetes_server_port }}"
+        timeout: 300
+        state: started
+      delegate_to: localhost
+      become: false
+      when: kubernetes_role_resolved == 'server'
+
+    - name: 構築結果と次の手順を表示する
+      ansible.builtin.debug:
+        msg: "{{ kubernetes_summary_server if kubernetes_role_resolved == 'server' else kubernetes_summary_agent }}"
+      vars:
+        kubernetes_summary_server:
+          - "コントロールプレーン {{ kubernetes_node_name_resolved }} ({{ vm_ip }}) を構築しました"
+          - "VM内での操作: ssh -i <秘密鍵> {{ vm_ssh_user }}@{{ vm_ip }} 'kubectl get nodes -o wide'"
+          - "手元にkubeconfigを持ってくる:
+             scp -i <秘密鍵> {{ vm_ssh_user }}@{{ vm_ip }}:.kube/config ~/.kube/config-{{ kubernetes_node_name_resolved }}"
+          - "ワーカーはinventory/hosts.ymlのk8sグループへコントロールプレーンより後に追加し、
+             ansible-playbook playbooks/vm/k3s.yml を再実行します"
+        kubernetes_summary_agent:
+          - "ワーカー {{ kubernetes_node_name_resolved }} ({{ vm_ip }}) を
+             https://{{ kubernetes_server_node_ip }}:{{ kubernetes_server_port }} のクラスタに参加させました"
+          - "確認: コントロールプレーン {{ kubernetes_server_ip }} で kubectl get nodes -o wide"

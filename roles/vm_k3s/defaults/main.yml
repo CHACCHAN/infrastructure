@@ -1,0 +1,72 @@
+# タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
+# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+#
+# kubernetes_node_role(server=コントロールプレーン / agent=ワーカー)には既定値を置かない。
+# 既定を持たせると指定漏れがそのままコントロールプレーンの構築になってしまうため、
+# 必ず -e で指定させる(受け付ける値は tasks/validate.yml を参照)。
+---
+# k3sのバージョン。未指定なら kubernetes_channel の最新版が入る(例: v1.34.1+k3s1)
+kubernetes_version: ""
+kubernetes_channel: stable
+
+# --- 参加先のコントロールプレーン ---
+# agentでは必須。serverで指定すると2台目以降のコントロールプレーンとして参加する
+# (1台目が kubernetes_cluster_init=true で構築されている必要がある)
+kubernetes_server_ip: ""
+kubernetes_server_port: 6443
+# 参加先のAPIサーバーに接続するときのIPアドレス(config.yamlの server: に入る)。
+# NICが2枚あり、クラスタ通信を占有ネットワーク側に寄せる場合に、参加先の
+# 「占有ネットワーク側のIP」を指定する。未指定なら kubernetes_server_ip と同じ。
+# kubernetes_server_ip はSSH(トークン取得・Ready確認)用として管理ネットワーク側の
+# IPのままにしておくため、変数を分けている
+kubernetes_server_node_ip: ""
+# トークン取得のためのSSH。未指定なら対象VMと同じユーザー・秘密鍵を使う。
+# ワーカーとコントロールプレーンでログインユーザーや鍵が違う場合に指定する
+kubernetes_server_ssh_user: ""
+kubernetes_server_ssh_prikey: ""
+# 参加用トークン。未指定ならコントロールプレーンの
+# /var/lib/rancher/k3s/server/node-token をSSH経由で自動取得する
+kubernetes_token: ""
+
+# --- ノードの設定 ---
+# ノード名。未指定ならVMのホスト名(小文字化)。Ready判定でも使う
+kubernetes_node_name: ""
+# ノードのIPアドレス。未指定ならk3sが自動判定する(NICが複数ある場合のみ指定)。
+# ノード間通信(kubelet・flannel・etcd)の宛先としてクラスタに広告されるため、
+# クラスタ間の占有ネットワークを持たせる場合はそちら側のIPを指定する
+kubernetes_node_ip: ""
+# flannel(Pod間通信のVXLAN)が使うNIC名。未指定でも kubernetes_node_ip があれば
+# そのIPを持つNICを自動で特定して指定する。自動判定に任せると外部通信用のNICが
+# 選ばれることがあり、Pod間通信だけ占有ネットワークから外れてしまうため明示する
+kubernetes_flannel_iface: ""
+# 例: ["node-role.kubernetes.io/worker=true"]
+kubernetes_node_labels: []
+# 例: ["node-role.kubernetes.io/control-plane:NoSchedule"]
+kubernetes_node_taints: []
+
+# --- コントロールプレーン(server)の設定 ---
+# 標準で入るコンポーネントのうち無効化するもの(例: ["traefik", "servicelb"])
+kubernetes_disable: []
+# APIサーバー証明書に追加するSAN(VIPやFQDN経由で接続する場合に指定)
+kubernetes_tls_san: []
+# 1台目のコントロールプレーンで埋め込みetcdを使う(=あとからHA構成にできる)。
+# falseなら単体構成のsqlite。あとから変更はできない
+kubernetes_cluster_init: false
+
+# config.yamlにそのまま追記する項目(上のオプションに無い設定用)。
+# 例: {"flannel-backend": "wireguard-native"}
+kubernetes_extra_config: {}
+
+# --- ノードに入れるもの ---
+# LonghornなどiSCSIを使うCSIドライバの前提パッケージ。
+# NFS用の nfs-common は全VM共通の install_base_packages.yml で入る。
+# Dockerは入れない(k3sのコンテナランタイムは同梱のcontainerd)
+kubernetes_install_open_iscsi: true
+
+# Kubernetesはswapが無い前提の設計のため既定で無効化する。
+# falseにすると共通タスクのzram(vm_zram_percent)が代わりに設定される
+kubernetes_disable_swap: true
+
+# ノードがReadyになるまでの待ち(リトライ回数 / 間隔(秒))
+kubernetes_ready_retries: 30
+kubernetes_ready_delay: 10

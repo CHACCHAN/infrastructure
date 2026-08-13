@@ -1,0 +1,73 @@
+# コンテナイメージの取得前にディスクの空き容量を確認する。
+# 途中で容量が尽きると "no space left on device" という分かりにくい失敗になるため、
+# 取得を始める前に確認して止める。
+#
+# 呼び出し側(各ロールのmain.yml)が import_role の vars で渡すもの:
+#   svc_name         : 表示用のサービス名(例: Authentik)
+#   svc_min_free_gb  : 必要とする空き容量(GiB)
+#   svc_min_free_var : 必要量を変更する変数の名前(エラーメッセージの案内に使う)
+---
+- name: Dockerのデータを置くファイルシステムを特定する
+  ansible.builtin.set_fact:
+    # 候補を文字列としてソートすると、最も深いマウントが末尾に来る
+    vm_disk_mount: >-
+      {{ (ansible_mounts
+          | selectattr('mount', 'in', ['/', '/var', '/var/lib',
+                                       '/var/lib/docker', '/var/lib/containerd'])
+          | sort(attribute='mount') | last) | default({}, true) }}
+
+- name: 空き容量とディスクの状態を求める
+  ansible.builtin.set_fact:
+    vm_disk_free_gb: >-
+      {{ ((vm_disk_mount.size_available | default(0)) / (1024**3)) | round(1) }}
+    vm_disk_total_gb: >-
+      {{ ((vm_disk_mount.size_total | default(0)) / (1024**3)) | round(1) }}
+    # /dev/sda1 → sda、/dev/nvme0n1p1 → nvme0n1
+    vm_disk_device: >-
+      {{ (vm_disk_mount.device | default(''))
+         | regex_replace('^/dev/', '')
+         | regex_replace('p?[0-9]+$', '') }}
+
+- name: ブロックデバイスの実サイズを求める
+  ansible.builtin.set_fact:
+    vm_disk_device_gb: >-
+      {{ ((ansible_devices[vm_disk_device].sectors | int)
+          * (ansible_devices[vm_disk_device].sectorsize | int)
+          / (1024**3)) | round(1) }}
+  when: vm_disk_device in (ansible_devices | default({}))
+
+# 「ディスク自体が小さい」のか「ホスト側で拡張済みだがゲストが未拡張」なのかで
+# 対処が変わるため、案内文を切り替える。
+- name: 容量不足だった場合の案内文を用意する
+  ansible.builtin.set_fact:
+    vm_disk_hint: >-
+      {{
+        'ブロックデバイスは ' ~ vm_disk_device_gb ~ 'GiB あるのに、'
+        ~ 'ファイルシステムは ' ~ vm_disk_total_gb ~ 'GiB しかありません。'
+        ~ 'VMを再起動すればcloud-initのgrowpartが自動で拡張します'
+        ~ '(手動なら growpart /dev/' ~ vm_disk_device ~ ' 1 と resize2fs)。'
+        if (vm_disk_device_gb is defined
+            and (vm_disk_device_gb | float) > ((vm_disk_total_gb | float) + 2))
+        else
+        'ディスク自体が小さい状態です(テンプレート素のままだと数GBしかありません)。'
+        ~ 'inventoryの pve_vm_disk_size を増やして playbooks/pve/provision.yml を'
+        ~ '再実行してください(拡張のみ反映されます)。'
+      }}
+
+- name: 空き容量が足りているか確認する
+  ansible.builtin.assert:
+    that:
+      - (vm_disk_free_gb | float) >= (svc_min_free_gb | float)
+    fail_msg: >-
+      {{ vm_disk_mount.mount | default('/') }} の空き容量が{{ svc_name }}の構築に足りません
+      (空き {{ vm_disk_free_gb }}GiB / 全体 {{ vm_disk_total_gb }}GiB、
+      必要 {{ svc_min_free_gb }}GiB)。
+      {{ vm_disk_hint }}
+      -e "{{ svc_min_free_var }}=<GiB>" で必要量を変更できます。
+    quiet: true
+
+- name: 空き容量を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ vm_disk_mount.mount | default('/') }} の空き容量:
+      {{ vm_disk_free_gb }}GiB / {{ vm_disk_total_gb }}GiB

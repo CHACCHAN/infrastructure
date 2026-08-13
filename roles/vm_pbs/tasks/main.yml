@@ -1,0 +1,55 @@
+# Proxmox Backup Server(PBS)をAPTパッケージで構築する。Debian 13専用
+# (PBS 4がDebian 13 trixieベースのため。Dockerは使わない)。
+# 全VM共通の処理は vm ロールと共有している。
+---
+- name: 対象OSを確認する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: assert_debian
+
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+# パッケージ展開の途中で容量が尽きると原因が分かりにくいため先に確認する
+- name: ディスクの空き容量を確認する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: check_disk_space
+  vars:
+    svc_name: Proxmox Backup Server
+    svc_min_free_gb: "{{ pbs_min_free_disk_gb }}"
+    svc_min_free_var: pbs_min_free_disk_gb
+
+- name: VM共通の初期セットアップを実行する
+  ansible.builtin.import_role:
+    name: vm
+
+- name: ProxmoxのAPTリポジトリを設定する
+  ansible.builtin.import_tasks: configure_repository.yml
+
+- name: Proxmox Backup Serverをインストールする
+  ansible.builtin.import_tasks: install_pbs.yml
+
+# OS用ディスクとは別のディスクをデータストアのパスへマウントする。
+# PBSの導入後に行うのは、マウント先の所有者に使う backup ユーザーが
+# パッケージのインストールで作られるため。
+- name: バックアップ用のディスクを準備する
+  ansible.builtin.import_tasks: prepare_data_disk.yml
+  when: pbs_data_disk_enabled | bool
+
+- name: データストアを作成する
+  ansible.builtin.import_tasks: configure_datastore.yml
+
+- name: 管理者ユーザーを設定する
+  ansible.builtin.import_tasks: configure_admin_user.yml
+
+- name: Web UIのポートを開放する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports:
+      - { port: "{{ pbs_web_port }}", proto: tcp }
+
+- name: サービスとWeb UIが応答することを確認する
+  ansible.builtin.import_tasks: verify_service.yml

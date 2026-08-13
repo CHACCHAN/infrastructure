@@ -1,0 +1,71 @@
+# Supabase VMを宣言から一気通貫で構築するPlaybook。
+# 実行例: ansible-playbook playbooks/vm/supabase.yml --ask-vault-pass
+---
+# 1. Proxmox側: テンプレート→クローン→設定→cloud-init→起動まで収束
+- name: VMを収束させる
+  ansible.builtin.import_playbook: ../pve/provision.yml
+  vars:
+    target: supabase
+
+# 2. VM内部: SSHでサービスをセットアップ
+- name: Supabaseをセットアップする
+  hosts: supabase
+  gather_facts: false
+  vars_files:
+    - ../../vault/supabase.yml
+  vars:
+    ansible_user: "{{ pve_ssh_user }}"
+    ansible_ssh_private_key_file: "{{ pve_ssh_prikey }}"
+    # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+    # 旧ロール群はvm_ssh_user変数名を参照するため橋渡しする(N7以降で正規化)
+    vm_ssh_user: "{{ pve_ssh_user }}"
+    vm_ip: "{{ ansible_host }}"
+    # 別play間のset_factを廃し、vault値をロールの公開変数へ直接渡す。
+    supabase_dashboard_password: "{{ vault_supabase_user_password | default('') }}"
+  pre_tasks:
+    - name: SSH接続を待つ
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ vm_ssh_wait_timeout | default(600) }}"
+
+    # play冒頭の自動ファクト収集はpre_tasksより先に走ってしまうため、
+    # SSH到達を待ってから明示的に収集する
+    - name: ファクトを収集する
+      ansible.builtin.setup:
+  roles:
+    - vm_supabase
+  post_tasks:
+    # dockerグループへの追加とカーネル更新を反映してから外部疎通を確認する。
+    - name: 構成を反映するためVMを再起動する
+      ansible.builtin.import_role:
+        name: vm
+        tasks_from: reboot_vm
+
+    # 多数のコンテナが順に復帰するためAPIの実応答まで待つ。
+    - name: 実行元の端末からAPIに接続できることを確認する
+      ansible.builtin.uri:
+        url: "http://{{ vm_ip }}:{{ supabase_kong_http_port | default(8000) }}/auth/v1/health"
+        headers:
+          apikey: "{{ supabase_secrets.ANON_KEY }}"
+        status_code: [200]
+      delegate_to: localhost
+      become: false
+      register: supabase_remote_api
+      retries: 60
+      delay: 10
+      until: supabase_remote_api is succeeded
+      changed_when: false
+
+    - name: 構築結果と次の手順を表示する
+      ansible.builtin.debug:
+        msg:
+          - "ダッシュボード: {{ supabase_public_url_resolved }}/"
+          - "ログイン: {{ supabase_dashboard_username | default('supabase') }} /
+             パスワードはVM内の {{ supabase_project_dir }}/.env(DASHBOARD_PASSWORD)"
+          - "APIキーの確認: ssh -i <秘密鍵> {{ vm_ssh_user }}@{{ vm_ip }}
+             \"sudo grep -E '^(ANON_KEY|SERVICE_ROLE_KEY)=' {{ supabase_project_dir }}/.env\""
+          - "Postgres(セッション): {{ vm_ip }}:{{ supabase_postgres_port | default(5432) }}
+             / トランザクション: {{ vm_ip }}:{{ supabase_pooler_proxy_port_transaction | default(6543) }}"
+          - "運用: cd {{ supabase_project_dir }} && sudo docker compose ps / logs -f <サービス名>"
+          - "⚠ {{ supabase_project_dir }}/.env と volumes/db/data は対です。
+             バックアップは両方まとめて取得してください"

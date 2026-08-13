@@ -1,0 +1,77 @@
+# wg-easy VMを宣言から一気通貫で構築するPlaybook。
+# 実行例: ansible-playbook playbooks/vm/wg-easy.yml --ask-vault-pass
+---
+# 1. Proxmox側: テンプレート→クローン→設定→cloud-init→起動まで収束
+- name: VMを収束させる
+  ansible.builtin.import_playbook: ../pve/provision.yml
+  vars:
+    target: wg_easy
+
+# 2. VM内部: SSHでサービスをセットアップ
+- name: wg-easyをセットアップする
+  hosts: wg_easy
+  gather_facts: false
+  vars_files:
+    - ../../vault/wg-easy.yml
+  vars:
+    ansible_user: "{{ pve_ssh_user }}"
+    ansible_ssh_private_key_file: "{{ pve_ssh_prikey }}"
+    # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+    # 旧ロール群はvm_ssh_user変数名を参照するため橋渡しする(N7以降で正規化)
+    vm_ssh_user: "{{ pve_ssh_user }}"
+    vm_ip: "{{ ansible_host }}"
+    # 別play間のset_factを廃し、vault値をロールの公開変数へ直接渡す。
+    wg_easy_oauth_oidc_client_id: "{{ vault_wg_easy_oidc_client_id | default('') }}"
+    wg_easy_oauth_oidc_client_secret: "{{ vault_wg_easy_oidc_client_secret | default('') }}"
+    wg_easy_init_password: "{{ vault_wg_easy_init_password | default('') }}"
+  pre_tasks:
+    - name: SSH接続を待つ
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ vm_ssh_wait_timeout | default(600) }}"
+
+    # play冒頭の自動ファクト収集はpre_tasksより先に走ってしまうため、
+    # SSH到達を待ってから明示的に収集する
+    - name: ファクトを収集する
+      ansible.builtin.setup:
+  roles:
+    - vm_wg_easy
+  post_tasks:
+    # dockerグループへの追加とカーネル更新を反映してから外部疎通を確認する。
+    - name: 構成を反映するためVMを再起動する
+      ansible.builtin.import_role:
+        name: vm
+        tasks_from: reboot_vm
+
+    # 待ち受けを絞っている場合はVMの外から見えないのが正しいため確認しない。
+    - name: 実行元の端末からWeb UIに接続できることを確認する
+      ansible.builtin.uri:
+        url: "http://{{ vm_ip }}:{{ wg_easy_ui_port | default(51821) }}/"
+        status_code: [200, 302, 303]
+        follow_redirects: none
+      delegate_to: localhost
+      become: false
+      register: wg_easy_remote_web
+      retries: 30
+      delay: 10
+      until: wg_easy_remote_web is succeeded
+      changed_when: false
+      when: wg_easy_published | bool
+
+    - name: 構築結果と次の手順を表示する
+      ansible.builtin.debug:
+        msg:
+          - "{{ 'Web UI: http://' ~ vm_ip ~ ':' ~ (wg_easy_ui_port | default(51821)) ~ '/'
+                if (wg_easy_published | bool)
+                else 'Web UI: 待ち受けを ' ~ (wg_easy_ui_bind | default('0.0.0.0'))
+                     ~ ' に絞っています(VMの外からは見えません)' }}"
+          - "{{ 'ログイン: ' ~ wg_easy_init_username ~ ' / パスワードは VM内の '
+                 ~ (wg_easy_install_dir | default('/opt/wg-easy')) ~ '/.env(INIT_PASSWORD)'
+                 if (wg_easy_init_enabled | bool)
+                 else 'ログイン: ブラウザのセットアップウィザードで作成してください' }}"
+          - "クライアントの接続先: {{ wg_easy_init_host | default('(ウィザードで設定)', true) }}:{{ wg_easy_wg_port | default(51820) }}/udp
+             (ルーターでこのUDPポートをVMへ転送してください)"
+          - "{{ 'OIDCのリダイレクトURI(プロバイダ側に登録): https://<公開URL>/api/auth/oidc/callback と /api/auth/oidc/link'
+                if ('oidc' in (wg_easy_oauth_providers_resolved | default([]))) else '外部認証: 未設定' }}"
+          - "ログ: ssh -i <秘密鍵> {{ vm_ssh_user }}@{{ vm_ip }}
+             'sudo docker logs -f {{ wg_easy_container_name | default('wg-easy') }}'"

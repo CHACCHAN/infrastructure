@@ -30,15 +30,20 @@ k3s クラスタ上で稼働させるリソースの定義を管理するリポ�
 | 適用 | `kubectl apply -k .` | `helm template ... \| kubectl apply -f -` |
 | 手順 | 下記 | 各ディレクトリの `README.md` |
 
-### Kustomize 側で使うコマンドは 3 つ
+### Kustomize 側の適用は Ansible 経由 (リポジトリルートで実行)
 
 ```sh
-kubectl kustomize .      # レンダリング結果を見る (クラスタに触らない)
-kubectl diff -k .        # 稼働中との差分を見る (クラスタに触らない)
-kubectl apply -k .       # 適用する
+ansible-playbook playbooks/k8s/apply.yml --check --diff   # 稼働中との差分を見る (クラスタに触らない)
+ansible-playbook playbooks/k8s/apply.yml                  # 適用する (server-side apply)
 ```
 
-**適用前には必ず `kubectl diff -k .` を見る**。
+**適用前には必ず `--check --diff` を見る**。
+レンダリング結果だけ見たいときは `kubectl kustomize kubernetes/` も使える。
+
+初回や `kubectl apply` を手で使った後は、フィールド所有者の衝突
+(`FieldManagerConflict`) が出ることがある。差分が実質ゼロであることを
+`--check --diff` で確認したうえで `-e force=true` を付けると所有権を引き継げる
+(一度通せば以後は不要)。
 
 `kubectl delete -k .` は使わない。クラスタを丸ごと消す。
 不要になったリソースは、マニフェストを消したうえで
@@ -51,12 +56,15 @@ Secret のマニフェストは [`vault/`](vault/) にまとめてある。
 何が要るかは [`vault/README.md`](vault/README.md) の表を見ること。
 
 ```sh
-kubectl diff  -k vault     # 空のまま流すと稼働中の Secret を潰す
-kubectl apply -k vault
+ansible-playbook playbooks/k8s/apply-vault.yml --check    # 差分の有無だけ確認 (--diffは平文が出るため注意)
+ansible-playbook playbooks/k8s/apply-vault.yml            # 適用する
 ```
 
+> **適用前に、手元の `vault/*.yml` が稼働中より新しいことを必ず確認する。**
+> 古いファイルのまま流すと稼働中の Secret を潰す。
+
 ルートの `kustomization.yaml` からは意図的に外してある。
-`kubectl apply -k .` では秘密情報は流れない。
+`apply.yml` では秘密情報は流れない。
 
 ### Helm 側
 
