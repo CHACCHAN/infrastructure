@@ -1,0 +1,76 @@
+# 以降のタスクが参照する値(公開URL・composeを動かすディレクトリなど)をここで確定させる。
+#
+# 秘密情報を含むため、値そのものはメッセージに出さない。
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - vm_ssh_user is defined
+      - (vm_ssh_user | default('', true)) | length > 0
+    fail_msg: >-
+      vm_ssh_user が指定されていません。
+      -e "vm_ssh_user=<ユーザ名>" で指定してください。
+    quiet: true
+
+- name: 設置ディレクトリが絶対パスであることを検証する
+  ansible.builtin.assert:
+    that:
+      - supabase_install_dir is match('^/.+')
+    fail_msg: >-
+      supabase_install_dir は絶対パスで指定してください
+      (指定値: {{ supabase_install_dir }})。
+    quiet: true
+
+- name: 公開ポートの範囲を検証する
+  ansible.builtin.assert:
+    that:
+      - item.value | int > 0
+      - item.value | int < 65536
+    fail_msg: >-
+      {{ item.name }} は1〜65535の範囲で指定してください(指定値: {{ item.value }})。
+    quiet: true
+  loop:
+    - {name: supabase_kong_http_port, value: "{{ supabase_kong_http_port }}"}
+    - {name: supabase_kong_https_port, value: "{{ supabase_kong_https_port }}"}
+    - {name: supabase_postgres_port, value: "{{ supabase_postgres_port }}"}
+    - {name: supabase_pooler_proxy_port_transaction,
+       value: "{{ supabase_pooler_proxy_port_transaction }}"}
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: 使うcompose定義を検証する
+  ansible.builtin.assert:
+    that:
+      - (supabase_compose_files | length) > 0
+      - "'docker-compose.yml' in supabase_compose_files"
+    fail_msg: >-
+      supabase_compose_files には、土台となる docker-compose.yml を必ず先頭に含めてください
+      (指定値: {{ supabase_compose_files | join(', ') }})。
+      追加できる定義は公式のdocker/配下にあるもの(docker-compose.logs.yml など)です。
+    quiet: true
+
+- name: 派生する値を決定する
+  ansible.builtin.set_fact:
+    # composeはバインドマウントを相対パスで持つため、必ず docker/ の中で実行する
+    supabase_project_dir: "{{ supabase_install_dir }}/supabase/docker"
+    # ブラウザ・クライアントから見たURL。未指定ならVMのIPとKongのポートから組み立てる
+    supabase_public_url_resolved: >-
+      {{ supabase_public_url
+         | default('http://' ~ vm_ip ~ ':' ~ (supabase_kong_http_port | string), true) }}
+
+- name: 認証のコールバックURLを決定する
+  ansible.builtin.set_fact:
+    supabase_api_external_url_resolved: >-
+      {{ supabase_api_external_url
+         | default(supabase_public_url_resolved ~ '/auth/v1', true) }}
+
+- name: 構築する内容を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ vm_ip }} に Supabase(セルフホスト)を構築します
+      / ソース {{ supabase_ref }}
+      / compose {{ supabase_compose_files | join(', ') }}
+      / 公開URL {{ supabase_public_url_resolved }}
+      / Postgres {{ vm_ip }}:{{ supabase_postgres_port }}
+      (トランザクションプーラー {{ supabase_pooler_proxy_port_transaction }})
+      / 非対称鍵 {{ '生成する' if (supabase_enable_asymmetric_keys | bool) else '使わない' }}

@@ -1,0 +1,48 @@
+# disksの各項目を --<bus><index> <値> に変換する。
+# volume指定があれば既存ボリュームをそのまま使い、無ければ storage:size で新規作成する。
+# bus/index/storage/size/volume 以外のキーはqmのディスクオプションとしてそのまま付加する。
+#
+# IOスレッド(iothread)とSSDエミュレーション(ssd)は、明示していなければ
+# defaults/main.yml の既定値(どちらもオン)が付く。バスが対応していない
+# 組み合わせには付けない(PVEの仕様)。
+---
+- name: 各ディスクを引数に追加する
+  ansible.builtin.set_fact:
+    proxmox_vm_hardware_argv: >-
+      {{
+        proxmox_vm_hardware_argv
+        + ['--' + item.bus + (item.index | string),
+           (proxmox_vm_hardware_disk_base
+            + (',' + proxmox_vm_hardware_disk_extra_str if (proxmox_vm_hardware_disk_extra | length > 0) else ''))]
+      }}
+  vars:
+    proxmox_vm_hardware_disk_base: "{{ item.volume if item.volume is defined else (item.storage + ':' + (item.size | string)) }}"
+    # バスが対応している項目にだけ既定値を用意する
+    # (SSDエミュレーションはvirtio-blk非対応、IOスレッドはscsi/virtioのみ。
+    #  discardは全バスで指定できる)
+    proxmox_vm_hardware_media_defaults: >-
+      {{
+        ({'iothread': proxmox_vm_hardware_default_iothread}
+         if item.bus in ['scsi', 'virtio'] else {})
+        | combine({'ssd': proxmox_vm_hardware_default_ssd}
+                  if item.bus in ['scsi', 'sata', 'ide'] else {})
+        | combine({'discard': proxmox_vm_hardware_default_discard})
+      }}
+    # 明示した値が既定値より優先される
+    proxmox_vm_hardware_disk_extra: >-
+      {{
+        proxmox_vm_hardware_media_defaults
+        | combine(item | dict2items
+                  | rejectattr('key', 'in', ['bus', 'index', 'storage', 'size', 'volume'])
+                  | items2dict)
+      }}
+    proxmox_vm_hardware_disk_extra_str: >-
+      {{
+        proxmox_vm_hardware_disk_extra
+        | dict2items | map(attribute='key')
+        | zip(proxmox_vm_hardware_disk_extra | dict2items | map(attribute='value') | map('string'))
+        | map('join', '=') | join(',')
+      }}
+  loop: "{{ proxmox_vm_hardware_disks }}"
+  loop_control:
+    label: "{{ item.bus }}{{ item.index }}"

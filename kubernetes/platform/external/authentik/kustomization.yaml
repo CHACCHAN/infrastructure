@@ -1,0 +1,11 @@
+# Authentik (認証 / 認可サーバ) — 172.16.11.2:9000
+#
+# 他のサービスが Middleware authentik-forward-auth を参照するため、
+# platform/external/kustomization.yaml では最初に並べてある。
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - service.yaml
+  - middleware.yaml
+  - ingress.yaml

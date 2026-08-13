@@ -1,0 +1,27 @@
+# 全タスクは接続先のProxmoxホスト(-e proxmox_ip)上で直接実行される。
+# ハードウェア変更と違い電源オフは必須ではないが、ゲスト内で有効になるのは
+# cloud-initが再実行される次回起動時。
+---
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: 接続先のノード名を取得する
+  ansible.builtin.import_role:
+    name: proxmox_common
+    tasks_from: detect_proxmox_node
+
+- name: VMの状態を確認する
+  ansible.builtin.import_tasks: check_vm_state.yml
+
+- name: Cloud-initドライブの有無を確認する
+  ansible.builtin.import_tasks: check_cloudinit_drive.yml
+
+- name: Cloud-init設定を適用する
+  ansible.builtin.import_role:
+    name: proxmox_common
+    tasks_from: apply_cloudinit
+  vars:
+    proxmox_cloudinit_vmid: "{{ vm_id }}"
+
+- name: 反映に必要な操作を案内する
+  ansible.builtin.import_tasks: notify_reboot.yml

@@ -1,0 +1,4 @@
+pve_uri_defaults:
+  headers:
+    Authorization: "PVEAPIToken={{ proxmox_api_token_id }}={{ proxmox_api_token_secret }}"
+  validate_certs: "{{ proxmox_validate_certs }}"

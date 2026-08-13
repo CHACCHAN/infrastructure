@@ -1,0 +1,31 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: supabase-forwarded-https
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: supabase
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: https
+      X-Forwarded-Port: "443"
+      X-Forwarded-Host: supabase.cc-chacchan.com
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: api-forwarded-https
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: supabase
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: https
+      X-Forwarded-Port: "443"
+      X-Forwarded-Host: api.cc-chacchan.com

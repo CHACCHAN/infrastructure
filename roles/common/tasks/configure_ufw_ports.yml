@@ -1,0 +1,37 @@
+# サービスが使うポートをufwで開放する。
+# Debianのcloud imageは既定でufw未導入のため通常はスキップされる。
+# 利用者が後からufwを有効にしていた場合のみポートを開ける(導入も有効化もしない)。
+#
+# なお、Dockerが公開したポートはufwのINPUTを通らないため、ここで開けなくても
+# 外から繋がる。ufw運用のVMで設定が食い違って見えないように揃えているだけ。
+#
+# 呼び出し側(各ロールのmain.yml)が import_role の vars で渡すもの:
+#   svc_ufw_ports : 開放するポートのリスト。要素は {port: <番号>, proto: tcp|udp}
+#                   (公開しないポートは呼び出し側でリストから外す)
+---
+- name: Ufwが導入されているか確認する
+  ansible.builtin.stat:
+    path: /usr/sbin/ufw
+  register: vm_ufw_bin
+
+- name: Ufwが有効になっているか確認する
+  ansible.builtin.command:
+    cmd: ufw status
+  become: true
+  changed_when: false
+  failed_when: false
+  register: vm_ufw_status
+  when: vm_ufw_bin.stat.exists
+
+- name: "サービスのポートをufwで開放する: {{ item.port ~ '/' ~ (item.proto | default('tcp')) }}"
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto | default('tcp') }}"
+  become: true
+  loop: "{{ svc_ufw_ports }}"
+  loop_control:
+    label: "{{ item.port ~ '/' ~ (item.proto | default('tcp')) }}"
+  when:
+    - vm_ufw_bin.stat.exists
+    - "'Status: active' in (vm_ufw_status.stdout | default(''))"

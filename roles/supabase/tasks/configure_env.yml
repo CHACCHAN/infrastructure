@@ -1,0 +1,182 @@
+# 秘密情報は「-e の指定 > 既存の.env > 公式スクリプトによる自動生成」の順で決める。
+# 一度作られた鍵やパスワードは、DBの中身と結びついている(JWTの検証など)ため、
+# 再実行で作り直してはいけない。既存の .env から必ず引き継ぐ。
+#
+# 生成には公式の utils/generate-keys.sh をそのまま使う(HS256のJWTを署名するため、
+# 独自に実装せず上流のロジックに合わせる)。
+#
+# 生成スクリプトは標準入力に /dev/null を渡して実行する。
+# become付きのタスクはssh -ttでpty越しに動くため、そのまま実行すると
+# スクリプト側の `test -t 0` が成立して「Update .env file? (y/N)」の対話に入り、
+# 誰も答えられないまま無限に待ち続ける(commandモジュールにタイムアウトはない)。
+# 標準入力がttyでなければ上流は非対話モードになり、鍵を標準出力に出して終了する。
+#
+# 秘密情報を扱うタスクはno_logで出力を抑止している。
+---
+- name: 既存の.envファイルの有無を確認する
+  ansible.builtin.stat:
+    path: "{{ supabase_project_dir }}/.env"
+  become: true
+  register: supabase_env_stat
+
+- name: 既存の.envファイルを読み込む
+  ansible.builtin.slurp:
+    src: "{{ supabase_project_dir }}/.env"
+  become: true
+  register: supabase_env_slurp
+  when: supabase_env_stat.stat.exists
+  no_log: true
+
+# KEY=VALUE の行だけを拾って辞書にする(コメントや空行は無視する)
+- name: 既存の.envから引き継ぐ値を取り出す
+  ansible.builtin.set_fact:
+    supabase_env_existing: >-
+      {{ dict((supabase_env_lines | map('regex_replace', '^([A-Z0-9_]+)=.*$', '\1') | list)
+              | zip(supabase_env_lines
+                    | map('regex_replace', '^[A-Z0-9_]+=(.*)$', '\1') | list)) }}
+  vars:
+    supabase_env_lines: >-
+      {{ ((supabase_env_slurp.content | b64decode) if supabase_env_stat.stat.exists else '')
+         | split('\n') | select('match', '^[A-Z0-9_]+=') | list }}
+  no_log: true
+
+- name: 指定済み・引き継ぎ済みの秘密情報をまとめる
+  ansible.builtin.set_fact:
+    # -e やインベントリで明示された値(空のものは対象外)
+    supabase_secrets_given: >-
+      {{ {'POSTGRES_PASSWORD': supabase_postgres_password,
+          'JWT_SECRET': supabase_jwt_secret,
+          'ANON_KEY': supabase_anon_key,
+          'SERVICE_ROLE_KEY': supabase_service_role_key,
+          'DASHBOARD_PASSWORD': supabase_dashboard_password,
+          'SECRET_KEY_BASE': supabase_secret_key_base,
+          'REALTIME_DB_ENC_KEY': supabase_realtime_db_enc_key,
+          'VAULT_ENC_KEY': supabase_vault_enc_key,
+          'PG_META_CRYPTO_KEY': supabase_pg_meta_crypto_key,
+          'LOGFLARE_PUBLIC_ACCESS_TOKEN': supabase_logflare_public_access_token,
+          'LOGFLARE_PRIVATE_ACCESS_TOKEN': supabase_logflare_private_access_token,
+          'S3_PROTOCOL_ACCESS_KEY_ID': supabase_s3_protocol_access_key_id,
+          'S3_PROTOCOL_ACCESS_KEY_SECRET': supabase_s3_protocol_access_key_secret,
+          'MINIO_ROOT_PASSWORD': supabase_minio_root_password,
+          'POOLER_TENANT_ID': supabase_pooler_tenant_id,
+          'SUPABASE_PUBLISHABLE_KEY': supabase_publishable_key,
+          'SUPABASE_SECRET_KEY': supabase_secret_key,
+          'JWT_KEYS': supabase_jwt_keys,
+          'JWT_JWKS': supabase_jwt_jwks,
+          'ANON_KEY_ASYMMETRIC': supabase_anon_key_asymmetric,
+          'SERVICE_ROLE_KEY_ASYMMETRIC': supabase_service_role_key_asymmetric}
+         | dict2items | rejectattr('value', 'equalto', '') | items2dict }}
+    supabase_secrets_kept: >-
+      {{ supabase_env_existing | dict2items
+         | rejectattr('value', 'equalto', '') | items2dict }}
+  no_log: true
+
+# 公式スクリプトが作るのは下の14項目。1つでも揃っていなければ生成する
+# (既に持っている値は後で上書きするため、生成しても影響はない)
+- name: 生成が必要か判定する
+  ansible.builtin.set_fact:
+    supabase_generate_needed: >-
+      {{ (['POSTGRES_PASSWORD', 'JWT_SECRET', 'ANON_KEY', 'SERVICE_ROLE_KEY',
+           'DASHBOARD_PASSWORD', 'SECRET_KEY_BASE', 'REALTIME_DB_ENC_KEY',
+           'VAULT_ENC_KEY', 'PG_META_CRYPTO_KEY', 'LOGFLARE_PUBLIC_ACCESS_TOKEN',
+           'LOGFLARE_PRIVATE_ACCESS_TOKEN', 'S3_PROTOCOL_ACCESS_KEY_ID',
+           'S3_PROTOCOL_ACCESS_KEY_SECRET', 'MINIO_ROOT_PASSWORD']
+          | reject('in', supabase_secrets_available) | list | length) > 0 }}
+  vars:
+    supabase_secrets_available: >-
+      {{ (supabase_secrets_kept | combine(supabase_secrets_given)) | list }}
+
+- name: 公式スクリプトで秘密情報を生成する
+  ansible.builtin.shell:
+    cmd: sh utils/generate-keys.sh < /dev/null
+    chdir: "{{ supabase_project_dir }}"
+  become: true
+  register: supabase_keys_output
+  changed_when: true
+  no_log: true
+  when: supabase_generate_needed | bool
+
+- name: 生成された秘密情報を取り出す
+  ansible.builtin.set_fact:
+    supabase_secrets_generated: >-
+      {{ dict((supabase_keys_lines | map('regex_replace', '^([A-Z0-9_]+)=.*$', '\1') | list)
+              | zip(supabase_keys_lines
+                    | map('regex_replace', '^[A-Z0-9_]+=(.*)$', '\1') | list))
+         | combine({'POOLER_TENANT_ID':
+                    lookup('ansible.builtin.password', '/dev/null',
+                           length=16, chars=['ascii_lowercase', 'digits'])}) }}
+  vars:
+    supabase_keys_lines: >-
+      {{ (supabase_keys_output.stdout_lines | default([])) | select('match', '^[A-Z0-9_]+=') | list }}
+  no_log: true
+
+# 優先順: -e の指定 > 既存の.env > 生成した値
+- name: 使用する秘密情報を決定する
+  ansible.builtin.set_fact:
+    supabase_secrets: >-
+      {{ supabase_secrets_generated
+         | combine(supabase_secrets_kept)
+         | combine(supabase_secrets_given) }}
+  no_log: true
+
+- name: 環境変数(.env)を配置する
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ supabase_project_dir }}/.env"
+    owner: root
+    group: docker
+    mode: "0640"
+  become: true
+  no_log: true
+  register: supabase_env_file
+
+# 非対称鍵の生成は .env の JWT_SECRET を読むため、.env を置いた後に実行する
+- name: 非対称鍵(ES256)のAPIキーを用意する
+  when:
+    - supabase_enable_asymmetric_keys | bool
+    - (['SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY', 'JWT_KEYS', 'JWT_JWKS',
+        'ANON_KEY_ASYMMETRIC', 'SERVICE_ROLE_KEY_ASYMMETRIC']
+       | reject('in', supabase_secrets) | list | length) > 0
+  block:
+    - name: 公式スクリプトで非対称鍵を生成する
+      ansible.builtin.shell:
+        cmd: sh utils/add-new-auth-keys.sh < /dev/null
+        chdir: "{{ supabase_project_dir }}"
+      become: true
+      register: supabase_asym_output
+      changed_when: true
+      no_log: true
+
+    - name: 生成された非対称鍵を取り込む
+      ansible.builtin.set_fact:
+        supabase_secrets: >-
+          {{ supabase_secrets
+             | combine(dict((supabase_asym_lines
+                             | map('regex_replace', '^([A-Z0-9_]+)=.*$', '\1') | list)
+                            | zip(supabase_asym_lines
+                                  | map('regex_replace', '^[A-Z0-9_]+=(.*)$', '\1') | list))) }}
+      vars:
+        supabase_asym_lines: >-
+          {{ (supabase_asym_output.stdout_lines | default([]))
+             | select('match', '^[A-Z0-9_]+=') | list }}
+      no_log: true
+
+    - name: 非対称鍵を含めて.envを配置し直す
+      ansible.builtin.template:
+        src: env.j2
+        dest: "{{ supabase_project_dir }}/.env"
+        owner: root
+        group: docker
+        mode: "0640"
+      become: true
+      no_log: true
+      register: supabase_env_file_asym
+
+- name: 秘密情報の保存先を表示する
+  ansible.builtin.debug:
+    msg: >-
+      環境変数を {{ supabase_project_dir }}/.env に配置しました
+      (パスワードとAPIキーを含むためdockerグループのみ読み取り可)。
+      ダッシュボードのログインは {{ supabase_dashboard_username }} /
+      `sudo grep DASHBOARD_PASSWORD {{ supabase_project_dir }}/.env` で確認できます。
+      ⚠ このファイルとDBは対になっています。作り直す場合は volumes/db/data ごと消してください。

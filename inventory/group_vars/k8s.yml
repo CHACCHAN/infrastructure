@@ -1,0 +1,13 @@
+# k8sノードのProxmox VMプロファイル。2枚目のNICをクラスタ内通信専用にする。
+---
+pve_ipv4_gw: 172.16.12.1
+pve_vm_cores: 8
+pve_vm_cpu_type: x86-64-v3
+pve_vm_memory: 8192
+pve_vm_disk_size: 128
+pve_vm_nets:
+  - bridge: vmbr2
+  - bridge: vmbr3
+pve_ssh_user: k3s
+pve_ssh_pubkey_file: ~/.ssh/id_ed25519_k3s.pub
+pve_ssh_prikey: ~/.ssh/id_ed25519_k3s

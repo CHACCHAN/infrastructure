@@ -1,0 +1,8 @@
+# Ansible管理: roles/development/templates/vscode-server-cleanup.service.j2
+[Unit]
+Description=Clean up old VSCode Server (Remote-SSH) versions
+
+[Service]
+Type=oneshot
+User={{ vm_ssh_user }}
+ExecStart=/usr/local/bin/vscode-server-cleanup.sh

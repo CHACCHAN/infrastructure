@@ -1,0 +1,44 @@
+# OS・ノード単位のProxmoxテンプレートを単体で収束させるPlaybook。
+# 実行例: ansible-playbook playbooks/pve/template.yml -e os=debian -e version=13 -e target_node=pve01
+# テスト例: 上記へ -e vmid=9990 -e name=migration-test-template を追加する。
+---
+- name: Proxmoxテンプレートを対象ノードへ収束させる
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: localでproxmoxerを利用できるコントローラ側Pythonへ固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_files:
+    # localhostはinventoryのall配下ではないため、クラスタ共通値を明示的に読む。
+    - "{{ playbook_dir }}/../../inventory/group_vars/all/pve.yml"
+    - "{{ playbook_dir }}/../../vault/proxmox_api.yml"
+  module_defaults:
+    group/community.proxmox.proxmox:
+      api_host: "{{ vault_proxmox_api_host }}"
+      api_user: "{{ vault_proxmox_api_user }}"
+      api_token_id: "{{ vault_proxmox_api_token_id }}"
+      api_token_secret: "{{ vault_proxmox_api_token_secret }}"
+      validate_certs: false
+
+  tasks:
+    - name: 単体実行の必須引数を確認する
+      ansible.builtin.assert:
+        that:
+          - os is defined and os | length > 0
+          - version is defined and version | string | length > 0
+          - target_node is defined and target_node | length > 0
+        fail_msg: >-
+          os、version、target_nodeが必要です。
+          例: -e os=debian -e version=13 -e target_node=pve01
+        quiet: true
+
+    - name: 対象OSとノードのテンプレートを収束させる
+      ansible.builtin.include_role:
+        name: pve_template
+      vars:
+        pve_os: "{{ os }}"
+        pve_os_version: "{{ version | string }}"
+        node: "{{ target_node }}"
+        pve_template_vmid: "{{ vmid | default(none) }}"
+        pve_template_name: "{{ name | default(none) }}"

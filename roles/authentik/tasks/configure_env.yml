@@ -1,0 +1,54 @@
+# パスワードとシークレットキーは「-e の指定 > 既存の.env > 自動生成」の順で決める。
+# シークレットキーを変えると既存セッションが無効になり、DBパスワードを変えると
+# 初期化済みDBに接続できなくなるため、再実行時は必ず既存の値を引き継ぐ。
+#
+# 秘密情報を扱うタスクはno_logで出力を抑止している(失敗しても詳細は出ない)。
+---
+- name: 既存の.envファイルを読み込む
+  ansible.builtin.import_role:
+    name: common
+    tasks_from: load_existing_env
+  vars:
+    svc_env_path: "{{ authentik_install_dir }}/.env"
+
+- name: 既存の.envから引き継ぐ値を取り出す
+  ansible.builtin.set_fact:
+    authentik_env_pg_password: >-
+      {{ (vm_existing_env | regex_search('^PG_PASS=(.*)$', '\1', multiline=True)
+          | default([], true)) | join('') }}
+    authentik_env_secret_key: >-
+      {{ (vm_existing_env | regex_search('^AUTHENTIK_SECRET_KEY=(.*)$', '\1', multiline=True)
+          | default([], true)) | join('') }}
+  no_log: true
+
+- name: 使用するパスワード・シークレットキーを決定する
+  ansible.builtin.set_fact:
+    authentik_pg_password_resolved: >-
+      {{ authentik_pg_password | default(authentik_env_pg_password, true)
+         | default(lookup('ansible.builtin.password', '/dev/null',
+                          length=50, chars=['ascii_letters', 'digits']), true) }}
+    authentik_secret_key_resolved: >-
+      {{ authentik_secret_key | default(authentik_env_secret_key, true)
+         | default(lookup('ansible.builtin.password', '/dev/null',
+                          length=60, chars=['ascii_letters', 'digits']), true) }}
+  no_log: true
+
+# dockerグループ読み取り可にしておくと `docker compose ps` 等がsudoなしで通る
+# (dockerグループはもともとroot相当の権限を持つため実質的な権限の増加は無い)。
+- name: 環境設定(.env)を配置する
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ authentik_install_dir }}/.env"
+    owner: root
+    group: docker
+    mode: "0640"
+  become: true
+  no_log: true
+  register: authentik_env_file
+
+- name: 秘密情報の保存先を表示する
+  ansible.builtin.debug:
+    msg: >-
+      パスワードとシークレットキーは {{ authentik_install_dir }}/.env にあります。
+      バックアップ時はこのファイルとdockerボリューム authentik_database を
+      必ず一緒に保全してください。

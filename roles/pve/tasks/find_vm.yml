@@ -1,0 +1,18 @@
+# VMIDによるVM検索を共通化し、呼び出し元へ検索結果を返すタスク。
+---
+- name: VMIDでVMを検索する
+  community.proxmox.proxmox_vm_info:
+    vmid: "{{ pve_vmid }}"
+  register: pve_vm_info
+
+- name: VMの検索結果を設定する
+  ansible.builtin.set_fact:
+    pve_found_vm: "{{ pve_vm_info.proxmox_vms | first | default(none) }}"
+
+- name: 必須のVMが存在することを確認する
+  ansible.builtin.assert:
+    that:
+      - not (pve_require_vm | default(true) | bool) or pve_found_vm is not none
+    fail_msg: >-
+      VMID {{ pve_vmid }} が見つかりません。
+      inventory/hosts.yml の宣言と実機を確認してください。

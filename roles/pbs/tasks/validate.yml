@@ -1,0 +1,82 @@
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - vm_ssh_user is defined
+      - (vm_ssh_user | default('', true)) | length > 0
+    fail_msg: >-
+      vm_ssh_user が指定されていません。
+      -e "vm_ssh_user=<ユーザ名>" で指定してください。
+    quiet: true
+
+# PBS 4のパッケージはDebian 13(trixie)専用のため、バージョンまで確認する
+# (assert_debianはディストリビューションしか見ない)
+- name: Debianのバージョンを検証する
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution_major_version == '13'
+    fail_msg: >-
+      このロールはDebian 13(trixie)専用です
+      (検出されたバージョン: {{ ansible_distribution_version }})。
+      PBS 4のAPTリポジトリがtrixie向けのため、他バージョンには入れられません。
+    quiet: true
+
+- name: データストアのパスが絶対パスであることを検証する
+  ansible.builtin.assert:
+    that:
+      - pbs_datastore_path is match('^/.+')
+    fail_msg: >-
+      pbs_datastore_path は絶対パスで指定してください
+      (指定値: {{ pbs_datastore_path }})。
+    quiet: true
+
+- name: データストア名の形式を検証する
+  ansible.builtin.assert:
+    that:
+      - pbs_datastore_name is match('^[A-Za-z0-9_][A-Za-z0-9._-]*$')
+    fail_msg: >-
+      pbs_datastore_name の形式が不正です(指定値: {{ pbs_datastore_name }})。
+      英数字で始まり、英数字と `_` `.` `-` のみを使って指定してください。
+    quiet: true
+
+- name: データ用ディスクの指定を検証する
+  ansible.builtin.assert:
+    that:
+      - pbs_data_disk_fstype in ['ext4', 'xfs']
+      - ((pbs_data_disk_device | length) == 0) or (pbs_data_disk_device is match('^/dev/.+'))
+    fail_msg: >-
+      データ用ディスクの指定が不正です。
+      pbs_data_disk_fstype は ext4 か xfs(指定値: {{ pbs_data_disk_fstype }})、
+      pbs_data_disk_device は /dev/sdb のようなデバイスファイルで指定してください
+      (指定値: {{ pbs_data_disk_device | default('(自動判別)', true) }})。
+    quiet: true
+  when: pbs_data_disk_enabled | bool
+
+- name: 管理者ユーザー名の形式を検証する
+  ansible.builtin.assert:
+    that:
+      - pbs_admin_user is match('^[A-Za-z0-9][A-Za-z0-9._-]*$')
+      - pbs_admin_user != 'root'
+    fail_msg: >-
+      pbs_admin_user の形式が不正です(指定値: {{ pbs_admin_user }})。
+      英数字で始まる名前を指定してください(root は@pbsレルムでは使えません)。
+    quiet: true
+
+# パスワードはコマンド引数(argv)で渡すため、空白や引用符を含む値は使えない。
+# 値をログに出さないよう、判定は真偽値だけを残す形で行う
+# (assertにno_logを付けるとfail_msgごと隠れてしまう)。
+- name: 手動指定された管理者パスワードの形式を判定する
+  ansible.builtin.set_fact:
+    pbs_admin_password_valid: >-
+      {{ ((pbs_admin_password | default('', true)) | length == 0)
+         or (pbs_admin_password is match('^[A-Za-z0-9_.-]{16,}$')) }}
+  no_log: true
+
+- name: 手動指定された管理者パスワードの形式を検証する
+  ansible.builtin.assert:
+    that:
+      - pbs_admin_password_valid | bool
+    fail_msg: >-
+      pbs_admin_password の形式が不正です。
+      16文字以上で、英数字と `_` `.` `-` のみを使って指定してください。
+    quiet: true

@@ -1,0 +1,51 @@
+# 宣言済みVMの電源状態を冪等に収束させるPlaybook。
+# 実行例: ansible-playbook playbooks/pve/power.yml -l migration-test -e state=started
+# 実行例: ansible-playbook playbooks/pve/power.yml -l k8s -e state=stopped
+# 注意: stopped はゲストOSへの正常シャットダウン要求。起動直後などゲストが
+# 応答できない間は失敗する。応答しないVMを強制停止するには -e pve_power_force=true
+---
+- name: Proxmox VMの電源状態を収束させる
+  hosts: "{{ target | default('lab') }}"
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: local のインタープリタ自動発見はproxmoxerが無いシステムPythonを
+    # 選ぶため、コントローラ(ansible本体のvenv)のPythonに固定する
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/proxmox_api.yml"
+  module_defaults:
+    group/community.proxmox.proxmox:
+      api_host: "{{ vault_proxmox_api_host }}"
+      api_user: "{{ vault_proxmox_api_user }}"
+      api_token_id: "{{ vault_proxmox_api_token_id }}"
+      api_token_secret: "{{ vault_proxmox_api_token_secret }}"
+      validate_certs: false
+
+  tasks:
+    - name: 電源状態の指定を確認する
+      ansible.builtin.assert:
+        that:
+          - state is defined and state in ['started', 'stopped']
+        fail_msg: >-
+          state が未指定または不正です。
+          -e state=started または -e state=stopped を指定してください。
+
+    - name: 対象VMを検索する
+      ansible.builtin.import_role:
+        name: pve
+        tasks_from: find_vm
+      vars:
+        pve_vmid: "{{ vmid }}"
+
+    # 停止には猶予時間と強制停止方針が必要だが、起動時はモジュール既定値を使う。
+    - name: VMの電源状態を収束させる
+      community.proxmox.proxmox_kvm:
+        vmid: "{{ vmid }}"
+        state: "{{ state }}"
+        timeout: >-
+          {{ (state == 'stopped')
+             | ternary(pve_power_timeout | default(300), omit) }}
+        force: >-
+          {{ (state == 'stopped')
+             | ternary(pve_power_force | default(false) | bool, omit) }}

@@ -1,0 +1,41 @@
+# バックアップの実データを置くデータストアを作成する。
+# `datastore create` は指定パスに .chunks などの構造を初期化するため、
+# 既に同名のデータストアがあれば何もしない(パスの付け替えもしない)。
+---
+- name: 既存のデータストア一覧を取得する
+  ansible.builtin.command:
+    cmd: proxmox-backup-manager datastore list --output-format json
+  become: true
+  changed_when: false
+  register: pbs_datastore_list
+
+- name: データストアの有無を判定する
+  ansible.builtin.set_fact:
+    pbs_datastore_exists: >-
+      {{ pbs_datastore_name in
+         ((pbs_datastore_list.stdout | from_json) | map(attribute='name') | list) }}
+
+# PBSのサービスは backup ユーザーで動き、データストア直下に .lock を作る。
+# データ用ディスクを使う場合はマウント先(ディスクの最上位)がここで backup 所有になる。
+- name: データストア用ディレクトリを用意する
+  ansible.builtin.file:
+    path: "{{ pbs_datastore_path }}"
+    state: directory
+    owner: backup
+    group: backup
+    mode: "0755"
+  become: true
+
+# チャンクストアの初期化を含むため、ディスクが大きいと少し時間がかかる
+- name: データストアを作成する
+  ansible.builtin.command:
+    argv:
+      - proxmox-backup-manager
+      - datastore
+      - create
+      - "{{ pbs_datastore_name }}"
+      - "{{ pbs_datastore_path }}"
+  become: true
+  register: pbs_datastore_create
+  changed_when: pbs_datastore_create.rc == 0
+  when: not pbs_datastore_exists

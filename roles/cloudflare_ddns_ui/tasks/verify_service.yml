@@ -1,0 +1,132 @@
+# VM内から見た確認。VM外から見えるかどうかは、再起動後にplaybook側で行う。
+#
+# このアプリにはヘルスチェックが無いため、起動直後に走る1回目のレコード確認の
+# 結果を動作ログ(logs/ddns.log)から拾って判定する。
+---
+# 設定に誤りがあるとコンテナは起動直後に落ちて再起動を繰り返す。この状態でも
+# 公開ポートはDocker側が掴んだままなので、ポートやHTTPの確認では
+# 「接続を拒否されました」としか分からない。先にコンテナ自体の状態を見る。
+- name: コンテナが起動し続けていることを確認する
+  block:
+    - name: コンテナの状態を問い合わせる
+      ansible.builtin.command:
+        cmd: docker inspect {{ cloudflare_ddns_ui_container_name }}
+      become: true
+      changed_when: false
+      register: cloudflare_ddns_ui_state_raw
+      retries: 6
+      delay: 5
+      until: >-
+        ((cloudflare_ddns_ui_state_raw.stdout | default('') | trim | length) > 0)
+        and (((cloudflare_ddns_ui_state_raw.stdout | from_json | first).State.Status
+              | default('')) == 'running')
+        and (((cloudflare_ddns_ui_state_raw.stdout | from_json | first).RestartCount
+              | default(0) | int) == 0)
+
+  rescue:
+    - name: コンテナのログを取得する
+      ansible.builtin.command:
+        cmd: docker logs --tail 30 {{ cloudflare_ddns_ui_container_name }}
+      become: true
+      changed_when: false
+      failed_when: false
+      register: cloudflare_ddns_ui_docker_logs
+
+    - name: 起動に失敗したことを通知する
+      ansible.builtin.fail:
+        msg: >-
+          コンテナ {{ cloudflare_ddns_ui_container_name }} が起動し続けられていません
+          (再起動を繰り返している可能性があります)。直近のログ:
+          {{ ((cloudflare_ddns_ui_docker_logs.stdout_lines | default([]))
+              + (cloudflare_ddns_ui_docker_logs.stderr_lines | default([])))[-15:] | join(' / ') }}
+
+- name: Web UIのポートが待ち受けるまで待機する
+  ansible.builtin.wait_for:
+    host: "{{ cloudflare_ddns_ui_check_host }}"
+    port: "{{ cloudflare_ddns_ui_http_port }}"
+    timeout: 180
+    state: started
+
+- name: Web UIが応答するまで待機する
+  ansible.builtin.uri:
+    url: "http://{{ cloudflare_ddns_ui_check_host }}:{{ cloudflare_ddns_ui_http_port }}/"
+    status_code: [200]
+  register: cloudflare_ddns_ui_web
+  retries: "{{ cloudflare_ddns_ui_ready_retries }}"
+  delay: "{{ cloudflare_ddns_ui_ready_delay }}"
+  until: cloudflare_ddns_ui_web is succeeded
+  changed_when: false
+
+# 起動直後に1回目の確認が走る(以降は cloudflare_ddns_ui_interval ごと)。
+# 全レコードがログに現れるまで待ってから、成功したかどうかを判定する。
+- name: 1回目のレコード確認が終わるまで待機する
+  block:
+    - name: 動作ログを読む
+      ansible.builtin.command:
+        cmd: tail -n 500 {{ cloudflare_ddns_ui_install_dir }}/logs/ddns.log
+      become: true
+      changed_when: false
+      failed_when: false
+      register: cloudflare_ddns_ui_log_tail
+      retries: "{{ cloudflare_ddns_ui_check_retries }}"
+      delay: "{{ cloudflare_ddns_ui_check_delay }}"
+      until: >-
+        (cloudflare_ddns_ui_records_resolved
+         | reject('in', cloudflare_ddns_ui_log_tail.stdout | default(''))
+         | list | length) == 0
+
+  rescue:
+    - name: 確認できなかったことを記録する
+      ansible.builtin.debug:
+        msg: >-
+          【注意】
+          {{ (cloudflare_ddns_ui_check_retries | int) * (cloudflare_ddns_ui_check_delay | int) }}秒待っても
+          全レコードの確認結果がログに出ませんでした。構築自体は完了しています。
+
+- name: レコードごとの結果を判定する
+  ansible.builtin.set_fact:
+    cloudflare_ddns_ui_failed_records: >-
+      {{ cloudflare_ddns_ui_records_resolved
+         | reject('in', cloudflare_ddns_ui_success_text) | list }}
+  vars:
+    # 「更新済み」「更新した」と読める行だけを集めて、レコード名で突き合わせる
+    cloudflare_ddns_ui_success_text: >-
+      {{ (cloudflare_ddns_ui_log_tail.stdout_lines | default([]))
+         | select('search', '(is already up to date|Successfully updated)')
+         | list | join(' ') }}
+
+- name: レコードの更新結果を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{
+        '全レコードが公開IPを指しています('
+        ~ (cloudflare_ddns_ui_records_resolved | join(', ')) ~ ')。'
+        if ((cloudflare_ddns_ui_failed_records | length) == 0)
+        else
+        '【注意】更新を確認できないレコードがあります('
+        ~ (cloudflare_ddns_ui_failed_records | join(', ')) ~ ')。構築自体は完了しています。'
+        ~ 'Cloudflare側にそのAレコードが存在するか、APIトークンに対象ゾーンの'
+        ~ 'DNS編集権限があるかを確認してください。詳しくは '
+        ~ 'sudo tail -50 ' ~ cloudflare_ddns_ui_install_dir ~ '/logs/ddns.log をご覧ください。'
+      }}
+
+- name: Web UIの案内を表示する
+  ansible.builtin.debug:
+    msg:
+      - "{{ cloudflare_ddns_ui_web_hint }}"
+      - "更新対象: {{ cloudflare_ddns_ui_records_resolved | join(', ') }}(A レコードのみ)"
+      - "動作ログ: {{ cloudflare_ddns_ui_install_dir }}/logs/ddns.log"
+  vars:
+    cloudflare_ddns_ui_vm_address: "{{ ansible_host | default(inventory_hostname) }}"
+    cloudflare_ddns_ui_web_hint: >-
+      {{
+        'Web UI: http://' ~ cloudflare_ddns_ui_vm_address ~ ':'
+        ~ cloudflare_ddns_ui_http_port ~ '/(⚠ 認証はありません)'
+        if (cloudflare_ddns_ui_published | bool)
+        else
+        'Web UI: 待ち受けを ' ~ cloudflare_ddns_ui_http_bind
+        ~ ' に絞っているためVMの外からは見えません(手元から見る場合: ssh -L '
+        ~ cloudflare_ddns_ui_http_port ~ ':' ~ cloudflare_ddns_ui_check_host ~ ':'
+        ~ cloudflare_ddns_ui_http_port ~ ' <SSHユーザ名>@' ~ cloudflare_ddns_ui_vm_address
+        ~ ' → http://127.0.0.1:' ~ cloudflare_ddns_ui_http_port ~ '/)'
+      }}

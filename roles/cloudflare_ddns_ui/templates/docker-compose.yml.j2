@@ -1,0 +1,31 @@
+# Ansible(roles/cloudflare_ddns_ui)が生成。手動編集は次回実行で上書きされます。
+#
+# 内容はDocker Hubの公式例と同じ構成。差分は次の2点:
+#   - VMからの公開ポートと待ち受けアドレスを変えられるようにしている
+#   - ログの時刻をVMのタイムゾーンに合わせるため TZ を渡している
+#
+# アプリの設定(APIトークン・ゾーン・レコード)は config/config.json 側です。
+# コンテナ内の待ち受けポートは8080で固定です(アプリが直接指定しているため)。
+---
+services:
+  cloudflare-ddns-ui:
+    container_name: {{ cloudflare_ddns_ui_container_name }}
+    image: {{ cloudflare_ddns_ui_image }}:{{ cloudflare_ddns_ui_version }}
+    restart: unless-stopped
+    environment:
+      TZ: {{ vm_timezone_resolved | default('Asia/Tokyo', true) }}
+{% for key, value in (cloudflare_ddns_ui_extra_env | dictsort) %}
+      {{ key }}: {{ value | to_json }}
+{% endfor %}
+    ports:
+{% if cloudflare_ddns_ui_http_bind in ['0.0.0.0', '::', ''] %}
+      - "{{ cloudflare_ddns_ui_http_port }}:8080/tcp"
+{% else %}
+      # ダッシュボードには認証が無いため、待ち受けアドレスを絞っている
+      - "{{ cloudflare_ddns_ui_http_bind }}:{{ cloudflare_ddns_ui_http_port }}:8080/tcp"
+{% endif %}
+    volumes:
+      # 設定(APIトークンを含む)
+      - ./config:/app/config
+      # 動作ログ(ddns.log)と更新履歴(record_stats.json)
+      - ./logs:/app/logs

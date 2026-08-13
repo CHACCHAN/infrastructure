@@ -1,0 +1,11 @@
+# Cloudflare DDNS UI (DDNS アップデータ) — 172.16.11.4:8080
+#
+# Authentik の forwardAuth で保護している唯一のサービス。
+# platform/external/authentik/ の Middleware に依存する。
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - service.yaml
+  - middleware.yaml
+  - ingress.yaml

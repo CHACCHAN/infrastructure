@@ -1,0 +1,161 @@
+# 以降のタスクが参照する値(ノード種別・サービス名・ノード名など)をここで確定させる。
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - vm_ssh_user is defined
+      - (vm_ssh_user | default('', true)) | length > 0
+    fail_msg: >-
+      vm_ssh_user が指定されていません。
+      sudoグループへの追加やkubeconfigの配置先に使うため、
+      -e "vm_ssh_user=<ユーザ名>" で指定してください。
+    quiet: true
+
+# 共通の assert_debian.yml はディストリビューションしか見ないため、
+# ここでバージョンも確認する(このロールはDebian 13のcloud image + cloud-initで
+# 作られたVMだけを対象にしている)。
+- name: 対象OSがDebian 13であることを確認する
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution_major_version == '13'
+    fail_msg: >-
+      このロールはDebian 13(trixie)のcloud image専用です
+      (検出されたバージョン: {{ ansible_distribution }} {{ ansible_distribution_version }})。
+    quiet: true
+
+# 「コントロールプレーン」「ワーカー」という呼び方でも指定できるようにする
+# (k3s自身の呼び方は server / agent)。
+- name: 指定されたノード種別を正規化する
+  ansible.builtin.set_fact:
+    kubernetes_role_resolved: >-
+      {{ 'server' if (kubernetes_given_role in kubernetes_server_aliases)
+         else ('agent' if (kubernetes_given_role in kubernetes_agent_aliases) else '') }}
+  vars:
+    kubernetes_given_role: "{{ kubernetes_node_role | default('', true) | lower }}"
+    kubernetes_server_aliases: [server, control-plane, controlplane, control_plane, master]
+    kubernetes_agent_aliases: [agent, worker, node]
+
+- name: ノード種別の指定を検証する
+  ansible.builtin.assert:
+    that:
+      - kubernetes_role_resolved | length > 0
+    fail_msg: >-
+      kubernetes_node_role が指定されていないか、値が不正です
+      (指定値: {{ kubernetes_node_role | default('(未指定)') }})。
+      -e "kubernetes_node_role=server"(コントロールプレーン)または
+      -e "kubernetes_node_role=agent"(ワーカー)で指定してください
+      (control-plane / worker という書き方でも受け付けます)。
+    quiet: true
+
+- name: 参加先の指定を検証する
+  ansible.builtin.assert:
+    that:
+      - (kubernetes_server_ip | default('', true)) | length > 0
+    fail_msg: >-
+      ワーカー(agent)には参加先のコントロールプレーンが必要です。
+      -e "kubernetes_server_ip=<コントロールプレーンのIPアドレス>" で指定してください
+      (トークンはそのVMにSSH接続して自動取得します)。
+    quiet: true
+  when: kubernetes_role_resolved == 'agent'
+
+# serverで自分自身を指しているのは「クラスタの1台目」の指定として扱い、参加しない。
+# インベントリのグループ変数に参加先を1つ書いて全ノードで共有できるようにするため。
+- name: ワーカーの参加先が自分自身になっていないことを検証する
+  ansible.builtin.assert:
+    that:
+      - kubernetes_server_ip != vm_ip
+    fail_msg: >-
+      ワーカー(agent)の kubernetes_server_ip に自分自身({{ vm_ip }})が指定されています。
+      参加先には「既に構築済みの別のコントロールプレーン」を指定してください。
+    quiet: true
+  when:
+    - kubernetes_role_resolved == 'agent'
+    - (kubernetes_server_ip | default('', true)) | length > 0
+
+- name: APIサーバーのポート指定を検証する
+  ansible.builtin.assert:
+    that:
+      - kubernetes_server_port | int > 0
+      - kubernetes_server_port | int < 65536
+    fail_msg: >-
+      kubernetes_server_port が不正です
+      (1〜65535の範囲で指定してください。指定値: {{ kubernetes_server_port }})。
+    quiet: true
+
+- name: 派生する値を決定する
+  ansible.builtin.set_fact:
+    # 参加先が指定されていれば既存クラスタへの参加(agentは常にこちら)。
+    # 自分自身を指している場合は1台目のコントロールプレーンとして扱う
+    kubernetes_join_existing: >-
+      {{ ((kubernetes_server_ip | default('', true)) | length > 0)
+         and (kubernetes_server_ip != vm_ip) }}
+    kubernetes_service_name: "{{ 'k3s' if kubernetes_role_resolved == 'server' else 'k3s-agent' }}"
+    # ノード名はKubernetesのオブジェクト名になるため小文字にする
+    kubernetes_node_name_resolved: "{{ kubernetes_node_name | default(ansible_hostname | lower, true) }}"
+    # APIサーバーへの接続先。占有ネットワーク側のIPが指定されていればそちらを使う
+    # (SSH接続先の kubernetes_server_ip は管理ネットワーク側のまま変えない)
+    kubernetes_server_url_host: "{{ kubernetes_server_node_ip | default(kubernetes_server_ip, true) }}"
+
+# NICが2枚あり kubernetes_node_ip を占有ネットワーク側にした場合、flannelにも
+# 同じNICを使わせないとPod間通信だけが外部通信用のNICに流れてしまう。
+- name: クラスタ通信に使うNICを特定する
+  ansible.builtin.set_fact:
+    kubernetes_flannel_iface_resolved: >-
+      {{
+        kubernetes_flannel_iface
+        if ((kubernetes_flannel_iface | default('', true)) | length > 0)
+        else ((kubernetes_node_ip_devices | first) if (kubernetes_node_ip_devices | length > 0) else '')
+      }}
+  vars:
+    kubernetes_node_ip_devices: >-
+      {{
+        (ansible_facts.interfaces | map('extract', ansible_facts) | select('defined')
+         | selectattr('ipv4', 'defined')
+         | selectattr('ipv4.address', 'equalto', kubernetes_node_ip | default('', true))
+         | map(attribute='device') | list)
+        if ((kubernetes_node_ip | default('', true)) | length > 0) else []
+      }}
+
+- name: 指定されたノードIPを持つNICが見つかったことを確認する
+  ansible.builtin.assert:
+    that:
+      - (kubernetes_flannel_iface_resolved | length) > 0
+    fail_msg: >-
+      kubernetes_node_ip に指定された {{ kubernetes_node_ip }} を持つNICが
+      {{ vm_ip }} に見つかりません
+      (このVMが持っているIPアドレス: {{
+        ansible_facts.interfaces | map('extract', ansible_facts) | select('defined')
+        | selectattr('ipv4', 'defined') | map(attribute='ipv4.address') | list | join(', ')
+      }})。
+      cloud-initでのIP設定(2枚目のNICなら net1_ipv4)が反映されているか、
+      設定後にVMを起動し直したかを確認してください。
+    quiet: true
+  when: (kubernetes_node_ip | default('', true)) | length > 0
+
+# node-ipを占有ネットワーク側にすると、APIサーバー証明書のSANにも
+# そのIPしか入らない。手元やワーカーから管理ネットワーク側のIPで繋げるよう補う。
+- name: APIサーバー証明書に追加するSANを決定する
+  ansible.builtin.set_fact:
+    kubernetes_tls_san_resolved: >-
+      {{ (kubernetes_tls_san + [vm_ip]) | unique }}
+  when: kubernetes_role_resolved == 'server'
+
+# agentにはkubeconfigが無いため、Readyかどうかはコントロールプレーン側から確認する。
+- name: ノードの状態を確認するホストを決定する
+  ansible.builtin.set_fact:
+    kubernetes_check_host: >-
+      {{ inventory_hostname if kubernetes_role_resolved == 'server' else kubernetes_server_ip }}
+
+- name: 構築する内容を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ vm_ip }} を k3s の
+      {{ 'コントロールプレーン(server)' if kubernetes_role_resolved == 'server' else 'ワーカー(agent)' }}
+      として構築します
+      / ノード名 {{ kubernetes_node_name_resolved }}
+      / バージョン {{ kubernetes_version | default(kubernetes_channel ~ 'チャンネルの最新版', true) }}
+      {{ '/ 参加先 https://' ~ kubernetes_server_url_host ~ ':' ~ kubernetes_server_port
+         if (kubernetes_join_existing | bool) else '/ 新規クラスタ' }}
+      {{ '/ クラスタ通信 ' ~ kubernetes_node_ip ~ '(' ~ kubernetes_flannel_iface_resolved ~ ')'
+         if ((kubernetes_node_ip | default('', true)) | length > 0)
+         else '/ クラスタ通信 k3sの自動判定に任せる' }}

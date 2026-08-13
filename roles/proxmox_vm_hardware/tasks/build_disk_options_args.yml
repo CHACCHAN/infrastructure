@@ -1,0 +1,77 @@
+# disk_optionsの各項目を、既存ディスクを差し替えずにオプションだけ変える
+# --<bus><index> <ボリューム>,<オプション> に変換する。
+#
+# テンプレートからクローンしたOS用ディスク(scsi0)のように、ボリューム名が
+# 実行時にしか分からないディスクの設定を変えるために使う。
+# 現在の設定(size= など)はそのまま引き継ぎ、指定した項目だけを上書きする。
+#
+# IOスレッド(iothread)とSSDエミュレーション(ssd)は、明示していなければ
+# defaults/main.yml の既定値(どちらもオン)が付く。
+---
+# 存在しないディスクを指定すると、ボリューム名が空のまま qm set を組み立てて
+# 分かりにくいエラーになるため、先に確認する
+- name: 対象のディスクが存在することを確認する
+  ansible.builtin.assert:
+    that:
+      - "proxmox_vm_hardware_config_before.stdout is search(proxmox_vm_hardware_do_key, multiline=True)"
+    fail_msg: >-
+      VMID {{ vm_id }} に {{ item.bus }}{{ item.index }} がありません。
+      disk_options は既存ディスクの設定を変えるものです。
+      新しいディスクを追加する場合は disks を使ってください。
+    quiet: true
+  vars:
+    proxmox_vm_hardware_do_key: "{{ '^' ~ item.bus ~ (item.index | string) ~ ':' }}"
+  loop: "{{ proxmox_vm_hardware_disk_options }}"
+  loop_control:
+    label: "{{ item.bus }}{{ item.index }}"
+
+- name: 各ディスクのオプション変更を引数に追加する
+  ansible.builtin.set_fact:
+    proxmox_vm_hardware_argv: >-
+      {{
+        proxmox_vm_hardware_argv
+        + ['--' + item.bus + (item.index | string),
+           proxmox_vm_hardware_do_volume + ',' + proxmox_vm_hardware_do_merged_str]
+      }}
+  vars:
+    # 例: "scsi0: ssd01:vm-101-disk-0,size=32G" → "ssd01:vm-101-disk-0,size=32G"
+    proxmox_vm_hardware_do_line: >-
+      {{
+        (proxmox_vm_hardware_config_before.stdout
+         | regex_search('^' + item.bus + (item.index | string) + ': (.*)$', '\1', multiline=True)
+         | default([], true)) | join('') | trim
+      }}
+    # 先頭がボリューム名、以降が key=value のオプション
+    proxmox_vm_hardware_do_volume: "{{ proxmox_vm_hardware_do_line.split(',') | first }}"
+    # key=value の形をしたものだけを取り出す(size=32G, cache=writeback など)
+    proxmox_vm_hardware_do_existing: >-
+      {{ dict(proxmox_vm_hardware_do_line.split(',')[1:]
+              | select('search', '=') | map('split', '=', 1) | list) }}
+    # バスが対応している項目にだけ既定値を用意する
+    # (SSDエミュレーションはvirtio-blk非対応、IOスレッドはscsi/virtioのみ。
+    #  discardは全バスで指定できる)
+    proxmox_vm_hardware_media_defaults: >-
+      {{
+        ({'iothread': proxmox_vm_hardware_default_iothread}
+         if item.bus in ['scsi', 'virtio'] else {})
+        | combine({'ssd': proxmox_vm_hardware_default_ssd}
+                  if item.bus in ['scsi', 'sata', 'ide'] else {})
+        | combine({'discard': proxmox_vm_hardware_default_discard})
+      }}
+    # 現在の設定 → 既定値 → 明示した値、の順に上書きする
+    proxmox_vm_hardware_do_merged: >-
+      {{
+        proxmox_vm_hardware_do_existing
+        | combine(proxmox_vm_hardware_media_defaults)
+        | combine(item | dict2items | rejectattr('key', 'in', ['bus', 'index']) | items2dict)
+      }}
+    proxmox_vm_hardware_do_merged_str: >-
+      {{
+        proxmox_vm_hardware_do_merged
+        | dict2items | map(attribute='key')
+        | zip(proxmox_vm_hardware_do_merged | dict2items | map(attribute='value') | map('string'))
+        | map('join', '=') | join(',')
+      }}
+  loop: "{{ proxmox_vm_hardware_disk_options }}"
+  loop_control:
+    label: "{{ item.bus }}{{ item.index }}"

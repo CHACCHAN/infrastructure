@@ -1,0 +1,63 @@
+# 起動済みのDebian VMにSSH接続し、Docker ComposeでSupabase(セルフホスト)を
+# 構築します。VM内部の設定のみを行い、Proxmoxホスト側の操作は一切行いません。
+#
+# パスワードやAPIキーは未指定なら公式スクリプトで自動生成し、.env に保存します。
+#   -e "supabase_public_url=https://supabase.example.com" のように、
+#   環境変数に入る値はすべて変数で渡せます(docs/vms/supabase.md の対応表を参照)。
+---
+- name: 接続先のVMホストを登録する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: 対象VMをインベントリに登録して疎通を確認する
+      ansible.builtin.import_role:
+        name: vm_connect
+
+- name: Supabase専用VMを構築する
+  hosts: vms
+  gather_facts: true
+
+  roles:
+    - supabase
+
+  # dockerグループへの追加とカーネル更新の反映に再起動が必要。
+  # 再起動後はrestart: unless-stoppedでコンテナが復帰するので、
+  # 最後に「実行元の端末から」APIとダッシュボードが見えることまで確認する。
+  post_tasks:
+    - name: 構成を反映するためVMを再起動する
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: reboot_vm
+
+    # 11個のコンテナが順に復帰するため、再起動直後は時間がかかる。
+    # /auth/v1/health はKongのkey-authプラグイン配下で、anonキーが無いと401になる
+    # (ロール内の同じ確認と揃えている)。VM内のset_factはこの再起動をまたいでも残る。
+    - name: 実行元の端末からAPIに接続できることを確認する
+      ansible.builtin.uri:
+        url: "http://{{ vm_ip }}:{{ supabase_kong_http_port | default(8000) }}/auth/v1/health"
+        headers:
+          apikey: "{{ supabase_secrets.ANON_KEY }}"
+        status_code: [200]
+      delegate_to: localhost
+      become: false
+      register: supabase_remote_api
+      retries: 60
+      delay: 10
+      until: supabase_remote_api is succeeded
+      changed_when: false
+
+    - name: 構築結果と次の手順を表示する
+      ansible.builtin.debug:
+        msg:
+          - "ダッシュボード: {{ supabase_public_url_resolved }}/"
+          - "ログイン: {{ supabase_dashboard_username | default('supabase') }} /
+             パスワードはVM内の {{ supabase_project_dir }}/.env(DASHBOARD_PASSWORD)"
+          - "APIキーの確認: ssh -i <秘密鍵> {{ vm_ssh_user }}@{{ vm_ip }}
+             \"sudo grep -E '^(ANON_KEY|SERVICE_ROLE_KEY)=' {{ supabase_project_dir }}/.env\""
+          - "Postgres(セッション): {{ vm_ip }}:{{ supabase_postgres_port | default(5432) }}
+             / トランザクション: {{ vm_ip }}:{{ supabase_pooler_proxy_port_transaction | default(6543) }}"
+          - "運用: cd {{ supabase_project_dir }} && sudo docker compose ps / logs -f <サービス名>"
+          - "⚠ {{ supabase_project_dir }}/.env と volumes/db/data は対です。
+             バックアップは両方まとめて取得してください"

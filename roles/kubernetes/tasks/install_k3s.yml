@@ -1,0 +1,43 @@
+# 公式インストールスクリプト(get.k3s.io)で導入する。
+# kubectl / crictl / ctr のシンボリックリンクと、systemdサービス
+# (server: k3s.service / agent: k3s-agent.service)も同時に作られる。
+# スクリプトは誰でも書き込める/tmpではなく/usr/local/srcに置き、実行後は残さない。
+---
+- name: K3sをインストールする
+  when: kubernetes_install_required | bool
+  block:
+    - name: K3s公式インストールスクリプトを取得する
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /usr/local/src/install-k3s.sh
+        owner: root
+        group: root
+        mode: "0755"
+      become: true
+
+    # 接続先やトークンは config.yaml に書いてあるため、ここでは
+    # server / agent のどちらとして入れるかだけを渡す。
+    # INSTALL_K3S_VERSION が空文字ならスクリプト側で無視され、チャンネルの最新版が入る。
+    - name: インストールスクリプトを実行する
+      ansible.builtin.command:
+        cmd: sh /usr/local/src/install-k3s.sh
+      environment:
+        INSTALL_K3S_EXEC: "{{ kubernetes_role_resolved }}"
+        INSTALL_K3S_CHANNEL: "{{ kubernetes_channel }}"
+        INSTALL_K3S_VERSION: "{{ kubernetes_version | default('', true) }}"
+      become: true
+      changed_when: true
+
+  always:
+    - name: インストールスクリプトを削除する
+      ansible.builtin.file:
+        path: /usr/local/src/install-k3s.sh
+        state: absent
+      become: true
+
+- name: K3sサービスを有効化・起動する
+  ansible.builtin.systemd:
+    name: "{{ kubernetes_service_name }}"
+    enabled: true
+    state: started
+  become: true

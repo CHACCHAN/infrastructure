@@ -1,0 +1,63 @@
+# Ansible(roles/kubernetes)が生成。手動編集は次回実行で上書きされます。
+#
+# k3sはserver/agentどちらも起動時にこのファイルを読み込む。
+# 書ける項目はコマンドライン引数と同じ(先頭の -- を取ったもの)。
+{% if kubernetes_join_existing | bool %}
+
+# 参加先のコントロールプレーンと参加用トークン
+server: https://{{ kubernetes_server_url_host }}:{{ kubernetes_server_port }}
+token: "{{ kubernetes_token_resolved }}"
+{% endif %}
+
+# ノード名。未指定でもホスト名が使われるが、Ready判定で名前を照合するため明示する
+node-name: {{ kubernetes_node_name_resolved }}
+{% if (kubernetes_node_ip | default('', true)) | length > 0 %}
+
+# ノード間通信(kubelet・flannel・etcd)に使うアドレスとNIC。
+# NICが2枚ある場合に、クラスタ通信を占有ネットワーク側へ固定するための指定
+node-ip: {{ kubernetes_node_ip }}
+{% if (kubernetes_flannel_iface_resolved | default('', true)) | length > 0 %}
+flannel-iface: {{ kubernetes_flannel_iface_resolved }}
+{% endif %}
+{% endif %}
+{% if kubernetes_node_labels | length > 0 %}
+node-label:
+{% for label in kubernetes_node_labels %}
+  - {{ label }}
+{% endfor %}
+{% endif %}
+{% if kubernetes_node_taints | length > 0 %}
+node-taint:
+{% for taint in kubernetes_node_taints %}
+  - {{ taint }}
+{% endfor %}
+{% endif %}
+{% if kubernetes_role_resolved == 'server' %}
+{% if (kubernetes_cluster_init | bool) and not (kubernetes_join_existing | bool) %}
+
+# 埋め込みetcdで構築する(あとからコントロールプレーンを増やせる)
+cluster-init: true
+{% endif %}
+{% if (kubernetes_tls_san_resolved | default(kubernetes_tls_san)) | length > 0 %}
+
+# APIサーバー証明書に追加するSAN。node-ipを占有ネットワーク側にした場合でも
+# 管理ネットワーク側のIPでkubectlを使えるよう、VMのIPを自動で含めている
+tls-san:
+{% for san in (kubernetes_tls_san_resolved | default(kubernetes_tls_san)) %}
+  - {{ san }}
+{% endfor %}
+{% endif %}
+{% if kubernetes_disable | length > 0 %}
+
+# 標準で入るコンポーネントのうち無効化するもの
+disable:
+{% for component in kubernetes_disable %}
+  - {{ component }}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if kubernetes_extra_config | length > 0 %}
+
+# kubernetes_extra_config で追加指定された項目
+{{ kubernetes_extra_config | to_nice_yaml(indent=2) | trim }}
+{% endif %}

@@ -1,0 +1,26 @@
+# 全タスクは接続先のProxmoxホスト(-e proxmox_ip)上で直接実行される。
+# 対象VMの電源がオフの場合のみ変更を許可する。
+#
+# vm_hardware はqmのオプションに準拠したカテゴリで指定する:
+#   cpu / memory / disks / network / options(上記以外のqm setオプション)/
+#   resize(既存ディスクの拡張。disksは新規作成・付け替え)
+# vm_hardware_delete は削除したいqmプロパティ名のリスト。
+# 指定できる書式の詳細は docs/proxmox/proxmox_vm_hardware.md を参照。
+---
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: 接続先のノード名を取得する
+  ansible.builtin.import_role:
+    name: proxmox_common
+    tasks_from: detect_proxmox_node
+
+- name: VMの状態を確認する
+  ansible.builtin.import_tasks: check_vm_state.yml
+
+- name: ハードウェア設定を変更する
+  ansible.builtin.import_tasks: change_hardware.yml
+
+- name: 既存ディスクを拡張する
+  ansible.builtin.import_tasks: resize_disks.yml
+  when: proxmox_vm_hardware_resize | length > 0

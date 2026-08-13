@@ -1,0 +1,111 @@
+# タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
+# 既定値は roles/common・roles/docker の共通タスク側にある。
+#
+# ここの変数はコンテナの環境変数と1対1で対応させている(対応は docs/vms/wg-easy.md の表)。
+# 未指定(空)の項目は .env に書き出さず、イメージ側の既定値がそのまま使われる。
+---
+wg_easy_install_dir: /opt/wg-easy
+wg_easy_container_name: wg-easy
+
+# ⚠ OAuth/OIDCは 15.4.0-beta.1 で追加された機能のため、既定をそのベータ版にしている。
+# 安定版(15.3.0以前)ではOAUTH_*が無視され、ログイン画面はユーザー名/パスワードだけになる。
+# パスワード認証しか使わないなら wg_easy_version=15.3.0 のような安定版でよい。
+# masterに追従する edge / nightly タグも指定できる(さらに不安定)
+wg_easy_image: ghcr.io/wg-easy/wg-easy
+wg_easy_version: "15.4.0-beta.1"
+# OAuth/OIDCが使える最小のバージョン(実際に有効かは構築後にAPIで確認する)
+wg_easy_oauth_min_version: "15.4.0-beta.1"
+
+# --- ポート ---
+# WireGuard本体(UDP)。VM側とコンテナ側で同じ番号になる
+wg_easy_wg_port: 51820
+# Web UI(TCP)。コンテナ内の待ち受け(環境変数PORT)にも同じ値を渡す
+wg_easy_ui_port: 51821
+# Web UIをVMのどのアドレスで公開するか(Docker側の公開設定)
+wg_easy_ui_bind: 0.0.0.0
+
+# --- 基本設定(環境変数: HOST / INSECURE / DISABLE_IPV6 など) ---
+# コンテナ内でWeb UIが待ち受けるアドレス(環境変数HOST)
+wg_easy_host: 0.0.0.0
+# HTTPでのアクセスを許可する(環境変数INSECURE)。
+# falseにするとHTTPS(リバースプロキシ)経由でしかログインできない。
+# LAN内からIPで直接開く前提のため既定はtrue
+wg_easy_insecure: true
+# IPv6を無効化する(環境変数DISABLE_IPV6)。trueにするとDockerネットワークもIPv4のみになる
+wg_easy_disable_ipv6: false
+# 更新確認を無効化する(環境変数DISABLE_VERSION_CHECK)
+wg_easy_disable_version_check: false
+# AmneziaWG(実験的機能。環境変数EXPERIMENTAL_AWG)
+wg_easy_experimental_awg: false
+# ログの詳細度(環境変数DEBUG)。空ならイメージの既定
+# (Server,WireGuard,Database,CMD,Firewall)のまま
+wg_easy_debug: ""
+
+# --- 初期セットアップ(環境変数: INIT_*。初回起動時のみ有効) ---
+# trueならセットアップウィザードを飛ばして管理者とWireGuardを作る(環境変数INIT_ENABLED)。
+# falseにするとブラウザからウィザードを実施することになる
+wg_easy_init_enabled: true
+# INIT_USERNAME / INIT_PASSWORD / INIT_HOST / INIT_PORT はまとめて必須
+# (wg-easy側の仕様。1つでも欠けると初期セットアップが行われない)
+wg_easy_init_username: admin
+# 未指定なら自動生成して .env に保存する(再実行時は既存の値を引き継ぐ)
+wg_easy_init_password: ""
+# クライアントの接続先(FQDNまたはグローバルIP)。**必須**
+wg_easy_init_host: ""
+# クライアントの接続先ポート。未指定なら wg_easy_wg_port と同じ
+wg_easy_init_port: ""
+# クライアントに配るDNS(環境変数INIT_DNS)。例: "1.1.1.1,8.8.8.8"
+wg_easy_init_dns: ""
+# VPNのアドレス範囲(環境変数INIT_IPV4_CIDR / INIT_IPV6_CIDR)。
+# wg-easyの仕様でこの2つはセットで指定する(片方だけは不可)
+wg_easy_init_ipv4_cidr: ""
+wg_easy_init_ipv6_cidr: ""
+# クライアント側のAllowedIPs(環境変数INIT_ALLOWED_IPS)。例: "0.0.0.0/0,::/0"
+wg_easy_init_allowed_ips: ""
+
+# --- 外部認証(環境変数: OAUTH_*) ---
+# 使う認証プロバイダ(環境変数OAUTH_PROVIDERS)。oidc / google / github をカンマ区切り。
+# 空にするとパスワード認証だけになる
+wg_easy_oauth_providers: oidc
+# 未登録のメールアドレスでログインしたときに利用者を自動作成する
+# (環境変数OAUTH_AUTO_REGISTER)。⚠ 作られる利用者は管理者権限になる
+wg_easy_oauth_auto_register: false
+# ログインを許可するメールアドレスのドメイン(環境変数OAUTH_ALLOWED_DOMAINS)。
+# 例: "example.com,example.org"
+wg_easy_oauth_allowed_domains: ""
+# ログイン画面を開いたときに自動で飛ばすプロバイダ(環境変数OAUTH_AUTO_LAUNCH)
+wg_easy_oauth_auto_launch: ""
+
+# 汎用OIDC(Authentik / Authelia など)。プロバイダにoidcを含める場合は3つとも必須
+wg_easy_oauth_oidc_server: ""
+wg_easy_oauth_oidc_client_id: ""
+wg_easy_oauth_oidc_client_secret: ""
+# ログイン画面に表示される名前(環境変数OAUTH_OIDC_NAME)
+wg_easy_oauth_oidc_name: ""
+
+# Google / GitHub を使う場合(それぞれIDとシークレットをセットで指定)
+wg_easy_oauth_google_client_id: ""
+wg_easy_oauth_google_client_secret: ""
+wg_easy_oauth_github_client_id: ""
+wg_easy_oauth_github_client_secret: ""
+
+# パスワード認証を無効化する(環境変数DISABLE_PASSWORD_AUTH)。
+# ⚠ 管理者アカウントとOAuthの紐付けが済む前に有効にするとログインできなくなる
+wg_easy_disable_password_auth: false
+
+# 上に無い環境変数を足す場合に使う。例: {"UI_TRAFFIC_STATS": "true"}
+wg_easy_extra_env: {}
+
+# --- コンテナが使うDockerネットワーク(公式のdocker-compose.ymlに合わせている) ---
+wg_easy_network_name: wg
+wg_easy_network_ipv4_subnet: 10.42.42.0/24
+wg_easy_network_ipv4_address: 10.42.42.42
+wg_easy_network_ipv6_subnet: fdcc:ad94:bacf:61a3::/64
+wg_easy_network_ipv6_address: fdcc:ad94:bacf:61a3::2a
+
+# Web UIの起動待ち(リトライ回数 / 間隔(秒))
+wg_easy_ready_retries: 30
+wg_easy_ready_delay: 5
+# WireGuardのインターフェースが上がるまでの待ち(コンテナのヘルスチェック)
+wg_easy_health_retries: 12
+wg_easy_health_delay: 10

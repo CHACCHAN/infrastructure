@@ -1,0 +1,54 @@
+# Authentik が提供する forwardAuth Middleware。
+#
+# 他のサービスの Ingress から
+#   traefik.ingress.kubernetes.io/router.middlewares:
+#     platform-authentik-forward-auth@kubernetescrd
+# として参照される (現状は cloudflare-ddns-ui が使っている)。
+#
+# Traefik の CRD 参照は必ず <namespace>-<名前>@kubernetescrd の形になる。
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authentik-forward-auth
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  forwardAuth:
+    address: http://authentik-external.platform.svc.cluster.local:9000/outpost.goauthentik.io/auth/traefik
+    trustForwardHeader: true
+    # 認証が通ったときに、バックエンドへ引き渡すヘッダ。
+    authResponseHeaders:
+      - X-authentik-username
+      - X-authentik-groups
+      - X-authentik-entitlements
+      - X-authentik-email
+      - X-authentik-name
+      - X-authentik-uid
+      - X-authentik-jwt
+      - X-authentik-meta-jwks
+      - X-authentik-meta-outpost
+      - X-authentik-meta-provider
+      - X-authentik-meta-app
+      - X-authentik-meta-version
+---
+# Authentik 自身が自分の URL を組み立てるときに使うヘッダを強制付与する。
+# auth.cc-chacchan.com は平文 HTTP (Cloudflare Tunnel 経由) でも入ってくるため、
+# これがないと Authentik が http:// のリダイレクト URL を返してしまう。
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authentik-forwarded-https
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: https
+      X-Forwarded-Port: "443"
+      X-Forwarded-Host: auth.cc-chacchan.com

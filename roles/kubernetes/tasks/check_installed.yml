@@ -1,0 +1,27 @@
+# 「これから入れる」のか「既に動いているノードを触る」のかで、設定変更時に
+# サービスを再起動してよいかが変わるため、設定ファイルを書く前に判定しておく。
+---
+- name: 導入済みのk3sのバージョンを確認する
+  ansible.builtin.command:
+    cmd: k3s --version
+  changed_when: false
+  failed_when: false
+  register: kubernetes_installed_version
+
+- name: インストールが必要か判定する
+  ansible.builtin.set_fact:
+    kubernetes_already_installed: "{{ (kubernetes_installed_version.rc | default(1)) == 0 }}"
+    # バージョン指定がある場合は、動いている版と違えば入れ直す(=アップグレード)。
+    # 指定が無ければ入っている版をそのまま使う(勝手に最新へ上げない)
+    kubernetes_install_required: >-
+      {{ (kubernetes_installed_version.rc | default(1)) != 0
+         or ((kubernetes_version | default('', true)) | length > 0
+             and kubernetes_version not in (kubernetes_installed_version.stdout | default(''))) }}
+
+- name: 現在の状態を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ (kubernetes_installed_version.stdout_lines | first)
+         if (kubernetes_already_installed | bool) else 'k3sは未導入です' }}
+      → {{ 'インストール(または入れ直し)を行います'
+            if (kubernetes_install_required | bool) else '設定の確認のみ行います' }}

@@ -1,0 +1,158 @@
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - vm_id is defined
+    fail_msg: >-
+      vm_id が指定されていません。
+    quiet: true
+
+# vm_hardwareはスペースを含まないJSON文字列(例: {"cpu":{"cores":4}})、
+# または辞書そのものを受け付ける
+- name: 指定されたvm_hardwareを辞書に正規化する
+  ansible.builtin.set_fact:
+    proxmox_vm_hardware_normalized: >-
+      {{
+        (vm_hardware | from_yaml)
+        if (vm_hardware is defined and vm_hardware is string)
+        else (vm_hardware if (vm_hardware is defined and vm_hardware is mapping) else {})
+      }}
+
+- name: 指定されたvm_hardwareに未知のカテゴリが含まれていないか検証する
+  ansible.builtin.assert:
+    that:
+      - (proxmox_vm_hardware_normalized.keys() | difference(proxmox_vm_hardware_categories)) | length == 0
+    fail_msg: >-
+      vm_hardware に未知のキーがあります:
+      {{ proxmox_vm_hardware_normalized.keys() | difference(proxmox_vm_hardware_categories) | list }}
+      指定できるのは {{ proxmox_vm_hardware_categories | join(', ') }} のみです。
+    quiet: true
+  vars:
+    proxmox_vm_hardware_categories:
+      ['cpu', 'memory', 'disks', 'disk_options', 'network', 'options', 'resize']
+
+- name: カテゴリごとに変数へ分解する
+  ansible.builtin.set_fact:
+    proxmox_vm_hardware_cpu: "{{ proxmox_vm_hardware_normalized.cpu | default({}) }}"
+    proxmox_vm_hardware_memory: "{{ proxmox_vm_hardware_normalized.memory | default({}) }}"
+    proxmox_vm_hardware_disks: "{{ proxmox_vm_hardware_normalized.disks | default([]) }}"
+    proxmox_vm_hardware_disk_options: "{{ proxmox_vm_hardware_normalized.disk_options | default([]) }}"
+    proxmox_vm_hardware_network: "{{ proxmox_vm_hardware_normalized.network | default([]) }}"
+    proxmox_vm_hardware_options: "{{ proxmox_vm_hardware_normalized.options | default({}) }}"
+    proxmox_vm_hardware_resize: "{{ proxmox_vm_hardware_normalized.resize | default([]) }}"
+
+- name: 指定されたdisksの各項目が必須キーを満たしていることを検証する
+  ansible.builtin.assert:
+    that:
+      - item.bus is defined
+      - item.index is defined
+      - (item.volume is defined) or (item.storage is defined and item.size is defined)
+    fail_msg: >-
+      disks の各項目には bus, index に加えて、volume か
+      (storage と size の組み合わせ)のいずれかを指定してください: {{ item }}
+    quiet: true
+  loop: "{{ proxmox_vm_hardware_disks }}"
+  loop_control:
+    label: "{{ item.bus | default('?') }}{{ item.index | default('?') }}"
+
+- name: 指定されたdisk_optionsの各項目が必須キーを満たしていることを検証する
+  ansible.builtin.assert:
+    that:
+      - item.bus is defined
+      - item.index is defined
+      - (item.keys() | difference(['bus', 'index'])) | length > 0
+    fail_msg: >-
+      disk_options の各項目には bus, index に加えて、変更するオプションを
+      1つ以上指定してください(例: {"bus":"scsi","index":0,"ssd":1}): {{ item }}
+    quiet: true
+  loop: "{{ proxmox_vm_hardware_disk_options }}"
+  loop_control:
+    label: "{{ item.bus | default('?') }}{{ item.index | default('?') }}"
+
+# disk_options は既存ディスクの設定だけを変えるもの。同じディスクを disks でも
+# 指定すると、新しい空ディスクに差し替えたうえで設定を変えることになり紛らわしい
+# (この実行ではまだ存在しないディスクを読もうとして失敗する)。
+- name: disksとdisk_optionsが同じディスクを指していないことを検証する
+  ansible.builtin.assert:
+    that:
+      - (proxmox_vm_hardware_disk_slots | unique | length) == (proxmox_vm_hardware_disk_slots | length)
+    fail_msg: >-
+      同じディスクを disks と disk_options の両方で指定しています
+      ({{ proxmox_vm_hardware_disk_slots | join(', ') }})。
+      新規作成するディスクのオプションは disks の項目に直接書いてください。
+    quiet: true
+  vars:
+    proxmox_vm_hardware_disk_slots: >-
+      {{ (proxmox_vm_hardware_disks + proxmox_vm_hardware_disk_options)
+         | map(attribute='bus') | zip((proxmox_vm_hardware_disks + proxmox_vm_hardware_disk_options)
+                                      | map(attribute='index') | map('string'))
+         | map('join', '') | list }}
+
+# PVEの仕様上の制約(disks・disk_optionsの両方に適用される)。
+#   SSDエミュレーション: virtio(virtio-blk)では使えない
+#   IOスレッド        : virtio か scsi のみ(scsiは scsihw=virtio-scsi-single が必要)
+- name: SSDエミュレーションとIOスレッドの指定がバスに対応しているか検証する
+  ansible.builtin.assert:
+    that:
+      - not ((item.ssd | default(0) | int == 1) and (item.bus == 'virtio'))
+      - not ((item.iothread | default(0) | int == 1) and (item.bus not in ['scsi', 'virtio']))
+    fail_msg: >-
+      {{ item.bus }}{{ item.index }} の指定がPVEの制約に合いません。
+      SSDエミュレーション(ssd)はvirtio(virtio-blk)では使えず、
+      IOスレッド(iothread)はscsiとvirtioでのみ使えます: {{ item }}
+    quiet: true
+  loop: "{{ proxmox_vm_hardware_disks + proxmox_vm_hardware_disk_options }}"
+  loop_control:
+    label: "{{ item.bus | default('?') }}{{ item.index | default('?') }}"
+
+- name: 指定されたresizeの各項目が必須キーを満たしていることを検証する
+  ansible.builtin.assert:
+    that:
+      - item.bus is defined
+      - item.index is defined
+      - item.size is defined
+      - item.size | int > 0
+    fail_msg: >-
+      resize の各項目には bus, index, size(GiB単位の整数)を指定してください: {{ item }}
+    quiet: true
+  loop: "{{ proxmox_vm_hardware_resize }}"
+  loop_control:
+    label: "{{ item.bus | default('?') }}{{ item.index | default('?') }}"
+
+- name: 指定されたnetworkの各項目が必須キーを満たしていることを検証する
+  ansible.builtin.assert:
+    that:
+      - item.index is defined
+    fail_msg: >-
+      network の各項目には index を指定してください: {{ item }}
+    quiet: true
+  loop: "{{ proxmox_vm_hardware_network }}"
+  loop_control:
+    label: "{{ item.index | default('?') }}"
+
+# vm_hardware_deleteはスペースを含まない配列文字列、またはリストそのものを受け付ける
+# (削除したいqmのプロパティ名をそのまま指定する。カテゴリ分けはしない)
+- name: 指定されたvm_hardware_deleteをリストに正規化する
+  ansible.builtin.set_fact:
+    proxmox_vm_hardware_delete: >-
+      {{
+        (vm_hardware_delete | from_yaml)
+        if (vm_hardware_delete is defined and vm_hardware_delete is string)
+        else (vm_hardware_delete if (vm_hardware_delete is defined and vm_hardware_delete is sequence and vm_hardware_delete is not string) else [])
+      }}
+
+- name: 変更内容が1つ以上指定されていることを検証する
+  ansible.builtin.assert:
+    that:
+      - (proxmox_vm_hardware_cpu | length > 0)
+        or (proxmox_vm_hardware_memory | length > 0)
+        or (proxmox_vm_hardware_disks | length > 0)
+        or (proxmox_vm_hardware_disk_options | length > 0)
+        or (proxmox_vm_hardware_network | length > 0)
+        or (proxmox_vm_hardware_options | length > 0)
+        or (proxmox_vm_hardware_resize | length > 0)
+        or (proxmox_vm_hardware_delete | length > 0)
+    fail_msg: >-
+      vm_hardware(cpu/memory/disks/disk_options/network/options/resize のいずれか)または
+      vm_hardware_delete に、1つ以上の変更内容を指定してください。
+    quiet: true

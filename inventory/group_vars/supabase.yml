@@ -1,0 +1,10 @@
+# Supabase VMのProxmox VMプロファイル。DBと常駐コンテナ向けの旧リソース値を維持する。
+---
+pve_storage: ssd02
+pve_vm_cores: 12
+pve_vm_cpu_type: x86-64-v3
+pve_vm_memory: 8192
+pve_vm_disk_size: 400
+pve_ssh_user: supabase
+pve_ssh_pubkey_file: ~/.ssh/id_ed25519_supabase.pub
+pve_ssh_prikey: ~/.ssh/id_ed25519_supabase

@@ -1,0 +1,10 @@
+# 必要なAnsibleコレクション
+# インストール: ansible-galaxy collection install -r ansible/collections/requirements.yml
+# (ansibleメタパッケージ同梱版でも動くが、AWX実行環境などスタンドアロン環境向けに明示する)
+---
+collections:
+  - name: community.proxmox
+    version: ">=2.0.0"
+  - name: kubernetes.core
+    version: ">=6.5.0"
+  - name: community.docker # roles/docker の docker_compose_v2 で使用

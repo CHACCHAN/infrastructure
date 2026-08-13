@@ -1,0 +1,29 @@
+# 既存の .env ファイルを読み込み、内容を vm_existing_env(文字列)に入れる。
+# ファイルが無ければ空文字になる。
+#
+# パスワードやシークレットキーを「-e の指定 > 既存の.env > 自動生成」の順で
+# 決めるロールが、引き継ぎ元の値を取り出すために使う(取り出しの正規表現は
+# サービスごとに違うため、呼び出し側が vm_existing_env に対して行う)。
+#
+# 呼び出し側(各ロールのconfigure_env.yml)が import_role の vars で渡すもの:
+#   svc_env_path : 読み込む .env のパス
+---
+- name: 既存の.envファイルの有無を確認する
+  ansible.builtin.stat:
+    path: "{{ svc_env_path }}"
+  become: true
+  register: vm_env_stat
+
+- name: 既存の.envファイルを読み込む
+  ansible.builtin.slurp:
+    src: "{{ svc_env_path }}"
+  become: true
+  register: vm_env_slurp
+  when: vm_env_stat.stat.exists
+  no_log: true
+
+- name: 既存の.envの内容を変数に入れる
+  ansible.builtin.set_fact:
+    vm_existing_env: >-
+      {{ (vm_env_slurp.content | b64decode) if vm_env_stat.stat.exists else '' }}
+  no_log: true

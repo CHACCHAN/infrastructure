@@ -1,0 +1,33 @@
+# 認証はxrdp標準のPAM経由。Linuxの通常ログインパスワードでそのまま入れるため、
+# RDP専用のパスワードや追加のPAM設定は不要。
+---
+# Debianのxrdpが参照する ssl-cert-snakeoil.key はssl-certグループにしか読めない
+- name: サービス実行用のxrdpユーザーをssl-certグループに追加する
+  ansible.builtin.user:
+    name: xrdp
+    groups: ssl-cert
+    append: true
+  become: true
+  notify: 設定変更に伴いxrdpサービスを再起動する
+
+# パッケージのconffile /etc/xrdp/startwm.sh は変更せず、その先で読まれる ~/.xsession で指定する
+- name: RDPセッションでXFCEが起動するよう.xsessionを配置する
+  ansible.builtin.template:
+    src: xsession.j2
+    dest: "/home/{{ vm_ssh_user }}/.xsession"
+    owner: "{{ vm_ssh_user }}"
+    group: "{{ vm_ssh_user }}"
+    mode: "0755"
+  become: true
+
+# ディスプレイマネージャは導入しない。接続のたびにxrdp-sesmanがXセッションを起動するため、
+# 常駐のディスプレイマネージャもgraphical.targetへの切り替えも不要。
+- name: RDPサーバー(xrdp)のサービスを有効化・起動する
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  become: true
+  loop:
+    - xrdp.service
+    - xrdp-sesman.service

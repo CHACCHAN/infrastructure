@@ -1,0 +1,17 @@
+# Apache Guacamole — guacamole.cc-chacchan.com
+#
+# **このアプリは全部 kustomize が扱う。** 上流に公式の Helm チャートが
+# 無いので、Deployment / Service / Ingress を直接書いている
+# (ひな形は ../_example/)。helm template の手順は無い。
+#
+# ただし DB (PostgreSQL の guacamole スキーマ) は別で、
+# 初回だけ手で流し込む必要がある。README.md を参照。
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # 先に guacd を書いているのは読む人向けの整理。
+  # kustomize は kind ごとの固定順で適用するので、依存解決ではない。
+  - guacd.yaml
+  - guacamole.yaml
+  - ingress.yaml

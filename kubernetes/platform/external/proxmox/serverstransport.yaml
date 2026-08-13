@@ -1,0 +1,18 @@
+# Proxmox の WebUI は自己署名証明書の HTTPS なので、
+# Traefik がバックエンドへ繋ぐときの証明書検証をスキップする。
+#
+# 各 Service の
+#   traefik.ingress.kubernetes.io/service.serverstransport:
+#     platform-proxmox-transport@kubernetescrd
+# から参照される。5 ノードで 1 つを共有する。
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: proxmox-transport
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: proxmox
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  insecureSkipVerify: true

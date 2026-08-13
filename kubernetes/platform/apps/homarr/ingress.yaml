@@ -1,0 +1,43 @@
+# Homarr の公開経路。
+#
+# Deployment / Service / PVC は上流チャート由来。同じディレクトリの values.yaml を
+# 使って helm template -> kubectl apply で入れる (手順は README.md)。
+# ここには Ingress だけを置く。上流チャートの ingress は
+# values.yaml で enabled: false にしてある。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homarr
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: homarr
+    app.kubernetes.io/component: route
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    # HTTPS 専用で公開する。平文 HTTP (:80) では 404 になる。
+    traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+    # Authentik の forwardAuth Middleware はここでは使わない。
+    # Homarr 自身が OIDC で Authentik に認証を投げるため
+    # (values.yaml の AUTH_PROVIDERS)、前段でも認証すると二重になる。
+    # traefik.ingress.kubernetes.io/router.middlewares: "platform-authentik-forward-auth@kubernetescrd"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - "homarr.cc-chacchan.com"
+      # platform/certificates/ の Certificate が作るワイルドカード証明書
+      secretName: cc-chacchan-wildcard-tls
+  rules:
+    - host: "homarr.cc-chacchan.com"
+      http:
+        paths:
+          - path: "/"
+            pathType: Prefix
+            backend:
+              service:
+                # 上流チャートが作る Service。
+                name: homarr
+                port:
+                  # ポート名は上流が service.ports のキーから決めている。
+                  # このチャートでは "http" ではなく "app" (:7575)。
+                  name: app

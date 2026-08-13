@@ -1,0 +1,56 @@
+# 既存Proxmox VMのscsi0を拡張のみで扱い、宣言された追加ディスクを収束させる。
+---
+- name: ディスクの現在設定を取得する
+  community.proxmox.proxmox_vm_info:
+    vmid: "{{ vmid }}"
+    config: current
+  register: pve_disk_info
+
+- name: scsi0の現在サイズ表記を取得する
+  ansible.builtin.set_fact:
+    pve_vm_scsi0_size_text: >-
+      {{ ((pve_disk_info.proxmox_vms | first).config.scsi0
+          | default('')
+          | regex_search('(?:^|,)size=[^,]+')
+          | default('', true))
+         | regex_replace('^,?size=', '') }}
+
+- name: scsi0の現在サイズを取得できたことを確認する
+  ansible.builtin.assert:
+    that:
+      - pve_vm_scsi0_size_text | length > 0
+    fail_msg: "VMID {{ vmid }} のscsi0から現在サイズを取得できません。"
+
+- name: scsi0の現在サイズをGiBへ換算する
+  ansible.builtin.set_fact:
+    pve_vm_scsi0_size_gib: >-
+      {{ (pve_vm_scsi0_size_text | human_to_bytes) / 1073741824 }}
+
+- name: scsi0を宣言サイズまで拡張する
+  community.proxmox.proxmox_disk:
+    vmid: "{{ vmid }}"
+    disk: scsi0
+    size: "{{ pve_vm_disk_size }}G"
+    state: resized
+  when: pve_vm_disk_size | float > pve_vm_scsi0_size_gib | float
+
+- name: scsi0を縮小しないことを通知する
+  ansible.builtin.debug:
+    msg: >-
+      VMID {{ vmid }} のscsi0は現在{{ pve_vm_scsi0_size_gib }}GiBです。
+      宣言値{{ pve_vm_disk_size }}GiBへの縮小は安全のため行いません。
+  when: pve_vm_disk_size | float < pve_vm_scsi0_size_gib | float
+
+- name: 追加ディスクを収束させる
+  community.proxmox.proxmox_disk:
+    vmid: "{{ vmid }}"
+    disk: "{{ item.bus }}{{ item.index }}"
+    storage: "{{ item.storage }}"
+    size: "{{ item.size | string }}"
+    ssd: "{{ item.ssd | bool }}"
+    iothread: "{{ item.iothread | bool }}"
+    discard: "{{ item.discard }}"
+    state: present
+  loop: "{{ pve_vm_disks }}"
+  loop_control:
+    label: "{{ item.bus }}{{ item.index }}"

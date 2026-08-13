@@ -1,0 +1,27 @@
+# 手動指定版(manual=true、またはインベントリが空)の構築対象を pv_targets に加える。
+# 「手動指定の構築対象を追加する」プレイ(hosts: localhost)から呼ぶ。
+#
+# 呼び出し側のプレイが vars で渡すもの:
+#   pv_group : このplaybookが使うインベントリのグループ名
+---
+- name: 手動指定の構築対象を検証して追加する
+  vars:
+    pv_manual_mode: >-
+      {{ manual | default((groups[pv_group] | default([]) | length) == 0) | bool }}
+  when: pv_manual_mode | bool
+  block:
+    - name: 接続先IPアドレスの指定を確認する
+      ansible.builtin.assert:
+        that:
+          - ((vm_ipv4 | default('', true)) | length > 0) or ((vm_ip | default('', true)) | length > 0)
+        fail_msg: >-
+          手動指定版では vm_ipv4(cloud-initで設定する固定IP。CIDR形式)または
+          vm_ip(既にIPが分かっている場合の接続先IP)のどちらかが必要です。
+        quiet: true
+
+    # インベントリ版のホスト名の付け方に合わせ、VMのIPアドレスで登録する
+    - name: 指定されたVMを構築対象に加える
+      ansible.builtin.add_host:
+        name: "{{ vm_ip | default((vm_ipv4 | default('')).split('/')[0], true) }}"
+        groups: pv_targets
+      changed_when: false

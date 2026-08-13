@@ -1,0 +1,169 @@
+# VM内から見た確認。VM外から見えるかどうかは、再起動後にplaybook側で行う。
+#
+# イメージにはヘルスチェック(`wg show` にインターフェースが出るか)が入っている。
+# これが通れば「WireGuardが実際に起動している」ことまで確認できる。
+# 初期セットアップをブラウザで行う場合は、済むまでインターフェースが無いのが正常。
+---
+# 設定に誤りがあるとコンテナは起動直後に落ちて再起動を繰り返す。この状態でも
+# 公開ポートはDocker側が掴んだままなので、ポートやHTTPの確認では
+# 「接続を拒否されました」としか分からない。先にコンテナ自体の状態を見る。
+- name: コンテナが起動し続けていることを確認する
+  block:
+    - name: コンテナの状態を問い合わせる
+      ansible.builtin.command:
+        cmd: docker inspect {{ wg_easy_container_name }}
+      become: true
+      changed_when: false
+      register: wg_easy_state_raw
+      retries: 6
+      delay: 5
+      until: >-
+        ((wg_easy_state_raw.stdout | default('') | trim | length) > 0)
+        and (((wg_easy_state_raw.stdout | from_json | first).State.Status
+              | default('')) == 'running')
+        and (((wg_easy_state_raw.stdout | from_json | first).RestartCount
+              | default(0) | int) == 0)
+
+  rescue:
+    - name: コンテナのログを取得する
+      ansible.builtin.command:
+        cmd: docker logs --tail 30 {{ wg_easy_container_name }}
+      become: true
+      changed_when: false
+      failed_when: false
+      register: wg_easy_docker_logs
+
+    - name: 起動に失敗したことを通知する
+      ansible.builtin.fail:
+        msg: >-
+          コンテナ {{ wg_easy_container_name }} が起動し続けられていません
+          (再起動を繰り返している可能性があります)。
+          環境変数の組み合わせ(.env)やDockerのIPv6設定を確認してください。
+          直近のログ:
+          {{ ((wg_easy_docker_logs.stdout_lines | default([]))
+              + (wg_easy_docker_logs.stderr_lines | default([])))[-15:] | join(' / ') }}
+
+- name: Web UIのポートが待ち受けるまで待機する
+  ansible.builtin.wait_for:
+    host: "{{ wg_easy_check_host }}"
+    port: "{{ wg_easy_ui_port }}"
+    timeout: 180
+    state: started
+
+# 未ログインではログイン画面へ誘導されるため、リダイレクトも成功として扱う
+- name: Web UIが応答するまで待機する
+  ansible.builtin.uri:
+    url: "http://{{ wg_easy_check_host }}:{{ wg_easy_ui_port }}/"
+    status_code: [200, 302, 303]
+    follow_redirects: none
+  register: wg_easy_web
+  retries: "{{ wg_easy_ready_retries }}"
+  delay: "{{ wg_easy_ready_delay }}"
+  until: wg_easy_web is succeeded
+  changed_when: false
+
+# OAuth/OIDCはバージョンによっては存在せず、その場合OAUTH_*は黙って無視される
+# (ログイン画面がユーザー名/パスワードだけになる)。設定したつもりで使えていない状態を
+# 見逃さないよう、アプリ自身が公開しているログイン方式のAPIで実際の状態を確認する。
+- name: 有効なログイン方式を問い合わせる
+  ansible.builtin.uri:
+    url: "http://{{ wg_easy_check_host }}:{{ wg_easy_ui_port }}/api/auth/methods"
+    status_code: [200, 404]
+  register: wg_easy_auth_methods
+  changed_when: false
+  when: wg_easy_oauth_providers_resolved | length > 0
+
+- name: 外部認証が有効になっていることを確認する
+  ansible.builtin.assert:
+    that:
+      - wg_easy_auth_methods.status == 200
+      - (wg_easy_auth_methods.json.oauthEnabled | default(false)) | bool
+      - (wg_easy_oauth_providers_resolved
+         | reject('in', (wg_easy_auth_methods.json.providers | default({}) | list))
+         | list | length) == 0
+    fail_msg: >-
+      {{ wg_easy_oauth_providers_resolved | join(', ') }} を設定しましたが、
+      wg-easy側で有効になっていません
+      ({{ 'ログイン方式のAPIがありません(404)。'
+          if (wg_easy_auth_methods.status | default(0)) == 404
+          else '有効なプロバイダ: '
+               ~ ((wg_easy_auth_methods.json.providers | default({}) | list | join(', '))
+                  | default('なし', true)) ~ '。' }})
+      OAuth/OIDCは {{ wg_easy_oauth_min_version }} で追加された機能です。
+      現在のイメージタグは {{ wg_easy_version }} です。
+      -e "wg_easy_version={{ wg_easy_oauth_min_version }}" 以降を指定して再実行するか、
+      パスワード認証だけで使う場合は -e "wg_easy_oauth_providers=" を指定してください。
+    quiet: true
+  when: wg_easy_oauth_providers_resolved | length > 0
+
+- name: WireGuardが起動したことを確認する
+  when: wg_easy_init_enabled | bool
+  block:
+    - name: コンテナのヘルスチェックが通るまで待機する
+      ansible.builtin.command:
+        cmd: docker inspect {{ wg_easy_container_name }}
+      become: true
+      changed_when: false
+      register: wg_easy_health_raw
+      retries: "{{ wg_easy_health_retries }}"
+      delay: "{{ wg_easy_health_delay }}"
+      until: >-
+        ((wg_easy_health_raw.stdout | default('') | trim | length) > 0)
+        and (((wg_easy_health_raw.stdout | from_json | first).State.Health.Status
+              | default('')) == 'healthy')
+
+    - name: 起動を確認できたことを記録する
+      ansible.builtin.set_fact:
+        wg_easy_health_ok: true
+
+  rescue:
+    - name: 起動を確認できなかったことを記録する
+      ansible.builtin.set_fact:
+        wg_easy_health_ok: false
+
+- name: WireGuardの状態を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{
+        'WireGuardのインターフェースが起動しています(初期セットアップ完了)。'
+        if (wg_easy_health_ok | default(false) | bool)
+        else
+        ('【注意】'
+         ~ ((wg_easy_health_retries | int) * (wg_easy_health_delay | int)) | string
+         ~ '秒待ってもWireGuardのインターフェースが起動しませんでした。構築自体は完了しています。'
+         ~ '`sudo docker logs ' ~ wg_easy_container_name ~ '` で初期セットアップ(INIT_*)が'
+         ~ '通っているかを確認してください(ユーザー名・パスワード・接続先・ポートは'
+         ~ '4つ揃っている必要があります)。'
+         if (wg_easy_init_enabled | bool)
+         else
+         'ブラウザのセットアップウィザードを実施してください'
+         ~ '(完了するまでWireGuardは起動しません)。')
+      }}
+
+- name: Web UIの案内を表示する
+  ansible.builtin.debug:
+    msg:
+      - "{{ wg_easy_web_hint }}"
+      - "{{ 'ログイン: ' ~ wg_easy_init_username ~ ' / パスワードは '
+             ~ wg_easy_install_dir ~ '/.env の INIT_PASSWORD'
+             if (wg_easy_init_enabled | bool)
+             else 'ログイン: ブラウザのセットアップウィザードで作成してください' }}"
+      - "{{ 'OIDC: ' ~ wg_easy_oauth_oidc_server ~ ' (有効)'
+             if ('oidc' in wg_easy_oauth_providers_resolved) else '外部認証: 未設定' }}"
+      - "{{ 'リダイレクトURI(プロバイダ側に登録): '
+             ~ (('http' if (wg_easy_insecure | bool) else 'https'))
+             ~ '://<ブラウザで開くホスト>/api/auth/oidc/callback と /api/auth/oidc/link'
+             if ('oidc' in wg_easy_oauth_providers_resolved) else '' }}"
+      - "クライアントの接続先: {{ wg_easy_init_host | default('(ウィザードで設定)', true) }}:{{ wg_easy_wg_port }}/udp"
+  vars:
+    wg_easy_vm_address: "{{ ansible_host | default(inventory_hostname) }}"
+    wg_easy_web_hint: >-
+      {{
+        'Web UI: http://' ~ wg_easy_vm_address ~ ':' ~ wg_easy_ui_port ~ '/'
+        if (wg_easy_published | bool)
+        else
+        'Web UI: 待ち受けを ' ~ wg_easy_ui_bind
+        ~ ' に絞っているためVMの外からは見えません(手元から見る場合: ssh -L '
+        ~ wg_easy_ui_port ~ ':' ~ wg_easy_check_host ~ ':' ~ wg_easy_ui_port
+        ~ ' <SSHユーザ名>@' ~ wg_easy_vm_address ~ ')'
+      }}

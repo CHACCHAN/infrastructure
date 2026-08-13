@@ -1,0 +1,6 @@
+---
+- name: 設定変更に伴いsystemd-resolvedを再起動する
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted
+  become: true

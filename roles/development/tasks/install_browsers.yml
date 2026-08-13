@@ -1,0 +1,38 @@
+# ChromeはDebian公式リポジトリに無いため、Google公式リポジトリをGPG署名鍵付きで追加する。
+---
+- name: Google Chromeの公式リポジトリを追加する
+  ansible.builtin.deb822_repository:
+    name: google-chrome
+    types: deb
+    uris: https://dl.google.com/linux/chrome/deb/
+    suites: stable
+    components: main
+    architectures: amd64
+    signed_by: https://dl.google.com/linux/linux_signing_key.pub
+    state: present
+  become: true
+
+- name: ブラウザ(Google Chrome, Firefox)をインストールする
+  ansible.builtin.apt:
+    name:
+      - google-chrome-stable
+      - firefox-esr
+    state: present
+    update_cache: true
+  become: true
+
+# Debian流のブラウザ選択(x-www-browser)とデスクトップのMIME関連付けの両方を向ける
+- name: 既定のブラウザ(x-www-browser)を設定する
+  community.general.alternatives:
+    name: x-www-browser
+    path: "{{ development_default_browser_bin }}"
+  become: true
+
+- name: デスクトップ全体の既定ブラウザを設定する
+  ansible.builtin.template:
+    src: mimeapps.list.j2
+    dest: /etc/xdg/mimeapps.list
+    owner: root
+    group: root
+    mode: "0644"
+  become: true

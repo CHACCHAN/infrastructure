@@ -1,0 +1,69 @@
+---
+# disk_options は既存ディスクのボリューム名を引き継ぐため、変更前の設定を読んでおく
+# (resize_disks.yml は変更後の状態を見る必要があるので、そちらとは別に取得する)
+- name: 変更前のVM設定を取得する
+  ansible.builtin.command:
+    cmd: "qm config {{ vm_id }}"
+  changed_when: false
+  register: proxmox_vm_hardware_config_before
+
+- name: 引数リストの初期値(qm set + vm_id)を設定する
+  ansible.builtin.set_fact:
+    proxmox_vm_hardware_argv: "{{ ['qm', 'set', vm_id | string] }}"
+
+- name: CPU関連の引数を組み立てる
+  ansible.builtin.import_tasks: build_cpu_args.yml
+
+- name: メモリ関連の引数を組み立てる
+  ansible.builtin.import_tasks: build_memory_args.yml
+
+- name: ディスク関連の引数を組み立てる
+  ansible.builtin.import_tasks: build_disk_args.yml
+
+- name: 既存ディスクのオプション変更を組み立てる
+  ansible.builtin.import_tasks: build_disk_options_args.yml
+
+- name: ネットワーク関連の引数を組み立てる
+  ansible.builtin.import_tasks: build_network_args.yml
+
+- name: その他オプションの引数を組み立てる
+  ansible.builtin.import_tasks: build_options_args.yml
+
+- name: 削除指定を引数に追加する
+  ansible.builtin.set_fact:
+    proxmox_vm_hardware_argv: "{{ proxmox_vm_hardware_argv + ['--delete', proxmox_vm_hardware_delete | join(',')] }}"
+  when: proxmox_vm_hardware_delete | length > 0
+
+# IOスレッドはSCSIでは virtio-scsi-single のときだけ有効になる。
+# 設定自体は通るため、効いていないことに気付けるよう警告を出す。
+- name: IOスレッドが効かない組み合わせに注意を促す
+  ansible.builtin.debug:
+    msg: >-
+      【注意】SCSIディスクにIOスレッドを指定していますが、SCSIコントローラが
+      {{ proxmox_vm_hardware_effective_scsihw }} です。
+      IOスレッドは virtio-scsi-single のときだけ有効になります
+      (vm_hardware の options で scsihw を上書きしている場合は見直してください)。
+  vars:
+    proxmox_vm_hardware_effective_scsihw: "{{ proxmox_vm_hardware_options_resolved.scsihw }}"
+    proxmox_vm_hardware_scsi_entries: >-
+      {{ (proxmox_vm_hardware_disks + proxmox_vm_hardware_disk_options)
+         | selectattr('bus', 'equalto', 'scsi') | list }}
+    # 明示的に iothread=1 を指定したもの + 未指定で既定値がオンのもの
+    proxmox_vm_hardware_iothread_scsi: >-
+      {{ (proxmox_vm_hardware_scsi_entries
+          | selectattr('iothread', 'defined')
+          | selectattr('iothread', 'equalto', 1) | list)
+         + ((proxmox_vm_hardware_scsi_entries | rejectattr('iothread', 'defined') | list)
+            if (proxmox_vm_hardware_default_iothread | int == 1) else []) }}
+  when:
+    - proxmox_vm_hardware_effective_scsihw != 'virtio-scsi-single'
+    - proxmox_vm_hardware_iothread_scsi | length > 0
+
+# 引数が3つ(qm set <vmid>)のままなら qm set で変更するものが無い
+# (resizeだけを指定した場合)ので実行しない
+- name: ハードウェア設定を変更する
+  ansible.builtin.command:
+    argv: "{{ proxmox_vm_hardware_argv }}"
+  register: proxmox_vm_hardware_result
+  changed_when: proxmox_vm_hardware_result.rc == 0
+  when: proxmox_vm_hardware_argv | length > 3

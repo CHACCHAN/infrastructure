@@ -1,0 +1,138 @@
+# 以降のタスクが参照する値(更新するレコード・ゾーンの対応)をここで確定させる。
+#
+# APIトークンを含むため、設定を組み立てるタスクはno_logで出力を抑止している。
+# 検証も「件数」だけを見て、値そのものをメッセージに出さないようにしている。
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - vm_ssh_user is defined
+      - (vm_ssh_user | default('', true)) | length > 0
+    fail_msg: >-
+      vm_ssh_user が指定されていません。
+      -e "vm_ssh_user=<ユーザ名>" で指定してください。
+    quiet: true
+
+- name: 設置ディレクトリが絶対パスであることを検証する
+  ansible.builtin.assert:
+    that:
+      - cloudflare_ddns_ui_install_dir is match('^/.+')
+    fail_msg: >-
+      cloudflare_ddns_ui_install_dir は絶対パスで指定してください
+      (指定値: {{ cloudflare_ddns_ui_install_dir }})。
+    quiet: true
+
+# -e ではリストを渡しにくいため、カンマ区切りの文字列でも書けるようにする
+- name: 更新するレコードとゾーンの対応を決定する
+  ansible.builtin.set_fact:
+    cloudflare_ddns_ui_records_resolved: >-
+      {{ (cloudflare_ddns_ui_records.split(',')
+          if (cloudflare_ddns_ui_records is string)
+          else cloudflare_ddns_ui_records)
+         | map('trim') | select('string') | reject('equalto', '') | list }}
+    cloudflare_ddns_ui_zones_resolved: >-
+      {{ cloudflare_ddns_ui_zones
+         if (cloudflare_ddns_ui_zones | length > 0)
+         else ({cloudflare_ddns_ui_zone_domain: cloudflare_ddns_ui_zone_id}
+               if ((cloudflare_ddns_ui_zone_domain | length > 0)
+                   and (cloudflare_ddns_ui_zone_id | length > 0))
+               else {}) }}
+  no_log: true
+
+- name: APIトークンが指定されていることを検証する
+  ansible.builtin.assert:
+    that:
+      - (cloudflare_ddns_ui_api_token | default('', true)) | length > 0
+    fail_msg: >-
+      CloudflareのAPIトークンが指定されていません。
+      -e "cloudflare_ddns_ui_api_token=<トークン>" で指定してください
+      (Zone → DNS → Edit 権限。対象ゾーンだけに絞れます)。
+      proxmox/ から構築する場合は vault/cloudflare.yml の値が自動で渡ります。
+    quiet: true
+
+- name: 更新するレコードが指定されていることを検証する
+  ansible.builtin.assert:
+    that:
+      - (cloudflare_ddns_ui_records_resolved | length) > 0
+    fail_msg: >-
+      更新するレコードが指定されていません。
+      -e "cloudflare_ddns_ui_records=auth.example.com,wg.example.com" のように
+      FQDNで指定してください(リストでも書けます)。
+    quiet: true
+
+- name: ゾーンIDが指定されていることを検証する
+  ansible.builtin.assert:
+    that:
+      - (cloudflare_ddns_ui_zones_resolved | length) > 0
+    fail_msg: >-
+      ゾーンとゾーンIDの対応が指定されていません。
+      -e "cloudflare_ddns_ui_zone_domain=example.com cloudflare_ddns_ui_zone_id=<ゾーンID>"
+      で指定してください(複数ゾーンなら cloudflare_ddns_ui_zones に辞書で指定)。
+      ゾーンIDはCloudflareのダッシュボードの概要ページに表示されます。
+    quiet: true
+
+# アプリはレコード名から登録可能ドメインを求めてゾーンIDを引くため、
+# 対応が無いレコードは「No zone ID configured」で更新されないまま放置される。
+- name: ゾーンの対応が取れないレコードを数える
+  ansible.builtin.set_fact:
+    cloudflare_ddns_ui_orphan_records: >-
+      {{ cloudflare_ddns_ui_records_resolved
+         | reject('search', '(^|\.)(' ~ (cloudflare_ddns_ui_zones_resolved.keys()
+                                         | map('regex_escape') | join('|')) ~ ')$')
+         | list }}
+
+- name: すべてのレコードにゾーンの対応があることを検証する
+  ansible.builtin.assert:
+    that:
+      - (cloudflare_ddns_ui_orphan_records | length) == 0
+    fail_msg: >-
+      ゾーンの指定に含まれないレコードがあります
+      ({{ cloudflare_ddns_ui_orphan_records | join(', ') }})。
+      レコードは cloudflare_ddns_ui_zone_domain
+      ({{ cloudflare_ddns_ui_zones_resolved.keys() | join(', ') }})配下のFQDNで
+      指定してください。別のゾーンも扱う場合は cloudflare_ddns_ui_zones に
+      「ドメイン: ゾーンID」を追加してください。
+    quiet: true
+
+- name: 公開ポートの範囲を検証する
+  ansible.builtin.assert:
+    that:
+      - cloudflare_ddns_ui_http_port | int > 0
+      - cloudflare_ddns_ui_http_port | int < 65536
+    fail_msg: >-
+      cloudflare_ddns_ui_http_port は1〜65535の範囲で指定してください
+      (指定値: {{ cloudflare_ddns_ui_http_port }})。
+    quiet: true
+
+- name: 間隔の指定を検証する
+  ansible.builtin.assert:
+    that:
+      - item.value | int > 0
+    fail_msg: >-
+      {{ item.name }} は1以上の秒数で指定してください(指定値: {{ item.value }})。
+    quiet: true
+  loop:
+    - {name: cloudflare_ddns_ui_interval, value: "{{ cloudflare_ddns_ui_interval }}"}
+    - {name: cloudflare_ddns_ui_refresh, value: "{{ cloudflare_ddns_ui_refresh }}"}
+  loop_control:
+    label: "{{ item.name }}"
+
+# Web UIの疎通確認先。待ち受けアドレスを絞っている場合はそのアドレスに問い合わせる
+- name: 動作確認に使うアドレスを決定する
+  ansible.builtin.set_fact:
+    cloudflare_ddns_ui_check_host: >-
+      {{ '127.0.0.1'
+         if (cloudflare_ddns_ui_http_bind in ['0.0.0.0', '::', ''])
+         else cloudflare_ddns_ui_http_bind }}
+    # 待ち受けを絞っている場合、VMの外(実行元の端末)からは確認できない
+    cloudflare_ddns_ui_published: >-
+      {{ cloudflare_ddns_ui_http_bind in ['0.0.0.0', '::', ''] }}
+
+- name: 構築する内容を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ vm_ip }} に cloudflare-ddns-ui {{ cloudflare_ddns_ui_version }} を構築します
+      / 更新対象 {{ cloudflare_ddns_ui_records_resolved | join(', ') }}
+      / ゾーン {{ cloudflare_ddns_ui_zones_resolved.keys() | join(', ') }}
+      / 確認間隔 {{ cloudflare_ddns_ui_interval }}秒
+      / Web UI {{ cloudflare_ddns_ui_http_bind }}:{{ cloudflare_ddns_ui_http_port }}

@@ -1,0 +1,41 @@
+# k3sの設定は起動オプションではなく /etc/rancher/k3s/config.yaml に書く。
+# サービスの起動前に置いておけば、初回起動からこの内容で動く。
+# 参加用トークンを含むためroot専用(0600)にする。
+---
+- name: 明示指定されたトークンを使う
+  ansible.builtin.set_fact:
+    kubernetes_token_resolved: "{{ kubernetes_token }}"
+  when: (kubernetes_token | default('', true)) | length > 0
+  no_log: true
+
+- name: K3sの設定ディレクトリを作成する
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: K3sの設定ファイル(config.yaml)を配置する
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+  no_log: true
+  register: kubernetes_config_file
+
+# 初回インストール時はスクリプトがこの設定で起動するため再起動は不要。
+# handlerにしないのは、この後の状態確認より前に確実に反映させたいため。
+- name: 設定変更に伴いk3sサービスを再起動する # noqa: no-handler
+  ansible.builtin.systemd:
+    name: "{{ kubernetes_service_name }}"
+    state: restarted
+  become: true
+  when:
+    - kubernetes_config_file is changed
+    - kubernetes_already_installed | bool
+    - not (kubernetes_install_required | bool)

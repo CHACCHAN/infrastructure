@@ -1,0 +1,26 @@
+# 先に作っておかないと、docker composeがマウント元をroot所有で作る前提が崩れる。
+# 公式イメージはUSER指定が無くroot権限で動くため、所有者はrootのままでよい。
+#
+#   config/ … config.json(APIトークンを含む)
+#   logs/   … ddns.log と record_stats.json(更新履歴)
+---
+- name: Cloudflare-ddns-uiの設置ディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ cloudflare_ddns_ui_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: コンテナへマウントするディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ cloudflare_ddns_ui_install_dir }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  become: true
+  loop:
+    - config
+    - logs

@@ -1,0 +1,68 @@
+# タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
+# 既定値は roles/common・roles/docker の共通タスク側にある。
+---
+# --- APTリポジトリ ---
+# PBS 4はDebian 13(trixie)ベース。サブスクリプション無しのリポジトリを使う。
+# サブスクリプション契約がある場合は enterprise 側に切り替える:
+#   pbs_repo_url: https://enterprise.proxmox.com/debian/pbs
+#   pbs_repo_component: pbs-enterprise
+pbs_repo_url: http://download.proxmox.com/debian/pbs
+pbs_repo_component: pbs-no-subscription
+
+# リポジトリの署名鍵(公式ドキュメント記載のSHA256で検証する)
+pbs_keyring_url: https://enterprise.proxmox.com/debian/proxmox-archive-keyring-trixie.gpg
+pbs_keyring_sha256: "136673be77aba35dcce385b28737689ad64fd785a797e57897589aed08db6e45"
+pbs_keyring_path: /usr/share/keyrings/proxmox-archive-keyring.gpg
+
+# --- データストア ---
+# バックアップの実データを置く場所。PBS公式の慣習(/mnt/datastore/<名前>)に合わせる。
+pbs_datastore_name: backup
+pbs_datastore_path: "/mnt/datastore/{{ pbs_datastore_name }}"
+
+# --- データ用ディスク(OS用とは別のディスク) ---
+# OSはscsi0(SSD)、バックアップの実データはscsi1(別ディスク)に置く構成が既定。
+# 専用ディスクを使わずOSと同じディスクにデータストアを作る場合は false にする。
+pbs_data_disk_enabled: true
+
+# 空ならVM内で自動判別する(パーティションが1つも無いディスクが1本だけなら
+# それを使う)。候補が複数ある場合は /dev/sdb のように明示すること。
+pbs_data_disk_device: ""
+
+# ディスク全体を使うパーティションをGPTで作る(既定)。
+# false にすると、パーティションを作らずディスク全体にファイルシステムを作る。
+# pbs_data_disk_device にパーティション(/dev/sdb1)を直接指定した場合も作らない。
+pbs_data_disk_partition: true
+
+pbs_data_disk_fstype: ext4
+# ファイルシステムとGPTパーティションの両方に付ける名前。
+# 再実行時に「前回作ったディスク」を見つけるためにも使う。
+pbs_data_disk_label: pbs-datastore
+
+# チャンク単位のランダムアクセスが多くatimeの更新は不要なため noatime を付ける。
+# データ用ディスクが見つからない状態でも起動させたい場合は nofail を足す
+# (ただしマウントされないままPBSが動くため、バックアップは失敗する)。
+pbs_data_disk_mount_opts: defaults,noatime
+
+# --- 管理者ユーザー(PBS独自レルム @pbs) ---
+# cloud-init構築のVMはrootパスワードが無くWeb UIにroot@pamで入れないため、
+# 代わりにAdmin権限のユーザーを作る。
+pbs_admin_user: admin
+# 既定値なし: pbs_admin_password(未指定なら自動生成して/root/.pbs_admin_passwordに保存)
+
+# --- ネットワーク ---
+# 8007はPBS固定(変更できない)。ufwの開放と動作確認に使う。
+pbs_web_port: 8007
+
+# PVEからバックアップ先として登録するときに使うIPアドレス。
+# NIC2枚構成でProxmox間の占有回線側に寄せる場合に、その側のIPが入る
+# (playbooks/services/ から実行した場合は vm_cluster_ipv4 の値が自動で渡る)。
+# 空なら接続に使っているIP(nic0側)を案内に表示する。
+pbs_cluster_ip: ""
+
+# インストール前に必要とする空き容量(GiB)。
+# バックアップを置くデータ用ディスクとは別に、OS用ディスク側で確認する。
+pbs_min_free_disk_gb: 8
+
+# Web UI(API)の起動待ち
+pbs_ready_retries: 30
+pbs_ready_delay: 5

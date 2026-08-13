@@ -1,0 +1,48 @@
+# Docker Composeでwg-easy(WireGuardのVPNサーバー + Web UI)を構築する。Debian専用。
+# 全VM共通の処理は common / docker ロール(roles/common, roles/docker)と共有している。
+#
+# 設定はすべて環境変数(.env)で渡す。初期セットアップ(INIT_*)は初回起動時のみ有効。
+---
+- name: 対象OSを確認する
+  ansible.builtin.import_role:
+    name: common
+    tasks_from: assert_debian
+
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: VM共通の初期セットアップを実行する
+  ansible.builtin.import_role:
+    name: common
+
+- name: Dockerをインストールする
+  ansible.builtin.import_role:
+    name: docker
+
+- name: Wg-easy用のディレクトリを準備する
+  ansible.builtin.import_tasks: prepare_directories.yml
+
+- name: 環境変数(.env)を配置する
+  ansible.builtin.import_tasks: configure_env.yml
+
+- name: Wg-easyのコンテナを起動する
+  ansible.builtin.import_tasks: ../../docker/tasks/deploy_compose.yml
+  vars:
+    svc_name: Wg-easy
+    svc_install_dir: "{{ wg_easy_install_dir }}"
+    svc_config_changed: "{{ wg_easy_env_file is changed }}"
+
+# WireGuard(UDP)は外部から届く必要があるため常に開ける。
+# Web UIは待ち受けを127.0.0.1に絞っている場合はVMの外に出ないため開けない
+- name: WireGuardとWeb UIのポートを開放する
+  ansible.builtin.import_role:
+    name: common
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports: >-
+      {{ [{'port': wg_easy_wg_port, 'proto': 'udp'}]
+         + ([{'port': wg_easy_ui_port, 'proto': 'tcp'}]
+            if (wg_easy_published | bool) else []) }}
+
+- name: Web UIとWireGuardの状態を確認する
+  ansible.builtin.import_tasks: verify_service.yml

@@ -1,0 +1,231 @@
+# Apache Guacamole の WebUI (Tomcat)。
+#
+# 上流に公式の Helm チャートが無いので、Deployment / Service を直接書く。
+# ひな形は ../_example/ 。
+#
+# **PVC を持たない。** ユーザ・接続定義・履歴はすべて PostgreSQL 側にある
+# (platform/apps/postgresql/ の guacamole DB)。この Pod は使い捨てでよい。
+#
+# 設定はすべて環境変数。1.6.0 のイメージは entrypoint が
+# guacamole.properties を組み立てるようになっていて、
+#
+#   - POSTGRESQL_* が 1 つでもあれば JDBC (PostgreSQL) 認証が有効になる
+#   - OPENID_*     が 1 つでもあれば OpenID Connect 認証が有効になる
+#
+# という「接頭辞の有無で拡張が入る」仕組みになっている。
+# 明示的に切りたいときは <接頭辞>ENABLED=false を渡す (下の OPENID_ENABLED)。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guacamole
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: guacamole
+    app.kubernetes.io/component: workload
+    app.kubernetes.io/part-of: apache-guacamole
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  replicas: 1
+  # PVC を持たないのでローリング更新できる。
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      # selector は作成後に変更できない。ここは最小限に固定する。
+      app.kubernetes.io/name: guacamole
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: guacamole
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        runAsNonRoot: true
+        # イメージの Dockerfile が uid/gid 1001 の guacamole ユーザで動かしている。
+        # **guacd (1000) とは違う。** 揃っていなくてよい。
+        runAsUser: 1001
+        runAsGroup: 1001
+      containers:
+        - name: guacamole
+          # latest は使わない。**guacd.yaml のタグと必ず揃えること。**
+          image: guacamole/guacamole:1.6.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: LOG_LEVEL
+              value: debug
+
+            - name: TZ
+              value: Asia/Tokyo
+
+            ## WebUI を / で出す
+            #
+            # 既定だと Tomcat が guacamole.war として展開するので
+            # https://guacamole.cc-chacchan.com/guacamole/ になる。
+            # 専用のホスト名を割り当てているので ROOT に置いて / で出す。
+            #
+            # **これを変えると OPENID_REDIRECT_URI も変わる。**
+            # Authentik 側の Redirect URI も直すこと。
+            - name: WEBAPP_CONTEXT
+              value: ROOT
+
+            ## guacd への接続先
+            - name: GUACD_HOSTNAME
+              value: guacd.platform.svc.cluster.local
+            - name: GUACD_PORT
+              value: "4822"
+
+            ## DB — platform namespace 共用の PostgreSQL
+            #
+            # ここに POSTGRESQL_ で始まる変数があること自体が
+            # 「JDBC (PostgreSQL) 認証拡張を入れる」という指示になる。
+            #
+            # スキーマは自動では作られない。initdb.sh で流し込む (README.md)。
+            - name: POSTGRESQL_HOSTNAME
+              value: postgresql.platform.svc.cluster.local
+            - name: POSTGRESQL_PORT
+              value: "5432"
+            - name: POSTGRESQL_DATABASE
+              value: guacamole
+            - name: POSTGRESQL_USERNAME
+              value: postgres
+            # パスワードはマニフェストに書かない。実体は vault/apache-guacamole.yaml。
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole-db
+                  key: db-password
+
+            # Authentik で認証が通ったユーザの行を、DB 側に自動で作る。
+            # false だと、先に guacadmin で同名のユーザを作っておかないと
+            # ログイン後に「接続が 1 つも無い」画面になる。
+            #
+            # **自動で作られたユーザは権限を持たない。** 自分のアカウントを
+            # 読む権限だけなので、接続を割り当てるのは管理者の仕事。
+            - name: POSTGRESQL_AUTO_CREATE_ACCOUNTS
+              value: "true"
+
+            ## 認証 — Authentik の OIDC
+            #
+            # OPENID_ で始まる変数があるので OpenID Connect 拡張が入る。
+            #
+            # **Guacamole の OIDC は implicit flow で、クライアント
+            # シークレットを使わない。** id_token を JWKS で検証するだけなので、
+            # Authentik 側は Client type: Public で作ること (README.md)。
+            # そのため secret に入れるのは client-id だけ。
+            - name: OPENID_ENABLED
+              # **Authentik が落ちたときの退避スイッチ。**
+              # "false" にして apply し直すと OIDC 拡張が読み込まれなくなり、
+              # ローカルの guacadmin でログインできる。復旧したら "true" に戻す。
+              value: "true"
+            - name: OPENID_AUTHORIZATION_ENDPOINT
+              value: "https://auth.cc-chacchan.com/application/o/authorize/"
+            # issuer と jwks は Application の Slug (guacamole) を含む。
+            # slug を変えたらここも直すこと。
+            - name: OPENID_ISSUER
+              value: "https://auth.cc-chacchan.com/application/o/apache-guacamole/"
+            - name: OPENID_JWKS_ENDPOINT
+              value: "https://auth.cc-chacchan.com/application/o/apache-guacamole/jwks/"
+            # implicit flow なので、ここは秘密ではない。それでも環境ごとの値なので
+            # マニフェストに埋めず Secret に置く (他アプリと揃える)。
+            - name: OPENID_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole-oidc
+                  key: oidc-client-id
+            # 認証後に戻ってくる先。WEBAPP_CONTEXT: ROOT なので末尾は / 。
+            # Authentik の Redirect URI と**完全に一致**していないと弾かれる。
+            - name: OPENID_REDIRECT_URI
+              value: "https://guacamole.cc-chacchan.com/"
+            # Guacamole 上のユーザ名になるクレーム。
+            # 既定は email だが、@ を含む文字列はユーザ名として扱いづらいので
+            # preferred_username にしている。
+            #
+            # **後から変えると別ユーザ扱いになる。** 既存ユーザに割り当てた
+            # 接続権限が全部外れるので、運用開始後は変えないこと。
+            - name: OPENID_USERNAME_CLAIM_TYPE
+              value: preferred_username
+            # Authentik 側で groups のスコープマッピングを足すと、
+            # グループ単位で接続を割り当てられるようになる。
+            - name: OPENID_GROUPS_CLAIM_TYPE
+              value: groups
+            - name: OPENID_SCOPE
+              value: "openid email profile"
+
+            # 認証拡張の読み込み順。openid を先にすることで、
+            # 未認証のアクセスが Authentik へリダイレクトされるようになる。
+            # 指定しないとファイル名順になり、ローカルのログイン画面が先に出る。
+            - name: EXTENSION_PRIORITY
+              value: "*, openid"
+
+            ## Traefik の裏にいる
+            #
+            # 有効にすると Tomcat の RemoteIpValve が入り、X-Forwarded-For /
+            # X-Forwarded-Proto を見るようになる。無いと
+            #   - 接続履歴の送信元が全部 Traefik の Pod IP になる
+            #   - Tomcat が「HTTP で来た」と判断し、OIDC のリダイレクトと
+            #     セッションクッキーが http:// で組み立てられる
+            - name: REMOTE_IP_VALVE_ENABLED
+              value: "true"
+            - name: REMOTE_IP_VALVE_PROTOCOL_HEADER
+              value: X-Forwarded-Proto
+            # internalProxies は既定の正規表現が 10.x.x.x を含んでいて、
+            # k3s の Pod CIDR (10.42.0.0/16) がその中に入る。だから指定しない。
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            # readOnlyRootFilesystem は付けていない。entrypoint が
+            # /tmp に GUACAMOLE_HOME と CATALINA_BASE を作り、
+            # Tomcat がそこへログと work ディレクトリを書くため。
+          # Tomcat の起動と war の展開に時間がかかる。
+          # startupProbe が成功するまで liveness / readiness は動かないので、
+          # 10s × 30 = 最大 5 分の猶予を与える。
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guacamole
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: guacamole
+    app.kubernetes.io/component: workload
+    app.kubernetes.io/part-of: apache-guacamole
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: guacamole
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: http

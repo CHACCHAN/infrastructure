@@ -1,0 +1,34 @@
+# 公式ドキュメント(https://helm.sh/docs/intro/install/)のget-helm-4便利
+# スクリプトを使う。
+# スクリプトは誰でも書き込める/tmpではなく/usr/local/srcに置き、実行後は残さない。
+---
+- name: Helmが導入済みか確認する
+  ansible.builtin.stat:
+    path: /usr/local/bin/helm
+  register: development_helm_bin
+
+- name: Helmをインストールする
+  when: not development_helm_bin.stat.exists
+  block:
+    - name: Helm公式インストールスクリプトを取得する
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+        dest: /usr/local/src/get-helm-4.sh
+        owner: root
+        group: root
+        mode: "0755"
+      become: true
+
+    - name: インストールスクリプトを実行する
+      ansible.builtin.command:
+        cmd: /usr/local/src/get-helm-4.sh
+      args:
+        creates: /usr/local/bin/helm
+      become: true
+
+  always:
+    - name: インストールスクリプトを削除する
+      ansible.builtin.file:
+        path: /usr/local/src/get-helm-4.sh
+        state: absent
+      become: true

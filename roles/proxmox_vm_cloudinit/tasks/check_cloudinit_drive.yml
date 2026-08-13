@@ -1,0 +1,21 @@
+# cloud-initドライブ(qm set --ideN <storage>:cloudinit)を持たないVMは、
+# ciuserなどを設定してもゲストへ渡す媒体が無いため設定が反映されない。
+# 気付きにくい無反映を避けるため、事前に確認して停止する。
+---
+- name: 対象VMの設定を取得する
+  ansible.builtin.command:
+    cmd: "qm config {{ vm_id }}"
+  changed_when: false
+  register: proxmox_vm_cloudinit_vm_config
+
+- name: Cloud-initドライブが接続されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - "'cloudinit' in proxmox_vm_cloudinit_vm_config.stdout"
+    fail_msg: >-
+      VMID {{ vm_id }} にcloud-initドライブが接続されていません。
+      cloud-init設定を反映するには、先に
+      `qm set {{ vm_id }} --ide2 <ストレージ名>:cloudinit` などで
+      cloud-initドライブを追加してください
+      (proxmox_template_build.yml で構築したテンプレートのクローンには接続済みです)。
+    quiet: true

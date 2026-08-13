@@ -1,0 +1,23 @@
+# 対象VMIDの衝突と完成済みテンプレートを最初に判定する。
+---
+- name: 対象VMIDを検索する
+  community.proxmox.proxmox_vm_info:
+    vmid: "{{ pve_template_resolved_vmid }}"
+  register: pve_template_vm_info
+
+- name: 既存VMと完成状態を記録する
+  ansible.builtin.set_fact:
+    pve_template_existing_vm: >-
+      {{ pve_template_vm_info.proxmox_vms | first | default(none) }}
+    pve_template_complete: >-
+      {{ (pve_template_vm_info.proxmox_vms | first | default({})).template
+         | default(false) | bool }}
+
+- name: テンプレートではない既存VMとの衝突を拒否する
+  ansible.builtin.fail:
+    msg: >-
+      VMID {{ pve_template_resolved_vmid }} は既に存在しますがテンプレートではありません。
+      中断された構築か別VMの可能性があるため、PVE上で状態を手動確認してください。
+  when:
+    - pve_template_existing_vm is not none
+    - not pve_template_complete

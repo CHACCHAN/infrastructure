@@ -1,0 +1,5 @@
+# このファイルをコピーして group_vars/vault.yml を作成し、
+# 実際のtoken secretを入れたうえで `ansible-vault encrypt group_vars/vault.yml` を実行してください。
+# group_vars/vault.yml は .gitignore で除外し、リポジトリにコミットしないこと。
+
+proxmox_api_token_secret: "REPLACE_ME"

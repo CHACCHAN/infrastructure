@@ -1,0 +1,64 @@
+# Task executed from installation_all_vms
+---
+- name: Check if already cloned.
+  ansible.builtin.uri:
+    url: "{{ proxmox_api_host }}/api2/json/nodes/{{ item.node }}/qemu/{{ item.vmid }}/status/current"
+    method: GET
+    status_code: [200, 500]
+  register: existing_vm
+
+- name: Execute clone
+  ansible.builtin.uri:
+    url: "{{ proxmox_api_host }}/api2/json/nodes/{{ item.node }}/qemu/{{ template_vmid }}/clone"
+    method: POST
+    body_format: json
+    body:
+      newid: "{{ item.vmid }}"
+      name: "{{ item.name }}"
+      target: "{{ item.node }}"
+      full: 1
+      storage: "{{ item.disk_storage }}"
+  register: clone_task
+  when: existing_vm.status != 200
+
+- name: Waiting for clone to complete
+  ansible.builtin.uri:
+    url: "{{ proxmox_api_host }}/api2/json/nodes/{{ item.node }}/tasks/{{ clone_task.json.data }}/status"
+    method: GET
+  register: clone_status
+  until: clone_status.json.data.status == "stopped"
+  retries: 60
+  delay: 3
+  when: existing_vm.status != 200
+
+- name: Apply network, cloud-init, tags, and public key settings.
+  ansible.builtin.uri:
+    url: "{{ proxmox_api_host }}/api2/json/nodes/{{ item.node }}/qemu/{{ item.vmid }}/config"
+    method: POST
+    body_format: json
+    body: >-
+      {{
+        {
+          'ciuser': item.ciuser,
+          'sshkeys': item.ssh_public_key
+              | urlencode
+              | replace('/', '%2F')
+              | replace('+', '%2B')
+              | replace('=', '%3D'),
+          'ipconfig0': item.ipconfig0,
+          'ipconfig1': item.ipconfig1,
+          'net0': 'virtio,bridge=' ~ item.net0_bridge,
+          'tags': item.tags
+        }
+        | combine(
+            {'net1': 'virtio,bridge=' ~ item.net1_bridge} if item.net1_bridge is defined
+            else {'delete': 'net1'}
+          )
+        | combine({'ipconfig1': item.ipconfig1} if item.ipconfig1 is defined else {})
+      }}
+  when: existing_vm.status != 200
+- name: VM起動
+  ansible.builtin.uri:
+    url: "{{ proxmox_api_host }}/api2/json/nodes/{{ item.node }}/qemu/{{ item.vmid }}/status/start"
+    method: POST
+  when: existing_vm.status != 200

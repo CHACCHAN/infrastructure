@@ -1,0 +1,23 @@
+# 先に作っておかないと、docker composeがマウント元をroot所有で作る前提が崩れる。
+# 公式イメージはUSER指定が無くroot権限で動くため、所有者はrootのままでよい。
+#
+#   etc_wireguard/ … サーバーの鍵・クライアント情報(sqlite)。**バックアップ対象**
+---
+- name: Wg-easyの設置ディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ wg_easy_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+# 秘密鍵が入るためroot専用にする
+- name: コンテナへマウントするディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ wg_easy_install_dir }}/etc_wireguard"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  become: true

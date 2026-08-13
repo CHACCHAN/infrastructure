@@ -1,0 +1,35 @@
+# Proxmox VMの宣言収束で利用するpve_vm_*変数の既定値一覧。
+---
+# インベントリのホスト名をPVE上のVM名として扱い、必要なホストだけ上書きする。
+pve_vm_name: "{{ inventory_hostname }}"
+
+# 未作成時のクローン元OSと、クローン完了を待つ上限を宣言から上書きできるようにする。
+pve_os: debian
+pve_os_version: "13"
+pve_vm_clone_timeout: 600
+
+# provisionの最後に起動する。停止状態で維持したいVMはプロファイルで上書きする。
+pve_vm_power: started
+
+# 小規模VM向けの安全なベース値。役割ごとの差分はgroup_varsで上書きする。
+pve_vm_cores: 2
+pve_vm_memory: 2048
+pve_vm_disk_size: 20
+pve_vm_nets:
+  - bridge: "{{ pve_bridge }}"
+pve_vm_disks: []
+
+# lab共通設定と同じ値にし、group_vars/allがなくても一貫した構成にする。
+pve_vm_onboot: 1
+pve_vm_agent: 1
+pve_vm_bios: seabios
+pve_vm_machine: q35
+pve_vm_vga: std
+pve_vm_cpu_type: x86-64-v2-AES
+pve_vm_disk_ssd: 1
+pve_vm_disk_iothread: 1
+pve_vm_disk_discard: "on"
+
+# pve_ssh_user / pve_ssh_pubkey_file には既定値を置かない。
+# 各役割プロファイル(group_vars)が定義し、未定義のホストでは
+# cloud-initのユーザー・鍵設定をスキップする(誤った値の暗黙適用を防ぐ)。

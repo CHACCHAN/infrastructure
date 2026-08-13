@@ -1,0 +1,50 @@
+# 拡張に qm set は使えない(storage:size を指定すると新しいディスクが作られ、
+# 元のディスクが未使用ボリュームとして残る)ため qm resize で行う。
+# Proxmoxは縮小に対応していないので、現在のサイズが指定サイズ以上なら何もしない。
+---
+- name: 対象VMの現在の設定を取得する
+  ansible.builtin.command:
+    cmd: "qm config {{ vm_id }}"
+  changed_when: false
+  register: proxmox_vm_hardware_config
+
+# qm configの該当行(例: scsi0: local-lvm:vm-121-disk-0,size=32G)から現在のサイズを
+# 取り出し、GiB換算で比較する
+- name: ディスクを指定サイズまで拡張する
+  ansible.builtin.command:
+    cmd: "qm resize {{ vm_id }} {{ item.bus }}{{ item.index | string }} {{ item.size | int }}G"
+  register: proxmox_vm_hardware_resize_result
+  changed_when: proxmox_vm_hardware_resize_result.rc == 0
+  vars:
+    proxmox_vm_hardware_disk_line: >-
+      {{
+        proxmox_vm_hardware_config.stdout
+        | regex_search('^' + item.bus + (item.index | string) + ':.*$', multiline=True)
+        | default('', true)
+      }}
+    proxmox_vm_hardware_size_parts: >-
+      {{
+        proxmox_vm_hardware_disk_line
+        | regex_search('size=([0-9.]+)([KMGT])', '\1', '\2')
+        | default([], true)
+      }}
+    proxmox_vm_hardware_current_gib: >-
+      {{
+        0
+        if (proxmox_vm_hardware_size_parts | length < 2)
+        else ((proxmox_vm_hardware_size_parts[0] | float)
+              * {'K': 0.00000095367431640625, 'M': 0.0009765625, 'G': 1, 'T': 1024}[proxmox_vm_hardware_size_parts[1]])
+      }}
+  when: (proxmox_vm_hardware_current_gib | float) < (item.size | float)
+  loop: "{{ proxmox_vm_hardware_resize }}"
+  loop_control:
+    label: "{{ item.bus }}{{ item.index }} → {{ item.size }}G"
+
+- name: 拡張をスキップしたディスクを表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.item.bus }}{{ item.item.index }} は既に {{ item.item.size }}GiB 以上のため拡張しません。
+  loop: "{{ proxmox_vm_hardware_resize_result.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.bus | default('?') }}{{ item.item.index | default('?') }}"
+  when: item.skipped | default(false)

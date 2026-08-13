@@ -1,0 +1,57 @@
+# 未作成のProxmox VMを同一ノードのOSテンプレートからフルクローンする。
+---
+- name: 未作成VMをテンプレートからクローンする
+  when: pve_found_vm is none
+  block:
+    - name: クローン元のOSとノードを選択する
+      ansible.builtin.set_fact:
+        pve_clone_os: "{{ pve_os | default('debian') }}"
+        pve_clone_os_version: "{{ pve_os_version | default('13') | string }}"
+        pve_clone_node: "{{ node }}"
+
+    - name: クローン元テンプレートのVMIDと名前を解決する
+      ansible.builtin.include_role:
+        name: pve_template
+        tasks_from: resolve
+      vars:
+        pve_os: "{{ pve_clone_os }}"
+        pve_os_version: "{{ pve_clone_os_version }}"
+        node: "{{ pve_clone_node }}"
+
+    - name: クローン元テンプレートを検索する
+      community.proxmox.proxmox_vm_info:
+        vmid: "{{ pve_template_resolved_vmid }}"
+      register: pve_clone_template_info
+
+    - name: クローン元が完成済みテンプレートであることを確認する
+      ansible.builtin.fail:
+        msg: >-
+          {{ pve_template_resolved_name }} (VMID {{ pve_template_resolved_vmid }}) が
+          テンプレートとして見つかりません。
+          provision.ymlのテンプレート収束プレイが先に走っているか確認してください。
+      when: >-
+        pve_clone_template_info.proxmox_vms | length == 0
+        or not ((pve_clone_template_info.proxmox_vms | first).template
+                | default(false) | bool)
+
+    - name: テンプレートからVMをフルクローンする
+      community.proxmox.proxmox_kvm:
+        clone: "{{ pve_template_resolved_name }}"
+        vmid: "{{ pve_template_resolved_vmid }}"
+        newid: "{{ vmid }}"
+        name: "{{ pve_vm_name }}"
+        full: true
+        storage: "{{ pve_storage }}"
+        # 同一ノードクローンのため target は指定しない
+        # (共有ストレージ以外で target を渡すとAPIが拒否する場合がある)
+        node: "{{ node }}"
+        timeout: "{{ pve_vm_clone_timeout }}"
+
+    - name: クローン後のVMを検索する
+      community.proxmox.proxmox_vm_info:
+        vmid: "{{ vmid }}"
+      register: pve_cloned_vm_info
+
+    - name: 後続処理へクローン後の現在値を渡す
+      ansible.builtin.set_fact:
+        pve_found_vm: "{{ pve_cloned_vm_info.proxmox_vms | first | default(none) }}"

@@ -1,0 +1,11 @@
+# TrueNAS (ネットワークストレージ WebUI) — 172.16.11.10:443
+#
+# NFS 共有そのもの (StorageClass truenas-nfs) は
+# system/nfs-provisioner/ 側で扱う。ここは WebUI の公開経路だけ。
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - service.yaml
+  - serverstransport.yaml
+  - ingress.yaml

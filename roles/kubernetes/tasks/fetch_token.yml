@@ -1,0 +1,33 @@
+# 参加用トークンをコントロールプレーンから自動取得する。
+# 接続情報(ユーザー・秘密鍵)は呼び出し元のplaybook
+# (playbooks/kubernetes.yml、proxmox/ 経由なら proxmox/playbooks/kubernetes.yml)が
+# 参加先をインベントリに登録済みで、delegate_to でその接続設定がそのまま使われる。
+#
+# トークンはクラスタに参加できてしまう秘密情報のため no_log で出力を抑止している
+# (失敗しても詳細は出ないので、切り分けが必要ならここのno_logを外す)。
+---
+- name: コントロールプレーンからトークンを取得する
+  block:
+    - name: ノードトークンを読み取る
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      delegate_to: "{{ kubernetes_server_ip }}"
+      become: true
+      register: kubernetes_node_token_raw
+      no_log: true
+
+  rescue:
+    - name: トークンを取得できなかったことを通知する
+      ansible.builtin.fail:
+        msg: >-
+          {{ kubernetes_server_ip }} の /var/lib/rancher/k3s/server/node-token を読み取れませんでした。
+          そのVMがコントロールプレーン(kubernetes_node_role=server)として構築済みか、
+          SSHでログインしてsudoが使えるかを確認してください
+          (ユーザー・鍵が対象VMと違う場合は
+          -e "kubernetes_server_ssh_user=<ユーザ名> kubernetes_server_ssh_prikey=~/.ssh/<秘密鍵>" で指定します)。
+          トークンが分かっている場合は -e "kubernetes_token=<トークン>" で直接渡すこともできます。
+
+- name: 使用するトークンを決定する
+  ansible.builtin.set_fact:
+    kubernetes_token_resolved: "{{ (kubernetes_node_token_raw.content | b64decode) | trim }}"
+  no_log: true

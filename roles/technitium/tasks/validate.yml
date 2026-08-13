@@ -1,0 +1,116 @@
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - vm_ssh_user is defined
+      - (vm_ssh_user | default('', true)) | length > 0
+    fail_msg: >-
+      vm_ssh_user が指定されていません。
+      -e "vm_ssh_user=<ユーザ名>" で指定してください。
+    quiet: true
+
+- name: 設置ディレクトリが絶対パスであることを検証する
+  ansible.builtin.assert:
+    that:
+      - technitium_install_dir is match('^/.+')
+    fail_msg: >-
+      technitium_install_dir は絶対パスで指定してください
+      (指定値: {{ technitium_install_dir }})。
+    quiet: true
+
+- name: 追加ポートの書式を検証する
+  ansible.builtin.assert:
+    that:
+      - technitium_extra_ports | rejectattr('port', 'defined') | list | length == 0
+      - technitium_extra_ports | selectattr('proto', 'defined')
+        | rejectattr('proto', 'in', ['tcp', 'udp']) | list | length == 0
+    fail_msg: >-
+      technitium_extra_ports は [{port: 853, proto: tcp}] の形式で指定してください
+      (protoは tcp か udp。省略時は tcp)。
+    quiet: true
+
+- name: 公開ポートの範囲を検証する
+  ansible.builtin.assert:
+    that:
+      - technitium_port_numbers | select('lt', 1) | list | length == 0
+      - technitium_port_numbers | select('gt', 65535) | list | length == 0
+    fail_msg: >-
+      公開ポートは1〜65535の範囲で指定してください
+      (指定値: {{ technitium_port_numbers | join(', ') }})。
+    quiet: true
+  vars:
+    technitium_port_numbers: >-
+      {{ ([technitium_dns_port, technitium_http_port, technitium_https_port]
+          + (technitium_extra_ports | map(attribute='port') | list)) | map('int') | list }}
+
+# 同じポートでもプロトコルが違えば共存できる(例: 853はDoTがtcp、DoQがudp)ため、
+# 重複の判定は「ポート番号 + プロトコル」で行う。
+- name: 公開ポートが重複していないことを検証する
+  ansible.builtin.assert:
+    that:
+      - technitium_port_specs | unique | length == technitium_port_specs | length
+    fail_msg: >-
+      公開ポートの指定が重複しています
+      (指定値: {{ technitium_port_specs | join(', ') }})。
+    quiet: true
+  vars:
+    technitium_port_specs: >-
+      {{ [technitium_dns_port ~ '/udp', technitium_dns_port ~ '/tcp',
+          technitium_http_port ~ '/tcp']
+         + ([technitium_https_port ~ '/tcp']
+            if (technitium_enable_https_console | bool) else [])
+         + (technitium_extra_ports | map(attribute='port')
+            | zip(technitium_extra_ports | map(attribute='proto', default='tcp'))
+            | map('join', '/') | list) }}
+
+# ホストネットワークではポート公開の仕組み自体が使われず、コンテナ内の
+# 待ち受けポート(53)がそのままVMのポートになる。
+- name: ホストネットワーク指定時のポートを検証する
+  ansible.builtin.assert:
+    that:
+      - technitium_dns_port | int == 53
+    fail_msg: >-
+      technitium_use_host_network が true のとき、DNSは53番固定になります
+      (technitium_dns_port={{ technitium_dns_port }} は指定できません)。
+      ポートを変える場合はホストネットワークを使わない構成にしてください。
+    quiet: true
+  when: technitium_use_host_network | bool
+
+- name: 再帰問い合わせの設定を検証する
+  ansible.builtin.assert:
+    that:
+      - technitium_recursion in ['Allow', 'Deny',
+                                 'AllowOnlyForPrivateNetworks', 'UseSpecifiedNetworkACL']
+    fail_msg: >-
+      technitium_recursion は Allow / Deny / AllowOnlyForPrivateNetworks /
+      UseSpecifiedNetworkACL のいずれかで指定してください
+      (指定値: {{ technitium_recursion }})。
+    quiet: true
+
+- name: 上位DNSへの転送設定を検証する
+  ansible.builtin.assert:
+    that:
+      - technitium_forwarder_protocol in ['Udp', 'Tcp', 'Tls', 'Https', 'HttpsJson']
+    fail_msg: >-
+      technitium_forwarder_protocol は Udp / Tcp / Tls / Https / HttpsJson の
+      いずれかで指定してください(指定値: {{ technitium_forwarder_protocol }})。
+    quiet: true
+
+# .env は KEY=VALUE 形式で読まれるため、空白や引用符を含む値は使えない。
+# 値をログに出さないよう、判定は真偽値だけを残す形で行う
+# (assertにno_logを付けるとfail_msgごと隠れてしまう)。
+- name: 手動指定された管理者パスワードの形式を判定する
+  ansible.builtin.set_fact:
+    technitium_admin_password_valid: >-
+      {{ ((technitium_admin_password | default('', true)) | length == 0)
+         or (technitium_admin_password is match('^[A-Za-z0-9_.-]{16,}$')) }}
+  no_log: true
+
+- name: 手動指定された管理者パスワードの形式を検証する
+  ansible.builtin.assert:
+    that:
+      - technitium_admin_password_valid | bool
+    fail_msg: >-
+      technitium_admin_password の形式が不正です。
+      16文字以上で、英数字と `_` `.` `-` のみを使って指定してください。
+    quiet: true

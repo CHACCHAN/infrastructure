@@ -1,0 +1,22 @@
+# cache_valid_timeで省略しない。apt-daily.timerが残した中途半端なキャッシュを
+# 使ってしまい、後続のインストールが「No package matching ...」で失敗するため。
+---
+- name: パッケージ一覧を更新する
+  ansible.builtin.apt:
+    update_cache: true
+    lock_timeout: 300
+  become: true
+  register: vm_apt_update
+  retries: 3
+  delay: 10
+  until: vm_apt_update is succeeded
+
+- name: パッケージを最新化する
+  ansible.builtin.apt:
+    upgrade: safe
+    lock_timeout: 300
+  become: true
+  register: vm_apt_upgrade
+  retries: 3
+  delay: 10
+  until: vm_apt_upgrade is succeeded

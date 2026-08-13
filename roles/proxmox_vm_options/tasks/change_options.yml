@@ -1,0 +1,35 @@
+# vm_optionsの各項目を --<オプション名> <値> に変換して qm set を実行する。
+# キー名は qm set のオプション名をそのまま使用する(agent, onboot, description等)。
+---
+- name: 引数リストの初期値(qm set + vm_id)を設定する
+  ansible.builtin.set_fact:
+    proxmox_vm_options_argv: "{{ ['qm', 'set', vm_id | string] }}"
+
+- name: 各オプションを引数に追加する
+  ansible.builtin.set_fact:
+    proxmox_vm_options_argv: >-
+      {{
+        proxmox_vm_options_argv
+        + (proxmox_vm_options_normalized
+            | dict2items
+            | map(attribute='key')
+            | map('regex_replace', '^(.*)$', '--\1')
+            | zip(proxmox_vm_options_normalized | dict2items | map(attribute='value') | map('string'))
+            | map('list') | list | flatten)
+      }}
+  when: proxmox_vm_options_normalized | length > 0
+
+- name: 削除指定を引数に追加する
+  ansible.builtin.set_fact:
+    proxmox_vm_options_argv: "{{ proxmox_vm_options_argv + ['--delete', proxmox_vm_options_delete | join(',')] }}"
+  when: proxmox_vm_options_delete | length > 0
+
+- name: 実行するqmコマンドを表示する
+  ansible.builtin.debug:
+    msg: "{{ proxmox_vm_options_argv | join(' ') }}"
+
+- name: VMのオプションを変更する
+  ansible.builtin.command:
+    argv: "{{ proxmox_vm_options_argv }}"
+  register: proxmox_vm_options_result
+  changed_when: proxmox_vm_options_result.rc == 0

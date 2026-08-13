@@ -1,0 +1,22 @@
+# k3sノードにだけ必要なパッケージ。
+# NFS(nfs-common)は全VM共通の install_base_packages.yml で入るためここには無い。
+# Dockerも入れない(k3sはcontainerdを同梱しており、Dockerがあっても使われない)。
+---
+- name: ストレージ接続(iSCSI)用のパッケージをインストールする
+  ansible.builtin.apt:
+    name:
+      # Longhorn等のiSCSIベースのストレージがノード側に要求する。
+      # 入れ忘れるとPVのアタッチ時に初めて失敗して原因が分かりにくい
+      - open-iscsi
+    state: present
+  become: true
+  when: kubernetes_install_open_iscsi | bool
+
+# open-iscsiはインストール時に有効化されるが、明示して再起動後も確実に上がるようにする
+- name: ストレージ接続(iscsid)サービスを有効化・起動する
+  ansible.builtin.systemd:
+    name: iscsid.service
+    enabled: true
+    state: started
+  become: true
+  when: kubernetes_install_open_iscsi | bool

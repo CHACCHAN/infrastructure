@@ -1,0 +1,11 @@
+# Supabase (セルフホスト BaaS) — 172.16.11.6:3000,8000
+#
+# 1 つのバックエンドに対して Studio (3000) と Kong API (8000) の 2 経路を張る。
+# 経路ごとに受けるエントリポイントが違うので Ingress を 2 本に分けている。
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - service.yaml
+  - middleware.yaml
+  - ingress.yaml

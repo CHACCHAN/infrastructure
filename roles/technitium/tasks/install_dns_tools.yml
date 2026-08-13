@@ -1,0 +1,9 @@
+# dig はこのロールの動作確認(verify_service.yml)で使うほか、
+# 構築後にVM内から名前解決を切り分けるときにも要る。
+---
+- name: DNSの問い合わせコマンド(dig等)をインストールする
+  ansible.builtin.apt:
+    name:
+      - dnsutils
+    state: present
+  become: true

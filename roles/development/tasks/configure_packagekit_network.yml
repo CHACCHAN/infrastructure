@@ -1,0 +1,49 @@
+# PackageKit(Cockpitの「ソフトウェア更新」)が「Cannot refresh cache whilst offline」で
+# 失敗する問題の回避策。
+#
+# 原因: PackageKitは自分で疎通確認をせずNetworkManagerに問い合わせるだけだが、
+# eth0はifupdown(cloud-init)管理で対象外、docker0はゲートウェイを持たないため、
+# NetworkManagerが「ローカルのみ接続」と返してオフラインと誤判定される。
+#
+# 対応: 管理下にダミーの仮想インターフェースを1つ追加してオンライン判定を引き出す。
+# 判定用の存在で実通信には使わない。経路を奪わないよう ipv4.route-metric に
+# 非常に大きな値を設定し、eth0側の既定経路(metric 0)を常に優先させる。
+---
+- name: NetworkManagerをインストールする
+  ansible.builtin.apt:
+    name: network-manager
+    state: present
+  become: true
+
+- name: NetworkManagerを有効化・起動する
+  ansible.builtin.systemd:
+    name: NetworkManager.service
+    enabled: true
+    state: started
+  become: true
+
+- name: PackageKitのオンライン判定用ダミー接続を作成する
+  community.general.nmcli:
+    conn_name: "{{ development_packagekit_dummy_conn_name }}"
+    ifname: "{{ development_packagekit_dummy_ifname }}"
+    type: dummy
+    ip4: "{{ development_packagekit_dummy_ip4 }}"
+    gw4: "{{ development_packagekit_dummy_gw4 }}"
+    route_metric4: "{{ development_packagekit_dummy_route_metric }}"
+    method6: disabled
+    autoconnect: true
+    state: present
+  become: true
+
+- name: ダミー接続の有効状態を確認する
+  ansible.builtin.command:
+    cmd: nmcli --terse --fields NAME connection show --active
+  register: development_packagekit_active_conn
+  changed_when: false
+
+- name: ダミー接続を有効化する
+  ansible.builtin.command:
+    cmd: nmcli connection up "{{ development_packagekit_dummy_conn_name }}"
+  become: true
+  when: development_packagekit_dummy_conn_name not in development_packagekit_active_conn.stdout_lines
+  changed_when: true

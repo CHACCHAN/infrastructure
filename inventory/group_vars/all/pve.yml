@@ -1,0 +1,18 @@
+# lab環境のProxmox VMに共通するベース値。役割プロファイルには差分だけを書く。
+---
+pve_storage: ssd01
+pve_bridge: vmbr0
+
+# 旧インベントリはDNSを明示せずPVEホストの設定を継承していたため、pve_nameserverは未指定にする。
+pve_ipv4_prefix: 24
+pve_ipv4_gw: 172.16.11.1
+
+# 全役割で同一だったVM設定をベースに集約する。
+pve_vm_bios: seabios
+pve_vm_machine: q35
+pve_vm_vga: std
+pve_vm_disk_ssd: 1
+pve_vm_disk_iothread: 1
+pve_vm_disk_discard: "on"
+pve_vm_agent: 1
+pve_vm_onboot: 1

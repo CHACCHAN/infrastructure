@@ -1,0 +1,20 @@
+# Proxmox Backup Server VMのプロファイル。バックアップデータをOSとは別のHDDへ置く。
+---
+pve_vm_cores: 12
+pve_vm_cpu_type: x86-64-v3
+pve_vm_memory: 8192
+pve_vm_disk_size: 32
+pve_vm_nets:
+  - bridge: vmbr0
+  - bridge: vmbr1
+pve_vm_disks:
+  - bus: scsi
+    index: 1
+    storage: hdd01
+    size: 920
+    discard: "on"
+    ssd: 0
+    iothread: 1
+pve_ssh_user: pbs
+pve_ssh_pubkey_file: ~/.ssh/id_ed25519_pbs.pub
+pve_ssh_prikey: ~/.ssh/id_ed25519_pbs

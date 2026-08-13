@@ -1,0 +1,62 @@
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - vm_ssh_user is defined
+      - (vm_ssh_user | default('', true)) | length > 0
+    fail_msg: >-
+      vm_ssh_user が指定されていません。
+      -e "vm_ssh_user=<ユーザ名>" で指定してください。
+    quiet: true
+
+- name: 設置ディレクトリが絶対パスであることを検証する
+  ansible.builtin.assert:
+    that:
+      - authentik_install_dir is match('^/.+')
+    fail_msg: >-
+      authentik_install_dir は絶対パスで指定してください
+      (指定値: {{ authentik_install_dir }})。
+    quiet: true
+
+- name: 公開ポートの指定を検証する
+  ansible.builtin.assert:
+    that:
+      - authentik_http_port | int > 0
+      - authentik_http_port | int < 65536
+      - authentik_https_port | int > 0
+      - authentik_https_port | int < 65536
+      - authentik_http_port | int != authentik_https_port | int
+    fail_msg: >-
+      authentik_http_port / authentik_https_port が不正です
+      (1〜65535の範囲で、それぞれ別のポートを指定してください。
+      指定値: http={{ authentik_http_port }}, https={{ authentik_https_port }})。
+    quiet: true
+
+# .env は KEY=VALUE 形式で読まれるため、空白や引用符を含む値は使えない。
+# 値をログに出さないよう、判定は変数名だけを残す形で行う
+# (assertにno_logを付けるとfail_msgごと隠れてしまう)。
+- name: 手動指定された秘密情報を集める
+  ansible.builtin.set_fact:
+    authentik_given_secrets:
+      authentik_pg_password: "{{ authentik_pg_password | default('', true) }}"
+      authentik_secret_key: "{{ authentik_secret_key | default('', true) }}"
+      authentik_bootstrap_password: "{{ authentik_bootstrap_password | default('', true) }}"
+      authentik_bootstrap_token: "{{ authentik_bootstrap_token | default('', true) }}"
+  no_log: true
+
+- name: 形式が不正な指定を抽出する
+  ansible.builtin.set_fact:
+    authentik_invalid_secrets: >-
+      {{ authentik_given_secrets | dict2items
+         | rejectattr('value', 'equalto', '')
+         | rejectattr('value', 'match', '^[A-Za-z0-9_.-]{16,}$')
+         | map(attribute='key') | list }}
+
+- name: 手動指定されたパスワード・シークレットキーの形式を検証する
+  ansible.builtin.assert:
+    that:
+      - authentik_invalid_secrets | length == 0
+    fail_msg: >-
+      {{ authentik_invalid_secrets | join('、') }} の形式が不正です。
+      16文字以上で、英数字と `_` `.` `-` のみを使って指定してください。
+    quiet: true

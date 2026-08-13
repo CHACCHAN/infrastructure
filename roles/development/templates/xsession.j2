@@ -1,0 +1,5 @@
+#!/bin/sh
+# Ansible管理: roles/development/templates/xsession.j2
+# xrdpのセッションはこのファイルを経由してデスクトップを起動する
+# (/etc/xrdp/startwm.sh → /etc/X11/Xsession → ~/.xsession)。
+exec startxfce4

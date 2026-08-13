@@ -1,0 +1,51 @@
+# 既存Proxmox VMのユーザー・公開鍵・IP・DNSをcloud-init宣言へ収束させる。
+---
+- name: cloud-initの宣言値を組み立てる
+  ansible.builtin.set_fact:
+    # 鍵ファイル未定義のホスト(役割プロファイルを持たない検証VM等)では
+    # ユーザー・鍵の設定をスキップするため none にする
+    pve_cloudinit_sshkeys: >-
+      {{ lookup('ansible.builtin.file', pve_ssh_pubkey_file | expanduser)
+         if pve_ssh_pubkey_file is defined else none }}
+    pve_cloudinit_ipconfig: >-
+      {{ {'ipconfig0': 'ip=' ~ ansible_host ~ '/' ~ pve_ipv4_prefix
+                         ~ ',gw=' ~ pve_ipv4_gw}
+         | combine((cluster_ip is defined)
+                   | ternary({'ipconfig1':
+                                'ip=' ~ (cluster_ip | default(''))}, {})) }}
+
+- name: cloud-initの現在設定を取得する
+  community.proxmox.proxmox_vm_info:
+    vmid: "{{ vmid }}"
+    config: current
+  register: pve_cloudinit_info
+
+- name: cloud-init設定を収束させる
+  community.proxmox.proxmox_kvm:
+    vmid: "{{ vmid }}"
+    node: "{{ node }}"
+    # ユーザー・鍵が未定義のホストでは既存設定に触れない(omit)
+    ciuser: "{{ pve_ssh_user | default(omit) }}"
+    sshkeys: "{{ pve_cloudinit_sshkeys if pve_cloudinit_sshkeys is not none else omit }}"
+    ipconfig: "{{ pve_cloudinit_ipconfig }}"
+    # 未定義時はPVEホストのDNS設定を継承し、既存値を意図せず消さない。
+    nameservers: "{{ [pve_nameserver] if pve_nameserver is defined else omit }}"
+    update: true
+  vars:
+    pve_cloudinit_current: "{{ (pve_cloudinit_info.proxmox_vms | first).config }}"
+  when: >-
+    (pve_ssh_user is defined
+     and pve_cloudinit_current.ciuser | default('') != pve_ssh_user)
+    or (pve_cloudinit_sshkeys is not none
+        and (pve_cloudinit_current.sshkeys | default('') | trim)
+            != (pve_cloudinit_sshkeys | trim)
+        and (pve_cloudinit_current.sshkeys | default('') | urldecode | trim)
+            != (pve_cloudinit_sshkeys | trim))
+    or pve_cloudinit_current.ipconfig0 | default('')
+       != pve_cloudinit_ipconfig.ipconfig0
+    or (cluster_ip is defined
+        and pve_cloudinit_current.ipconfig1 | default('')
+            != pve_cloudinit_ipconfig.ipconfig1)
+    or (pve_nameserver is defined
+        and pve_cloudinit_current.nameserver | default('')
+            != pve_nameserver | string)

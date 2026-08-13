@@ -1,0 +1,6 @@
+# cloudflare namespace — 外部公開の入口 (Cloudflare Tunnel)。
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - cloudflared

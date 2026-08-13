@@ -1,0 +1,83 @@
+# playbooks/services/technitium-dns.yml 用。1ホスト = 構築するVM1台、ホスト名はVMのIPアドレス。
+# ここに書いた値は既定値で、-e で同じ変数を渡すとそちらが優先される。
+#
+#   全台: ansible-playbook playbooks/services/technitium-dns.yml --ask-vault-pass
+#   個別: ansible-playbook playbooks/services/technitium-dns.yml --ask-vault-pass --limit 192.168.10.53
+#
+# グループ名だけは technitium_dns(アンダースコア)です。
+# Ansibleのグループ名にはハイフンを使えないためで、他のファイルと違う点はここだけです。
+#
+# パスワード類は平文で書かないこと(-e で渡すか ansible-vault encrypt_string を使う)。
+---
+technitium_dns:
+  hosts:
+    172.16.11.3:
+      vm_id: 503
+      vm_name: technitium-dns
+      vm_node: 172.16.11.15 # 構築先のProxmoxノード
+
+  vars:
+    # --- ネットワーク ---
+    vm_ipv4_prefix: 24 # ホスト名(IP)に付けるプレフィックス長
+    vm_ipv4_gw: 172.16.11.1
+
+    # DNSサーバー自身が名前解決に使う上位DNS。
+    # 未指定だとProxmoxがホストのDNS設定を引き継ぐ。
+    # 自分自身(このVM)は指定しないこと(構築中はまだ動いていないため)。
+    # vm_nameserver: 192.168.10.1
+    # vm_searchdomain: example.local
+
+    # --- Proxmox側 ---
+    proxmox_storage: local-lvm
+
+    # --- VMのハードウェア(クローン直後・停止中に適用される) ---
+    # DNSサーバーは軽いので2コア/2GBで足りる(キャッシュを多く持たせるならRAMを増やす)。
+    # ディスクは resize で拡張する(disks だと新しい空ディスクに置き換わる)。
+    # resize を省くとテンプレート素の約3GBのままになる。
+    vm_hardware:
+      cpu:
+        cores: 2
+        type: x86-64-v2-AES
+      memory:
+        size: 1024
+      options:
+        bios: seabios
+        machine: q35
+        vga: std
+      # --- ディスクの設定(SSD/HDDの違いをここで明示する) ---
+      # ssd     : SSDエミュレーション。ゲストに非回転メディアとして見せる
+      #           (HDD上のディスクでは 0 にすること)
+      # iothread: ディスクI/Oを専用スレッドに分離する
+      #           (SCSIコントローラは既定で virtio-scsi-single になる)
+      # discard : ゲストで削除した分の領域をストレージへ返す(TRIM/UNMAP)
+      #           (YAMLでは on が真偽値になるため引用符が必要)
+      # 省略した場合もすべてオンになるが、載っているストレージが
+      # SSDかHDDかは環境ごとに違うため、各インベントリで明記している。
+      disk_options:
+        - bus: scsi
+          index: 0
+          ssd: 1 # ⚠ local-lvm がHDD上にある場合は 0 にすること
+          iothread: 1
+          discard: "on"
+      resize:
+        - bus: scsi
+          index: 0
+          size: 16
+
+    # --- VMの動作設定(稼働中でも変更できる) ---
+    vm_options:
+      agent: 1 # QEMUゲストエージェント(ゲスト側の導入はtechnitiumロールが行う)
+      onboot: 1 # DNSが落ちるとLAN全体の名前解決が止まるため自動起動
+
+    # --- VMのログイン設定 ---
+    vm_ssh_user: technitium
+    vm_ssh_pubkey_file: ~/.ssh/id_ed25519_technitium_dns.pub
+    vm_ssh_prikey: ~/.ssh/id_ed25519_technitium_dns
+
+    # --- DNSサーバー本体の設定 ---
+    # 指定できる項目は docs/vms/technitium-dns.md を参照。
+    # 未指定ならロールの既定値(53/5380、管理者パスワードは自動生成)が使われる。
+    # ⚠ 以下は設定ファイルが作られる初回起動時にしか反映されない。
+    # technitium_version: "15.4.0"
+    # technitium_forwarders: ["1.1.1.1", "8.8.8.8"]
+    # technitium_recursion: AllowOnlyForPrivateNetworks

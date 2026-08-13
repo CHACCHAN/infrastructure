@@ -1,0 +1,21 @@
+# ここで扱うオプションは稼働中でも変更できるため、電源オフは必須にしない。
+# 存在と配置ノードの確認だけを行う。
+---
+- name: クラスタ全体のVM一覧を取得する
+  ansible.builtin.import_role:
+    name: proxmox_common
+    tasks_from: get_cluster_vm_info
+
+- name: 対象VMの存在・配置ノードを確認する
+  ansible.builtin.import_role:
+    name: proxmox_common
+    tasks_from: find_vm_on_node
+  vars:
+    proxmox_target_vmid: "{{ vm_id }}"
+
+- name: 対象VMの電源状態を表示する
+  ansible.builtin.debug:
+    msg: >-
+      VMID {{ vm_id }} の現在の状態: {{ proxmox_target_vm_info[0].status }}
+      (オプションの変更は電源状態に関わらず実行できます。
+      ゲスト側の動作に関わる設定は次回起動時から有効になる場合があります)

@@ -1,0 +1,18 @@
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - vm_id is defined
+      - power_state is defined
+      - power_state in ['on', 'off']
+    fail_msg: >-
+      vm_id と power_state(on または off のいずれか)を指定してください。
+    quiet: true
+
+# shutdown_timeout_minutes: シャットダウン要求後、何分待つか(既定5分)
+# shutdown_force: タイムアウトしても電源が切れない場合に強制停止するか(既定false)
+# どちらも power_state=off のときのみ使用する
+- name: シャットダウン関連オプションを正規化する
+  ansible.builtin.set_fact:
+    proxmox_vm_powerctl_shutdown_timeout: "{{ (shutdown_timeout_minutes | default(5) | int) * 60 }}"
+    proxmox_vm_powerctl_shutdown_force: "{{ shutdown_force | default(false) | bool }}"

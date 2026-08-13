@@ -1,0 +1,26 @@
+# 起動済みのDebian VMにSSH接続し、開発環境を構築します。
+# VM内部の設定のみを行い、Proxmoxホスト側の操作は一切行いません。
+---
+- name: 接続先のVMホストを登録する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: 対象VMをインベントリに登録して疎通を確認する
+      ansible.builtin.import_role:
+        name: vm_connect
+
+- name: 開発専用VMを構築する
+  hosts: vms
+  gather_facts: true
+
+  roles:
+    - development
+
+  # dockerグループへの追加とカーネル更新の反映に再起動が必要
+  post_tasks:
+    - name: 構成を反映するためVMを再起動する
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: reboot_vm

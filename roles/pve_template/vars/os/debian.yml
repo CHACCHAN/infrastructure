@@ -1,0 +1,15 @@
+# Debian Cloud imageカタログ。旧os_defaultsから配布元情報を移設したもの。
+---
+pve_template_os_catalog:
+  checksum_algorithm: sha512
+  versions:
+    "13":
+      catalog_index: "00"
+      image_url: "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2"
+      checksum_url: "https://cloud.debian.org/images/cloud/trixie/latest/SHA512SUMS"
+      image_filename: "debian-13-generic-amd64.qcow2"
+    "12":
+      catalog_index: "04"
+      image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
+      checksum_url: "https://cloud.debian.org/images/cloud/bookworm/latest/SHA512SUMS"
+      image_filename: "debian-12-generic-amd64.qcow2"

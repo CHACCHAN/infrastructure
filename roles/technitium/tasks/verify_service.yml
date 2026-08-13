@@ -1,0 +1,64 @@
+# VM内から見た確認。VM外から見えるかどうかは、再起動後にplaybook側で行う。
+---
+- name: Webコンソールのポートが待ち受けるまで待機する
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ technitium_http_port }}"
+    timeout: 180
+    state: started
+
+- name: DNSのポートが待ち受けるまで待機する
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ technitium_dns_port }}"
+    timeout: 60
+    state: started
+
+- name: Webコンソールが応答するまで待機する
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ technitium_http_port }}/"
+    status_code: [200]
+  register: technitium_console
+  retries: "{{ technitium_ready_retries }}"
+  delay: "{{ technitium_ready_delay }}"
+  until: technitium_console is succeeded
+  changed_when: false
+
+# localhost は Technitium が既定で持つゾーン(RFC 6303)なので、
+# 上位DNSやインターネットに出られなくても必ず答えが返る。
+# ここが通れば「DNSサービスとして問い合わせに答えられる」ことまで確認できる。
+- name: 名前解決に応答することを確認する
+  ansible.builtin.command:
+    cmd: dig @127.0.0.1 -p {{ technitium_dns_port }} localhost A +short +time=3 +tries=2
+  changed_when: false
+  register: technitium_dig_local
+  failed_when: "'127.0.0.1' not in technitium_dig_local.stdout"
+
+# 上位への到達性・転送設定の確認。ここが失敗しても構築自体は成功なので止めない
+# (再帰問い合わせをDenyにしている場合は失敗するのが正しい)。
+- name: 外部の名前を引けるか確認する
+  ansible.builtin.command:
+    cmd: dig @127.0.0.1 -p {{ technitium_dns_port }} technitium.com A +short +time=5 +tries=1
+  changed_when: false
+  failed_when: false
+  register: technitium_dig_external
+
+- name: 外部の名前解決の結果を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{
+        '外部の名前解決を確認しました(technitium.com → '
+        ~ (technitium_dig_external.stdout_lines | join(', ')) ~ ')。'
+        if (technitium_dig_external.stdout | trim | length > 0)
+        else
+        '【注意】外部の名前を引けませんでした。technitium_recursion が Deny の場合は'
+        ~ 'これが正しい動作です。そうでない場合は、VMからインターネットに出られるか'
+        ~ '(上位DNS・ゲートウェイ)を確認してください。構築自体は完了しています。'
+      }}
+
+- name: Webコンソールの案内を表示する
+  ansible.builtin.debug:
+    msg:
+      - "Webコンソール: http://{{ ansible_host | default(inventory_hostname) }}:{{ technitium_http_port }}/"
+      - "ログイン: admin / {{ technitium_install_dir }}/.env の DNS_SERVER_ADMIN_PASSWORD"
+      - "DNSサーバー: {{ ansible_host | default(inventory_hostname) }}:{{ technitium_dns_port }}"

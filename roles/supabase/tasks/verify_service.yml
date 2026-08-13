@@ -1,0 +1,103 @@
+# VM内から見た確認。VM外から見えるかどうかは、再起動後にplaybook側で行う。
+#
+# 11個のコンテナが順番に起動するため、初回はイメージ取得とDB初期化で数分かかる。
+# 1つでも落ち続けている場合は、そのコンテナのログを見せて止める。
+---
+- name: すべてのコンテナが起動するまで待機する
+  block:
+    - name: コンテナの状態を問い合わせる
+      ansible.builtin.command:
+        cmd: docker compose ps --format json
+        chdir: "{{ supabase_project_dir }}"
+      become: true
+      changed_when: false
+      register: supabase_ps
+      retries: "{{ supabase_ready_retries }}"
+      delay: "{{ supabase_ready_delay }}"
+      until: >-
+        ((supabase_ps.stdout_lines | default([]) | length) > 0)
+        and ((supabase_ps.stdout_lines
+              | map('from_json')
+              | rejectattr('State', 'equalto', 'running')
+              | list | length) == 0)
+        and ((supabase_ps.stdout_lines
+              | map('from_json')
+              | selectattr('Health', 'defined')
+              | selectattr('Health', 'equalto', 'starting')
+              | list | length) == 0)
+
+    - name: 起動を確認できたことを記録する
+      ansible.builtin.set_fact:
+        supabase_all_running: true
+
+  rescue:
+    - name: 起動できていないコンテナを特定する
+      ansible.builtin.set_fact:
+        supabase_bad_containers: >-
+          {{ (supabase_ps.stdout_lines | default([]))
+             | map('from_json')
+             | rejectattr('State', 'equalto', 'running')
+             | map(attribute='Service') | list }}
+
+    - name: 起動できていないコンテナのログを取得する
+      ansible.builtin.command:
+        cmd: docker compose logs --tail 20 {{ supabase_bad_containers | join(' ') }}
+        chdir: "{{ supabase_project_dir }}"
+      become: true
+      changed_when: false
+      failed_when: false
+      register: supabase_bad_logs
+      when: (supabase_bad_containers | length) > 0
+
+    - name: 起動に失敗したことを通知する
+      ansible.builtin.fail:
+        msg: >-
+          {{ (supabase_ready_retries | int) * (supabase_ready_delay | int) }}秒待っても
+          すべてのコンテナが起動しませんでした
+          (起動していないもの:
+          {{ (supabase_bad_containers | join(', ')) | default('(取得できず)', true) }})。
+          `cd {{ supabase_project_dir }} && sudo docker compose ps` と
+          `sudo docker compose logs <サービス名>` を確認してください。
+          直近のログ:
+          {{ ((supabase_bad_logs.stdout_lines | default([]))
+              + (supabase_bad_logs.stderr_lines | default([])))[-20:] | join(' / ') }}
+
+# /auth/v1/health はKongのkey-authプラグイン配下にあり、鍵なしでは401になる
+# (鍵なしで通るのは verify/callback/authorize/jwks/sso だけ)。
+# anonキーはブラウザに配る公開鍵なのでヘッダに載せてよく、
+# これで「Kongが通す = ANON_KEYとJWT_SECRETが噛み合っている」ことまで確認できる。
+- name: APIゲートウェイが応答するまで待機する
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ supabase_kong_http_port }}/auth/v1/health"
+    headers:
+      apikey: "{{ supabase_secrets.ANON_KEY }}"
+    status_code: [200]
+  register: supabase_auth_health
+  retries: 30
+  delay: 5
+  until: supabase_auth_health is succeeded
+  changed_when: false
+
+# Studioは同じKong経由で配信され、Basic認証が掛かっている(401が返れば到達できている)
+- name: ダッシュボードが応答することを確認する
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ supabase_kong_http_port }}/"
+    status_code: [200, 401]
+  register: supabase_studio_check
+  retries: 30
+  delay: 5
+  until: supabase_studio_check is succeeded
+  changed_when: false
+
+- name: 接続情報を表示する
+  ansible.builtin.debug:
+    msg:
+      - "ダッシュボード: {{ supabase_public_url_resolved }}/"
+      - "ログイン: {{ supabase_dashboard_username }} /
+         sudo grep DASHBOARD_PASSWORD {{ supabase_project_dir }}/.env"
+      - "APIのURL: {{ supabase_public_url_resolved }}
+         (anonキーは sudo grep '^ANON_KEY=' {{ supabase_project_dir }}/.env)"
+      - "Postgres(セッションモード): ユーザー名 postgres.{{ supabase_secrets.POOLER_TENANT_ID }}
+         / 接続先 {{ ansible_host | default(inventory_hostname) }}:{{ supabase_postgres_port }}
+         / DB {{ supabase_postgres_db }}
+         (トランザクションモードは {{ supabase_pooler_proxy_port_transaction }})"

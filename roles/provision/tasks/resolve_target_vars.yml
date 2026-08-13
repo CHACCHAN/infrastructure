@@ -1,0 +1,52 @@
+# インベントリと -e の値から、構築に使う変数(pv_ 接頭辞)をホストのfactに決定する。
+# 「構築対象を確認する」プレイ(hosts: pv_targets)から呼ぶ。
+#
+# VM個別の設定に vm_ 接頭辞を使うのは、-e が全playbookから見えてしまうためです。
+# ssh_user や ipv4 をそのまま渡すとテンプレートにも焼き込まれてしまいます。
+# ここで pv_ 接頭辞(provision)のfactに移し替え、以降の共通フローはこちらを参照します。
+---
+# 「-e があればそれ、無ければインベントリ、どちらも無ければ空」の順で解決する
+- name: インベントリと-eの差分を解決する
+  ansible.builtin.set_fact:
+    # 構築先ノードは vm_node で受け取る。利用者が -e proxmox_ip=... を使うと
+    # 呼び出し先がそのIPを別の対象として登録してしまうため名前を分けている
+    pv_proxmox_ip: "{{ vm_node | default('', true) }}"
+    pv_proxmox_storage: "{{ proxmox_storage | default('', true) }}"
+    # VM内のセットアップがDebian(trixie)専用のため既定を固定する
+    pv_os_type: "{{ os_type | default('debian', true) }}"
+    pv_os_version: "{{ os_version | default('13', true) }}"
+    pv_vm_ssh_user: "{{ vm_ssh_user | default('', true) }}"
+    pv_vm_ssh_password: "{{ vm_ssh_password | default('', true) }}"
+    pv_vm_ssh_prikey: "{{ vm_ssh_prikey | default('', true) }}"
+    pv_vm_pubkey_direct: "{{ vm_ssh_pubkey | default('', true) }}"
+    pv_vm_pubkey_file: "{{ vm_ssh_pubkey_file | default('', true) }}"
+    pv_vm_ipv4_gw: "{{ vm_ipv4_gw | default('', true) }}"
+    pv_vm_ipv6: "{{ vm_ipv6 | default('', true) }}"
+    pv_vm_ipv6_gw: "{{ vm_ipv6_gw | default('', true) }}"
+    pv_vm_nameserver: "{{ vm_nameserver | default('', true) }}"
+    pv_vm_searchdomain: "{{ vm_searchdomain | default('', true) }}"
+    # 2枚目のNIC(vm_hardwareのnetwork index:1)に付けるアドレス(CIDR)。
+    # 未指定ならNICがあってもIPは付かない(kubernetesのクラスタ間ネットワーク等で使う)
+    pv_vm_cluster_ipv4: "{{ vm_cluster_ipv4 | default('', true) }}"
+    # 占有ネットワークは外に出ないため通常は指定しない
+    # (デフォルトゲートウェイが2つになると通信経路が不安定になる)
+    pv_vm_cluster_ipv4_gw: "{{ vm_cluster_ipv4_gw | default('', true) }}"
+
+- name: 派生する変数を決定する
+  ansible.builtin.set_fact:
+    pv_vm_ip: "{{ vm_ip | default(inventory_hostname, true) }}"
+    # ホスト名がIPアドレスなので、プレフィックス長を付けてCIDRにする
+    pv_vm_ipv4: >-
+      {{ vm_ipv4 | default(inventory_hostname + '/' + (vm_ipv4_prefix | default(24) | string), true) }}
+    # 内容(vm_ssh_pubkey)が無ければファイル(vm_ssh_pubkey_file)から読む
+    pv_vm_ssh_pubkey: >-
+      {{
+        pv_vm_pubkey_direct
+        if (pv_vm_pubkey_direct | length > 0)
+        else (lookup('file', pv_vm_pubkey_file | expanduser)
+              if (pv_vm_pubkey_file | length > 0) else '')
+      }}
+    pv_target_storage: >-
+      {{ target_storage | default(pv_proxmox_storage, true) }}
+    # 2枚目のNICのアドレス部分(CIDRからプレフィックス長を除いたもの)
+    pv_vm_cluster_ip: "{{ pv_vm_cluster_ipv4.split('/')[0] }}"

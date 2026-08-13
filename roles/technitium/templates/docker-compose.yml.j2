@@ -1,0 +1,44 @@
+# Ansible(roles/technitium)が生成。手動編集は次回実行で上書きされます。
+#
+# 内容は公式の docker-compose.yml
+# (https://github.com/TechnitiumSoftware/DnsServer/blob/master/docker-compose.yml)と同じ構成。
+# 差分は次の2点:
+#   - 設定値は同じディレクトリの .env から渡す(公式はenvironmentに直接書いている)
+#   - 設定とログを名前付きボリュームではなくバインドマウントにしている
+#     (設置ディレクトリごとバックアップできるようにするため)
+#
+# コンテナ内の待ち受けポートは 53 / 5380 / 53443 で固定し、VM側のポートだけを
+# 変えられるようにしている(ポートの環境変数は初回起動時にしか効かないため)。
+---
+services:
+  dns-server:
+    container_name: {{ technitium_container_name }}
+    hostname: {{ technitium_container_name }}
+    image: {{ technitium_image }}:{{ technitium_version }}
+    restart: unless-stopped
+    env_file:
+      - .env
+{% if technitium_use_host_network | bool %}
+    # DHCPを使う構成。ブロードキャストがNATを越えられないためポート公開は使わない
+    network_mode: host
+{% else %}
+    ports:
+      # DNS(UDPが本体。TCPは応答が大きいときのフォールバックとゾーン転送に使う)
+      - "{{ technitium_dns_port }}:53/udp"
+      - "{{ technitium_dns_port }}:53/tcp"
+      # Webコンソール(HTTP)
+      - "{{ technitium_http_port }}:5380/tcp"
+{% if technitium_enable_https_console | bool %}
+      # Webコンソール(HTTPS)
+      - "{{ technitium_https_port }}:53443/tcp"
+{% endif %}
+{% for extra in technitium_extra_ports %}
+      - "{{ extra.port }}:{{ extra.port }}/{{ extra.proto | default('tcp') }}"
+{% endfor %}
+    # コンテナ内の一時ポートが公開ポートと衝突しないようにする(公式構成のまま)
+    sysctls:
+      - net.ipv4.ip_local_port_range=1024 65535
+{% endif %}
+    volumes:
+      - ./config:/etc/dns
+      - ./logs:/var/log/technitium/dns

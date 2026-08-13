@@ -1,0 +1,12 @@
+# cockpitの初期パスワードはcloud-initで設定するため、このロールでは受け取らない。
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - vm_ssh_user is defined
+      - (vm_ssh_user | default('', true)) | length > 0
+    fail_msg: >-
+      vm_ssh_user が指定されていません。
+      sudo/dockerグループへの追加やcockpitのログインユーザーの既定値に使うため、
+      -e "vm_ssh_user=<ユーザ名>" で指定してください。
+    quiet: true

@@ -1,0 +1,94 @@
+# DNSサーバーは53番(technitium_dns_port)を占有するため、
+# VM側で同じポートを待ち受けているものがあると起動できない。
+# Debianのcloud imageは既定でsystemd-resolvedを使わないため通常は何も起きないが、
+# 利用者が後から入れていた場合に備えてスタブリゾルバ(127.0.0.53:53)を無効化する。
+---
+- name: 動いているサービスの一覧を取得する
+  ansible.builtin.service_facts:
+  become: true
+
+- name: Systemd-resolvedのスタブリゾルバを無効化する
+  when: >-
+    (ansible_facts.services['systemd-resolved.service'].state | default('')) == 'running'
+  block:
+    - name: 設定ディレクトリを作成する
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      become: true
+
+    - name: スタブリゾルバを止める設定を配置する
+      ansible.builtin.copy:
+        dest: /etc/systemd/resolved.conf.d/technitium-dns.conf
+        content: |
+          # Ansible(roles/technitium)が生成。
+          # Technitium DNS Serverが53番を使うため、スタブリゾルバを止める。
+          [Resolve]
+          DNSStubListener=no
+        owner: root
+        group: root
+        mode: "0644"
+      become: true
+      notify: 設定変更に伴いsystemd-resolvedを再起動する
+
+    # スタブリゾルバを止めると127.0.0.53では引けなくなるため、
+    # VM自身の名前解決はsystemd-resolvedが書く実体のresolv.confへ向け直す。
+    - name: 実体のresolv.confがあるか確認する
+      ansible.builtin.stat:
+        path: /run/systemd/resolve/resolv.conf
+      become: true
+      register: technitium_resolved_resolv
+
+    - name: VM自身の参照先を実体のresolv.confへ向ける
+      ansible.builtin.file:
+        src: /run/systemd/resolve/resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+        force: true
+      become: true
+      when: technitium_resolved_resolv.stat.exists
+
+    # 通常のハンドラはplayの最後に動くが、それではコンテナの起動に間に合わないため
+    # ここで実行させる(53番が空くのを待ってからコンテナを起動する必要がある)。
+    - name: 再起動を今すぐ実行する
+      ansible.builtin.meta: flush_handlers
+
+# 既に自分のコンテナが動いている再実行では、53番を握っているのは自分自身なので確認しない
+- name: 自分のコンテナが動いているか確認する
+  ansible.builtin.command:
+    cmd: docker ps --filter name=^{{ technitium_container_name }}$ --format {{ '{{.Names}}' }}
+  become: true
+  changed_when: false
+  register: technitium_running_container
+
+- name: DNSポートの占有状況を確認する
+  when: (technitium_running_container.stdout | trim) | length == 0
+  block:
+    # 例: udp UNCONN 0 0 0.0.0.0:53 0.0.0.0:* users:(("systemd-resolve",pid=1,fd=4))
+    - name: DNSポートを待ち受けているプロセスを調べる
+      ansible.builtin.command:
+        cmd: ss -Hlntupn sport = :{{ technitium_dns_port }}
+      become: true
+      changed_when: false
+      register: technitium_port_users
+
+    - name: Dockerによる待ち受けを除外する
+      ansible.builtin.set_fact:
+        technitium_port_conflicts: >-
+          {{ technitium_port_users.stdout_lines
+             | reject('search', 'docker-proxy|dockerd')
+             | select | list }}
+
+    - name: DNSポートが空いていることを確認する
+      ansible.builtin.assert:
+        that:
+          - technitium_port_conflicts | length == 0
+        fail_msg: >-
+          VMの{{ technitium_dns_port }}番ポート(DNS)が他のプロセスに使われています。
+          停止・無効化してから再実行してください
+          (例: sudo systemctl disable --now dnsmasq)。
+          待ち受けているもの: {{ technitium_port_conflicts | join(' / ') }}
+        quiet: true

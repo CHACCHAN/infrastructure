@@ -1,0 +1,14 @@
+---
+proxmox_image_cache_dir: "/var/lib/vz/import"
+
+# テンプレートのSCSIコントローラとディスクの既定値。
+# クローンしたVMがそのまま引き継ぐため、ここが全VMの出発点になる。
+#
+# SCSIコントローラは virtio-scsi-single(SCSIディスクでIOスレッドを使うのに必要)。
+# IOスレッドとSSDエミュレーションは既定でオン。
+# HDD上に置くVMは、インベントリの vm_hardware.disk_options で ssd: 0 を指定する。
+# discardはYAMLでは on が真偽値になるため、必ず引用符付きで書くこと。
+proxmox_template_build_scsihw: virtio-scsi-single
+proxmox_template_build_iothread: 1
+proxmox_template_build_ssd: 1
+proxmox_template_build_discard: "on"

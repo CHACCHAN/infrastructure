@@ -1,0 +1,76 @@
+# VM内から見た確認。VM外から見えるかどうかは、再起動後にplaybook側で行う。
+---
+- name: PBSのサービスが起動していることを確認する
+  ansible.builtin.command:
+    cmd: systemctl is-active {{ item }}
+  become: true
+  changed_when: false
+  loop:
+    - proxmox-backup.service
+    - proxmox-backup-proxy.service
+
+- name: Web UIのポートが待ち受けるまで待機する
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ pbs_web_port }}"
+    timeout: 180
+    state: started
+
+# 証明書は自己署名のため検証しない(検証はfingerprintの表示で代替する)
+- name: Web UIが応答するまで待機する
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ pbs_web_port }}/"
+    validate_certs: false
+    status_code: [200]
+  register: pbs_web_ui
+  retries: "{{ pbs_ready_retries }}"
+  delay: "{{ pbs_ready_delay }}"
+  until: pbs_web_ui is succeeded
+  changed_when: false
+
+- name: データストアの状態を取得する
+  ansible.builtin.command:
+    cmd: proxmox-backup-manager datastore list --output-format json
+  become: true
+  changed_when: false
+  register: pbs_datastore_verify
+
+- name: データストアが登録されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - pbs_datastore_name in
+        ((pbs_datastore_verify.stdout | from_json) | map(attribute='name') | list)
+    fail_msg: >-
+      データストア {{ pbs_datastore_name }} が見つかりません。
+      構築中のログを確認してください。
+    quiet: true
+
+# PVE側にストレージとして追加するとき、証明書検証にfingerprintが必要になる
+- name: 証明書のfingerprintを取得する
+  ansible.builtin.command:
+    cmd: proxmox-backup-manager cert info
+  become: true
+  changed_when: false
+  register: pbs_cert_info
+
+# データストアが載っているファイルシステムの実際の容量。
+# データ用ディスクを使っていれば、そのディスクの容量がそのまま出る。
+- name: データストアの容量を取得する
+  ansible.builtin.command:
+    cmd: df -h --output=source,size,used,avail {{ pbs_datastore_path }}
+  become: true
+  changed_when: false
+  register: pbs_datastore_df
+
+- name: 構築結果を表示する
+  ansible.builtin.debug:
+    msg:
+      - "Web UI: https://{{ ansible_host | default(inventory_hostname) }}:{{ pbs_web_port }}/"
+      - "ログイン: {{ pbs_admin_user }}@pbs(レルム: Proxmox Backup authentication server)"
+      - "データストア: {{ pbs_datastore_name }}({{ pbs_datastore_path }})"
+      - "容量(デバイス/全体/使用/空き): {{ pbs_datastore_df.stdout_lines | last | trim }}"
+      - "PVEに登録するサーバー:
+         {{ pbs_cluster_ip | default(ansible_host | default(inventory_hostname), true) }}
+         {{ '(Proxmox間の占有回線側)' if ((pbs_cluster_ip | default('', true)) | length > 0) else '' }}"
+      - "証明書 {{ pbs_cert_info.stdout_lines | select('search', 'Fingerprint')
+                   | first | default('Fingerprintの取得に失敗しました') | trim }}"

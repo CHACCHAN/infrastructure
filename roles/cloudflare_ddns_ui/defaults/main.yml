@@ -1,0 +1,52 @@
+# タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
+# 既定値は roles/common・roles/docker の共通タスク側にある。
+#
+# APIトークン・ゾーンID・更新するレコードには既定値を置かない。
+# 何を更新するかはこのplaybookの目的そのもので、既定値を持たせる意味が無いため
+# 必ず -e(または proxmox/ のvault)で指定させる。
+---
+cloudflare_ddns_ui_install_dir: /opt/cloudflare-ddns-ui
+cloudflare_ddns_ui_container_name: cloudflare-ddns-ui
+
+cloudflare_ddns_ui_image: docker.io/martijnf/cloudflare-ddns-ui
+cloudflare_ddns_ui_version: v1.0.2
+
+# --- Web UI(コンテナ内は8080で固定。VM側のポートだけを変えられる) ---
+cloudflare_ddns_ui_http_port: 8080
+# 待ち受けアドレス。⚠ このダッシュボードには認証が無く、レコードの削除まで
+# できてしまうため、外に見せたくない場合は 127.0.0.1 にする
+cloudflare_ddns_ui_http_bind: 0.0.0.0
+
+# --- Cloudflareの認証情報 ---
+# Zone → DNS → Edit 権限のAPIトークン(対象ゾーンのみに絞れる)
+cloudflare_ddns_ui_api_token: ""
+
+# --- 更新するレコード ---
+# 更新するレコード名(FQDN)。リストでもカンマ区切りの文字列でも指定できる。
+# 例: ["auth.example.com", "wg.example.com"] / "auth.example.com,wg.example.com"
+# ⚠ Cloudflare側に既にAレコードがある必要がある(無い場合はWeb UIから作成する)
+cloudflare_ddns_ui_records: []
+
+# ゾーン(登録可能ドメイン)とゾーンIDの対応。1ゾーンならこの2つで指定する
+cloudflare_ddns_ui_zone_domain: ""
+cloudflare_ddns_ui_zone_id: ""
+# 複数ゾーンを扱う場合はこちらに直接書く(上の2つより優先される)。
+# 例: {"example.com": "<ゾーンID>", "example.net": "<ゾーンID>"}
+cloudflare_ddns_ui_zones: {}
+
+# --- 動作設定 ---
+# 公開IPを確認してレコードを更新する間隔(秒)
+cloudflare_ddns_ui_interval: 300
+# ダッシュボードの自動リロード間隔(秒)
+cloudflare_ddns_ui_refresh: 30
+
+# コンテナに渡す環境変数を追加する場合に使う(TZはVMのタイムゾーンから自動設定)。
+# 例: {"LOG_LEVEL": "debug"}
+cloudflare_ddns_ui_extra_env: {}
+
+# Web UIの起動待ち(リトライ回数 / 間隔(秒))
+cloudflare_ddns_ui_ready_retries: 30
+cloudflare_ddns_ui_ready_delay: 5
+# 初回のレコード確認がログに出るまでの待ち
+cloudflare_ddns_ui_check_retries: 12
+cloudflare_ddns_ui_check_delay: 5

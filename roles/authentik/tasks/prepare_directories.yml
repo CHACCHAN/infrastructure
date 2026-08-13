@@ -1,0 +1,25 @@
+# 先に作っておかないと、docker composeがroot所有で作ってしまい
+# コンテナ内のauthentikユーザー(UID 1000)が書き込めない。
+# PostgreSQLのデータは名前付きボリューム(database)なのでここでは作らない。
+---
+- name: Authentikの設置ディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ authentik_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: コンテナへマウントするディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ authentik_install_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ authentik_container_uid }}"
+    group: "{{ authentik_container_gid }}"
+    mode: "0750"
+  become: true
+  loop:
+    - data             # メディア・ブループリント等
+    - certs            # 証明書
+    - custom-templates # メールテンプレート等の差し替え用

@@ -1,0 +1,46 @@
+# 既定: Git がテキストと判定したファイルは、リポジトリ内は LF で保存し、
+# checkout 時も LF のまま展開する (Windows でも CRLF に変換しない)。
+* text=auto eol=lf
+
+# --- Ansible / 設定ファイル -----------------------------------------
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.cfg           text eol=lf
+*.json          text eol=lf
+*.md            text eol=lf
+*.example       text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+
+# --- Jinja2 テンプレート ---------------------------------------------
+# roles/*/templates/ 配下のテンプレートは対象 VM 上に配置される。
+# 特に *.sh.j2 / xsession.j2 はシェルが直接解釈するため CRLF は致命的。
+*.j2            text eol=lf
+
+# --- シェルスクリプト -------------------------------------------------
+*.sh            text eol=lf
+*.bash          text eol=lf
+
+# --- Ansible Vault ----------------------------------------------------
+# 中身は「1 行 = 16 進数の暗号文」。改行コードを変換されたり、
+# 3-way merge で行単位に書き換えられたりすると復号できなくなる。
+# 平文ではないため diff を表示しても意味がない。
+vault/*.yml                      -text -diff -merge
+*.vault                          -text -diff -merge
+
+# --- バイナリ ---------------------------------------------------------
+# 現時点でリポジトリに含まれるバイナリファイルは無いが、
+# 将来追加された際に改行変換されないよう予防的に指定しておく。
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.gz    binary
+*.tgz   binary
+*.xz    binary
+*.zip   binary
+*.iso   binary
+*.img   binary
+*.qcow2 binary

@@ -1,0 +1,29 @@
+# 接続先は -e "proxmox_ip=<ProxmoxホストのIP>" で指定する(ノード名は自動取得)。
+# os_type は roles/proxmox_os_defaults/vars/os_defaults/ 配下のファイル名(拡張子なし)、
+# os_version は対応バージョン(省略時は各OSの default_version)。
+---
+- name: 接続先のProxmoxホストを登録する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/proxmox.yml"
+
+  tasks:
+    - name: Proxmoxというグループでホストを追加
+      ansible.builtin.import_role:
+        name: proxmox_connect
+
+# 画像キャッシュ先などの既定値は proxmox_template_build ロールの defaults が持つ
+- name: Proxmoxテンプレートを構築する
+  hosts: proxmox
+  gather_facts: false
+
+  pre_tasks:
+    - name: OS種別とバージョンを検証してos_defaultsを組み立てる
+      ansible.builtin.import_role:
+        name: proxmox_os_defaults
+
+  roles:
+    - proxmox_template_build

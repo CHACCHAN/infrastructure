@@ -1,0 +1,32 @@
+---
+- name: クラスタ全体のVM一覧を取得する
+  ansible.builtin.import_role:
+    name: proxmox_common
+    tasks_from: get_cluster_vm_info
+
+- name: 指定されたVMIDのうち既に使用されているものを抽出する
+  ansible.builtin.set_fact:
+    proxmox_vm_build_vmid_conflicts: >-
+      {{
+        (proxmox_cluster_vm_info.stdout | from_json)
+        | selectattr('vmid', 'in', proxmox_vm_build_vm_ids | map('int') | list)
+        | list
+      }}
+
+- name: VMID重複時には早期に終了させる
+  ansible.builtin.assert:
+    that:
+      - proxmox_vm_build_vmid_conflicts | length == 0
+    fail_msg: >-
+      以下のVMIDは既にクラスタ内で使用されています:
+      {{ proxmox_vm_build_vmid_conflicts | map(attribute='vmid') | list }}
+      別のVMIDを指定してください。
+    quiet: true
+  when: proxmox_vm_build_vmid_conflicts | length > 0
+
+- name: テンプレートの存在・配置ノードを確認する
+  ansible.builtin.import_role:
+    name: proxmox_common
+    tasks_from: find_vm_on_node
+  vars:
+    proxmox_target_vmid: "{{ template_vmid }}"

@@ -1,0 +1,11 @@
+# 自前コンテナのひな形。使い方は README.md を参照。
+#
+# このディレクトリは platform/apps/kustomization.yaml から
+# 参照されていないので、クラスタには適用されない。
+# コピーして使うこと:  cp -r platform/apps/_example platform/apps/myapp
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - workload.yaml
+  - ingress.yaml

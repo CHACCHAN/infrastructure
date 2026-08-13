@@ -1,0 +1,63 @@
+# アプリの設定は config/config.json ひとつ。APIトークンを含むためroot専用(0600)にする。
+#
+# このファイルはWeb UIから設定を変えたときにアプリ自身も書き換える。
+# Ansibleは「APIトークン・ゾーン・更新するレコード・間隔」を管理し、
+# 画面の開閉状態(ui_state)だけは既存の値を引き継ぐ
+# (Ansibleが持つ意味のない、利用者の画面の好みのため)。
+#
+# テンプレートではなくto_nice_jsonで生成しているのは、書式の壊れたJSONを
+# 作らないようにするため(JSONにはコメントを書けないので生成物に注意書きは入れられない)。
+---
+- name: 既存の設定ファイルの有無を確認する
+  ansible.builtin.stat:
+    path: "{{ cloudflare_ddns_ui_install_dir }}/config/config.json"
+  become: true
+  register: cloudflare_ddns_ui_config_stat
+
+- name: 既存の設定ファイルを読み込む
+  ansible.builtin.slurp:
+    src: "{{ cloudflare_ddns_ui_install_dir }}/config/config.json"
+  become: true
+  register: cloudflare_ddns_ui_config_slurp
+  when: cloudflare_ddns_ui_config_stat.stat.exists
+  no_log: true
+
+# 壊れたJSONが置かれていてもここで止まらないよう、読めないときは既定値に戻す
+- name: 引き継ぐ画面の状態を取り出す
+  ansible.builtin.set_fact:
+    cloudflare_ddns_ui_state: >-
+      {{ (cloudflare_ddns_ui_existing | default({}, true)).ui_state
+         | default({'settings': true, 'all_records': true, 'logs': true}, true) }}
+  vars:
+    cloudflare_ddns_ui_existing: >-
+      {{ (cloudflare_ddns_ui_config_slurp.content | b64decode | from_json)
+         if (cloudflare_ddns_ui_config_stat.stat.exists
+             and ((cloudflare_ddns_ui_config_slurp.content | b64decode | trim) is match('^\s*{')))
+         else {} }}
+  no_log: true
+
+- name: 設定(config.json)を配置する
+  ansible.builtin.copy:
+    content: >-
+      {{ {'api_token': cloudflare_ddns_ui_api_token,
+          'zones': cloudflare_ddns_ui_zones_resolved,
+          'records': cloudflare_ddns_ui_records_resolved,
+          'interval': cloudflare_ddns_ui_interval | int,
+          'refresh': cloudflare_ddns_ui_refresh | int,
+          'ui_state': cloudflare_ddns_ui_state} | to_nice_json }}
+    dest: "{{ cloudflare_ddns_ui_install_dir }}/config/config.json"
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+  no_log: true
+  register: cloudflare_ddns_ui_config_file
+
+- name: 設定の保存先を表示する
+  ansible.builtin.debug:
+    msg: >-
+      更新するレコード({{ cloudflare_ddns_ui_records_resolved | length }}件)を
+      {{ cloudflare_ddns_ui_install_dir }}/config/config.json に配置しました
+      (APIトークンを含むためroot専用)。
+      Web UIで変更した内容のうち、レコード・ゾーン・トークン・間隔は
+      次回の実行でこの内容に戻ります。

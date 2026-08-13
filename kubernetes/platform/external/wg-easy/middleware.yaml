@@ -1,0 +1,17 @@
+# WG-Easy は X-Forwarded-Proto を見て自身の URL を組み立てる。
+# これがないと WebUI が http:// のリンクを生成してしまう。
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: wg-easy-forwarded-https
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: wg-easy
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: https
+      X-Forwarded-Port: "443"
+      X-Forwarded-Host: wgui.cc-chacchan.com

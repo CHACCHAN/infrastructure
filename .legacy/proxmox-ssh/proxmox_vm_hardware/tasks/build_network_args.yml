@@ -1,0 +1,20 @@
+# networkの各項目を --net<index> <プロパティ文字列> に変換する。
+# index以外のキー(model, bridge, firewall, tag, macaddr, mtu, rate等)は
+# qmのnetオプションのキー名をそのまま使用する。
+---
+- name: 各NICを引数に追加する
+  ansible.builtin.set_fact:
+    proxmox_vm_hardware_argv: >-
+      {{
+        proxmox_vm_hardware_argv
+        + ['--net' + (item.index | string),
+           (proxmox_vm_hardware_net_props
+            | dict2items | map(attribute='key')
+            | zip(proxmox_vm_hardware_net_props | dict2items | map(attribute='value') | map('string'))
+            | map('join', '=') | join(','))]
+      }}
+  vars:
+    proxmox_vm_hardware_net_props: "{{ item | dict2items | rejectattr('key', 'in', ['index']) | items2dict }}"
+  loop: "{{ proxmox_vm_hardware_network }}"
+  loop_control:
+    label: "net{{ item.index }}"

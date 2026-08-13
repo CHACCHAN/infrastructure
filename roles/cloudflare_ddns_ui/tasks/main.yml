@@ -1,0 +1,48 @@
+# Docker Composeでcloudflare-ddns-ui(martijnf/cloudflare-ddns-ui)を構築する。Debian専用。
+# 全VM共通の処理は common / docker ロール(roles/common, roles/docker)と共有している。
+#
+# 公開IPが変わったときにCloudflareのAレコードを更新し続ける常駐サービス。
+# ダッシュボード付きで、設定は config/config.json ひとつにまとまっている。
+---
+- name: 対象OSを確認する
+  ansible.builtin.import_role:
+    name: common
+    tasks_from: assert_debian
+
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: VM共通の初期セットアップを実行する
+  ansible.builtin.import_role:
+    name: common
+
+- name: Dockerをインストールする
+  ansible.builtin.import_role:
+    name: docker
+
+- name: Cloudflare-ddns-ui用のディレクトリを準備する
+  ansible.builtin.import_tasks: prepare_directories.yml
+
+- name: 設定(config.json)を配置する
+  ansible.builtin.import_tasks: configure_settings.yml
+
+# config.json は起動時に読み込まれるため、内容が変わったらコンテナを作り直す
+- name: Cloudflare-ddns-uiのコンテナを起動する
+  ansible.builtin.import_tasks: ../../docker/tasks/deploy_compose.yml
+  vars:
+    svc_name: Cloudflare-ddns-ui
+    svc_install_dir: "{{ cloudflare_ddns_ui_install_dir }}"
+    svc_config_changed: "{{ cloudflare_ddns_ui_config_file is changed }}"
+
+# 待ち受けを127.0.0.1に絞っている場合はVMの外に出ないため開けない
+- name: Web UIのポートを開放する
+  ansible.builtin.import_role:
+    name: common
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports: >-
+      {{ [{'port': cloudflare_ddns_ui_http_port, 'proto': 'tcp'}]
+         if (cloudflare_ddns_ui_published | bool) else [] }}
+
+- name: Web UIとレコードの更新結果を確認する
+  ansible.builtin.import_tasks: verify_service.yml

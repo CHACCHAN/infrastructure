@@ -1,0 +1,31 @@
+# 全ロール共通のVM初期セットアップ(パッケージ更新〜QEMUゲストエージェント)を
+# まとめて実行する(commonロールのmain)。各サービスロールのmain.ymlから import_role で呼ぶ。
+# Dockerはロールによって使わないため含めない(必要なロールが個別に入れる)。
+#
+# 順番の意図:
+#   パッケージ更新を最初に行い、以降のインストールが古いキャッシュで失敗しないようにする。
+#   タイムゾーン・ロケール・スワップ・管理者グループはどの順でもよいが、揃えて固定する。
+---
+- name: OS/パッケージを更新する
+  ansible.builtin.import_tasks: update_packages.yml
+
+- name: タイムゾーンを設定する
+  ansible.builtin.import_tasks: configure_timezone.yml
+
+- name: ロケールを設定する
+  ansible.builtin.import_tasks: configure_locale.yml
+
+# svc_configure_swap: false を渡すとzramの設定だけを飛ばせる
+# (kubernetesのようにswap無し前提のロール用)
+- name: スワップ(zram)を設定する
+  ansible.builtin.import_tasks: configure_swap.yml
+  when: svc_configure_swap | default(true) | bool
+
+- name: SSHユーザーを管理者グループに追加する
+  ansible.builtin.import_tasks: configure_admin_group.yml
+
+- name: 基本パッケージをインストールする
+  ansible.builtin.import_tasks: install_base_packages.yml
+
+- name: QEMUゲストエージェントを導入する
+  ansible.builtin.import_tasks: install_qemu_guest_agent.yml

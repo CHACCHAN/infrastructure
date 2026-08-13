@@ -1,0 +1,44 @@
+# git管理外の秘密Secretだけを、ルートとは分離して適用するPlaybook。
+# 差分確認: ansible-playbook playbooks/k8s/apply-vault.yml --check
+# 適用: ansible-playbook playbooks/k8s/apply-vault.yml
+# 秘密情報を通常のルート適用へ混ぜず、明示的な操作でだけ更新する。
+# ⚠ --diff を付けるとSecretの中身が端末・ログに平文表示される。共有環境では使わない。
+# ⚠ 適用前に、ローカルの vault/*.yml が稼働中の値より古くないか必ず確認する
+#    (空や旧値のまま適用すると稼働Secretを潰す)。
+---
+- name: Kubernetesの秘密Secretマニフェストを適用する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # ローカル接続の自動検出先ではなく、Kubernetesライブラリを持つ
+    # Ansible自身のPythonをモジュール実行にも使う。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    # 実行時のカレントディレクトリに依存させず、秘密情報専用の入口を固定する。
+    k8s_vault_dir: "{{ playbook_dir }}/../../kubernetes/vault"
+    k8s_vault_kustomization: "{{ k8s_vault_dir }}/kustomization.yaml"
+
+  tasks:
+    # vault配下はREADME以外がgit管理外なので、lookupの不明瞭な失敗より先に案内する。
+    - name: 秘密Secret用Kustomizationの存在を確認する
+      ansible.builtin.stat:
+        path: "{{ k8s_vault_kustomization }}"
+      register: k8s_vault_kustomization_stat
+
+    - name: 秘密Secret用Kustomizationが無ければ作成方法を案内する
+      ansible.builtin.fail:
+        msg: >-
+          kubernetes/vault/kustomization.yaml がありません。
+          git管理外のためこの作業ツリーには存在しません。
+          kubernetes/vault/README.md を参照して作成してください。
+      when: not k8s_vault_kustomization_stat.stat.exists
+
+    # ルート適用と同じmanager名にし、kubectlとの併用時のフィールド所有権を揃える。
+    - name: 秘密SecretのKustomizeマニフェストをServer-Side Applyする
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        server_side_apply:
+          field_manager: kubectl
+        definition: >-
+          {{ lookup('kubernetes.core.kustomize', dir=k8s_vault_dir) }}

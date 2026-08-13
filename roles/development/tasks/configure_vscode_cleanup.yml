@@ -1,0 +1,38 @@
+# VSCode Remote-SSHは接続のたびに ~/.vscode-server/bin/<コミットハッシュ> を展開するが、
+# 古い版は自動削除されずディスクを圧迫するため、systemd timerで定期的に掃除する。
+# 標準のCockpitのServicesページからそのまま操作できるので追加プラグインは不要。
+---
+- name: VSCode Serverクリーンアップスクリプトを配置する
+  ansible.builtin.template:
+    src: vscode-server-cleanup.sh.j2
+    dest: /usr/local/bin/vscode-server-cleanup.sh
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: VSCode Serverクリーンアップ用のsystemdサービスを配置する
+  ansible.builtin.template:
+    src: vscode-server-cleanup.service.j2
+    dest: /etc/systemd/system/vscode-server-cleanup.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: VSCode Serverクリーンアップ用のsystemdタイマーを配置する
+  ansible.builtin.template:
+    src: vscode-server-cleanup.timer.j2
+    dest: /etc/systemd/system/vscode-server-cleanup.timer
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: VSCode Serverクリーンアップタイマーを有効化・起動する
+  ansible.builtin.systemd:
+    name: vscode-server-cleanup.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true

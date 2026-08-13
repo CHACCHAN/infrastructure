@@ -1,0 +1,46 @@
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - template_vmid is defined
+      - vm_id is defined
+      - vm_name is defined
+      - target_storage is defined
+    fail_msg: >-
+      必須変数が不足しています。
+    quiet: true
+
+# vm_id/vm_nameは単一値(例: vm_id=101)でも、複数VMをまとめて構築するための
+# 配列形式の文字列(例: vm_id=[100,102,103])でも指定できるようにリストへ正規化する
+- name: 指定されたvm_id/vm_nameをリストに正規化する
+  ansible.builtin.set_fact:
+    proxmox_vm_build_vm_ids: >-
+      {{
+        (vm_id | from_yaml)
+        if (vm_id is string and vm_id.strip().startswith('['))
+        else (vm_id if (vm_id is sequence and vm_id is not string) else [vm_id])
+      }}
+    proxmox_vm_build_vm_names: >-
+      {{
+        (vm_name | from_yaml)
+        if (vm_name is string and vm_name.strip().startswith('['))
+        else (vm_name if (vm_name is sequence and vm_name is not string) else [vm_name])
+      }}
+
+- name: 指定されたvm_idとvm_nameの個数が一致していることを検証する
+  ansible.builtin.assert:
+    that:
+      - proxmox_vm_build_vm_ids | length == proxmox_vm_build_vm_names | length
+    fail_msg: >-
+      vm_id と vm_name の個数が一致していません
+      (vm_id: {{ proxmox_vm_build_vm_ids | length }}件, vm_name: {{ proxmox_vm_build_vm_names | length }}件)。
+      複数VMを構築する場合は vm_id と vm_name を同じ数のリストで指定してください。
+    quiet: true
+
+- name: 指定されたvm_idに重複がないことを検証する
+  ansible.builtin.assert:
+    that:
+      - proxmox_vm_build_vm_ids | unique | length == proxmox_vm_build_vm_ids | length
+    fail_msg: >-
+      vm_id に重複があります: {{ proxmox_vm_build_vm_ids }}
+    quiet: true

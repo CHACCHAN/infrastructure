@@ -1,0 +1,24 @@
+# Portainer CE (Kubernetes 管理 WebUI)
+# chart: portainer/portainer (バージョンは helmfile.yaml で固定)
+#
+# 公開経路は releases/apps/portainer/route.yaml (charts/app-route) 側で定義する。
+# 上流チャートの ingress は使わない。
+
+service:
+  type: ClusterIP
+
+persistence:
+  enabled: true
+  storageClass: truenas-nfs
+  size: 10Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+ingress:
+  enabled: false

@@ -1,0 +1,46 @@
+# OS・ノードからProxmoxテンプレートのカタログ項目・VMID・名前を解決する。
+---
+- name: テンプレートの必須入力を確認する
+  ansible.builtin.assert:
+    that:
+      - pve_os is defined and pve_os in ['debian', 'ubuntu', 'rocky', 'almalinux']
+      - pve_os_version is defined
+      - node is defined and node is match('^pve(?:0[1-9]|10)$')
+      - pve_template_vmid is none or pve_template_vmid | string is match('^[1-9][0-9]+$')
+      - pve_template_name is none or pve_template_name | length > 0
+    fail_msg: >-
+      pve_os、pve_os_version、node(pve01〜pve10)を確認してください。
+      pve_template_vmidとpve_template_nameはテスト時だけ明示できます。
+    quiet: true
+
+- name: OSカタログを読み込む
+  ansible.builtin.include_vars:
+    file: "os/{{ pve_os }}.yml"
+
+- name: OSバージョンがカタログに存在することを確認する
+  ansible.builtin.assert:
+    that:
+      - (pve_os_version | string) in pve_template_os_catalog.versions
+    fail_msg: >-
+      {{ pve_os }} {{ pve_os_version }} は未対応です。
+      対応バージョン: {{ pve_template_os_catalog.versions.keys() | list | join(', ') }}
+    quiet: true
+
+- name: 対象のOSカタログ項目を選択する
+  ansible.builtin.set_fact:
+    pve_template_catalog: >-
+      {{ pve_template_os_catalog.versions[pve_os_version | string]
+         | combine({'checksum_algorithm': pve_template_os_catalog.checksum_algorithm}) }}
+
+- name: テンプレートのVMIDと名前を解決する
+  ansible.builtin.set_fact:
+    # VMIDは算術加算ではなく、設計書どおり9 + XX + NNを連結する。
+    pve_template_resolved_vmid: >-
+      {{ (pve_template_vmid
+          if pve_template_vmid is not none
+          else '9' ~ pve_template_catalog.catalog_index ~ node[-2:]) | int }}
+    pve_template_resolved_name: >-
+      {{ pve_template_name
+         if pve_template_name is not none
+         else pve_os ~ (pve_os_version | string | regex_replace('[^0-9A-Za-z]', ''))
+              ~ '-template-' ~ node }}

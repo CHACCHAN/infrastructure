@@ -1,0 +1,41 @@
+# Kubernetesはノードにswapが無い前提で設計されている(kubeletのメモリ管理・
+# Podの追い出し判定がswapを考慮しない)。k3sは --fail-swap-on=false で起動するため
+# swapが有っても動くが、メモリ逼迫時の挙動が読めなくなるため既定で無効化する。
+#
+# 共通タスクの configure_swap.yml(zram)とは排他。kubernetes_disable_swap=false にすると
+# そちらが実行され、このファイルは実行されない。
+---
+- name: サービスの一覧を取得する
+  ansible.builtin.service_facts:
+
+# 他のロールで構築したVMを作り替えた場合など、zram-toolsが残っていることがある
+- name: 動的swap(zramswap)サービスを停止・無効化する
+  ansible.builtin.systemd:
+    name: zramswap
+    enabled: false
+    state: stopped
+  become: true
+  when: "'zramswap.service' in (ansible_facts.services | default({}))"
+
+- name: 有効なswapを確認する
+  ansible.builtin.command:
+    cmd: swapon --noheadings --show=NAME
+  become: true
+  changed_when: false
+  register: kubernetes_swap_active
+
+- name: Swapを無効化する
+  ansible.builtin.command:
+    cmd: swapoff -a
+  become: true
+  when: (kubernetes_swap_active.stdout | trim) | length > 0
+  changed_when: true
+
+# Debianのcloud imageは既定でswap無しだが、あとから追加されていた場合に
+# 再起動でswapが復活しないようにする
+- name: /etc/fstabのswap設定をコメントアウトする
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^(\s*[^#\s]\S*\s+\S+\s+swap\s+.*)$'
+    replace: '# \1  # Ansible(kubernetesロール)が無効化'
+  become: true

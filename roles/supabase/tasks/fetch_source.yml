@@ -1,0 +1,89 @@
+# セルフホスト用の一式(docker-compose.yml・Kongの設定・DBの初期化SQLなど)は
+# supabase/supabase リポジトリの docker/ 配下で配布されている。
+# リポジトリ全体は非常に大きいため、公式ドキュメントと同じくsparse checkoutで
+# docker/ だけを取得する。
+#
+# データ(volumes/db/data など)と .env は上流の .gitignore に入っているため、
+# 取得や更新の操作でデータが消えることはない。
+#
+# gitモジュールを使わずコマンドで実行しているのは、sparse-checkoutに対応していないためで、
+# モジュールだと数百MBのリポジトリを丸ごと取得することになる(noqaはそのため)。
+---
+- name: ソースの取得先ディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ supabase_install_dir }}/supabase"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: 取得済みか確認する
+  ansible.builtin.stat:
+    path: "{{ supabase_install_dir }}/supabase/.git"
+  become: true
+  register: supabase_git_dir
+
+- name: セルフホスト用のソースを取得する(docker/のみ)
+  when: not supabase_git_dir.stat.exists
+  become: true
+  block:
+    - name: リポジトリを初期化する # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: git init -q
+        chdir: "{{ supabase_install_dir }}/supabase"
+      changed_when: true
+
+    - name: 取得元を登録する # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: git remote add origin {{ supabase_repo_url }}
+        chdir: "{{ supabase_install_dir }}/supabase"
+      changed_when: true
+
+    - name: Docker配下だけを取得する設定にする # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: git sparse-checkout set --cone docker
+        chdir: "{{ supabase_install_dir }}/supabase"
+      changed_when: true
+
+# blobを必要な分だけ取るため、リポジトリ全体を落とさずに済む
+- name: 指定されたリビジョンを取得する # noqa: command-instead-of-module
+  ansible.builtin.command:
+    cmd: git fetch --filter=blob:none --depth 1 origin {{ supabase_ref }}
+    chdir: "{{ supabase_install_dir }}/supabase"
+  become: true
+  register: supabase_git_fetch
+  changed_when: "'Total' in (supabase_git_fetch.stderr | default(''))"
+
+- name: 現在のリビジョンを確認する
+  ansible.builtin.command:
+    cmd: git rev-parse HEAD
+    chdir: "{{ supabase_install_dir }}/supabase"
+  become: true
+  changed_when: false
+  failed_when: false
+  register: supabase_git_head
+
+- name: 指定されたリビジョンに切り替える # noqa: command-instead-of-module
+  ansible.builtin.command:
+    cmd: git checkout -q --force FETCH_HEAD
+    chdir: "{{ supabase_install_dir }}/supabase"
+  become: true
+  register: supabase_git_checkout
+  changed_when: true
+  when: (supabase_git_head.stdout | default('')) != supabase_ref
+
+- name: 取得したリビジョンを表示する
+  ansible.builtin.command:
+    cmd: git rev-parse --short HEAD
+    chdir: "{{ supabase_install_dir }}/supabase"
+  become: true
+  changed_when: false
+  register: supabase_git_current
+
+- name: ソースの状態を表示する
+  ansible.builtin.debug:
+    msg: >-
+      公式のセルフホスト構成を {{ supabase_git_current.stdout }} で取得しました
+      ({{ supabase_project_dir }})。
+      イメージのタグはこのリビジョンの docker-compose.yml に固定されています。

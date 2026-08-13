@@ -1,0 +1,79 @@
+# Ansible(roles/authentik)が生成。手動編集は次回実行で上書きされます。
+#
+# 内容は公式の docker-compose.yml(https://goauthentik.io/docker-compose.yml)と同じ構成。
+# 差分はPostgreSQLのイメージをAnsible変数から指定している点だけで、公式の更新と
+# 比較しやすいよう ${...} はそのまま残している(値は同じディレクトリの .env から読まれる)。
+#
+# 2026.x系はRedis不要のためredisサービスは無い。2025.x以前のタグでは起動しない。
+---
+services:
+  postgresql:
+    image: {{ authentik_postgres_image }}
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s
+    volumes:
+      - database:/var/lib/postgresql/data
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${PG_DB:-authentik}
+      POSTGRES_PASSWORD: ${PG_PASS:?database password required}
+      POSTGRES_USER: ${PG_USER:-authentik}
+
+  server:
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-{{ authentik_version }}}
+    restart: unless-stopped
+    command: server
+    shm_size: 512mb
+    env_file:
+      - .env
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__NAME: ${PG_DB:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
+      AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?secret key required}
+    volumes:
+      - ./data:/data
+      - ./custom-templates:/templates
+    ports:
+      - ${COMPOSE_PORT_HTTP:-9000}:9000
+      - ${COMPOSE_PORT_HTTPS:-9443}:9443
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+  worker:
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-{{ authentik_version }}}
+    restart: unless-stopped
+    command: worker
+    shm_size: 512mb
+    # 証明書生成やコンテナ連携のためroot・dockerソケットが必要(公式構成のまま)
+    user: root
+    env_file:
+      - .env
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__NAME: ${PG_DB:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
+      AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?secret key required}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/data
+      - ./certs:/certs
+      - ./custom-templates:/templates
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+volumes:
+  database:
+    driver: local

@@ -1,0 +1,42 @@
+# Portainer の公開経路。
+#
+# Deployment / Service / PVC は上流チャート由来。同じディレクトリの values.yaml を
+# 使って helm template -> kubectl apply で入れる (手順は README.md)。
+# ここには Ingress だけを置く。上流チャートの ingress は
+# values.yaml で enabled: false にしてある。
+#
+# 経路の書き方 (TLS、エントリポイント、Middleware) を 1 箇所に揃えるため、
+# 上流チャートの ingress 設定は使わない方針にしている。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portainer
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: portainer
+    app.kubernetes.io/component: route
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    # HTTPS 専用で公開する。平文 HTTP (:80) では 404 になる。
+    traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - "portainer.cc-chacchan.com"
+      # platform/certificates/ の Certificate が作るワイルドカード証明書
+      secretName: cc-chacchan-wildcard-tls
+  rules:
+    - host: "portainer.cc-chacchan.com"
+      http:
+        paths:
+          - path: "/"
+            pathType: Prefix
+            backend:
+              service:
+                # 上流チャートが作る Service。名前もポート名も上流の都合で決まる。
+                name: portainer
+                port:
+                  # 番号 (9000) ではなく名前で指定しておくと、
+                  # 上流チャートがポート番号を変えても壊れない。
+                  name: http

@@ -1,0 +1,76 @@
+# VMIDを直接指定し、停止中のProxmox VMまたはテンプレートを削除するPlaybook。
+# 実行例: ansible-playbook playbooks/pve/destroy.yml -e vmid=991 -e confirm=991
+---
+- name: Proxmox VMを安全に削除する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: localでproxmoxerを利用できるコントローラ側Pythonへ固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_files:
+    # localhostはinventoryのall配下ではないため、クラスタ共通値を明示的に読む。
+    - "{{ playbook_dir }}/../../inventory/group_vars/all/pve.yml"
+    - "{{ playbook_dir }}/../../vault/proxmox_api.yml"
+  module_defaults:
+    group/community.proxmox.proxmox:
+      api_host: "{{ vault_proxmox_api_host }}"
+      api_user: "{{ vault_proxmox_api_user }}"
+      api_token_id: "{{ vault_proxmox_api_token_id }}"
+      api_token_secret: "{{ vault_proxmox_api_token_secret }}"
+      validate_certs: false
+
+  tasks:
+    # VMIDの再入力を必須にし、誤った対象を削除する操作を早期に拒否する。
+    - name: 削除対象と確認用VMIDを検証する
+      ansible.builtin.assert:
+        that:
+          - vmid is defined
+          - (vmid | default('') | string | length) > 0
+          - confirm is defined
+          - (confirm | default('') | string) == (vmid | default('') | string)
+        fail_msg: >-
+          vmid が未指定、または confirm が vmid と一致しません。
+          誤削除防止のため -e confirm=<vmid> を指定してください。
+        quiet: true
+
+    - name: VMIDで削除対象を検索する
+      community.proxmox.proxmox_vm_info:
+        vmid: "{{ vmid }}"
+        type: qemu
+      register: pve_destroy_vm_info
+
+    - name: 削除対象が存在することを確認する
+      ansible.builtin.fail:
+        msg: >-
+          VMID {{ vmid }} のVMまたはテンプレートが見つかりません。
+          VMIDの打ち間違いがないか確認してください。
+      when: pve_destroy_vm_info.proxmox_vms | length == 0
+
+    - name: 削除対象の情報を保持する
+      ansible.builtin.set_fact:
+        pve_destroy_target: "{{ pve_destroy_vm_info.proxmox_vms | first }}"
+
+    # templateフラグでは拒否せず、旧実装どおり停止状態だけを削除可能にする。
+    - name: 削除対象が停止中であることを確認する
+      ansible.builtin.assert:
+        that:
+          - pve_destroy_target.status == 'stopped'
+        fail_msg: >-
+          VMID {{ vmid }} ({{ pve_destroy_target.name }}) は現在
+          {{ pve_destroy_target.status }} 状態です。
+          削除は停止中のみ行えます。先に playbooks/pve/power.yml で停止してください。
+        quiet: true
+
+    - name: 停止中のVMまたはテンプレートを削除する
+      community.proxmox.proxmox_kvm:
+        vmid: "{{ vmid }}"
+        node: "{{ pve_destroy_target.node }}"
+        state: absent
+        purge: "{{ purge | default(false) | bool }}"
+        timeout: "{{ pve_destroy_timeout | default(300) | int }}"
+
+    - name: 削除完了を表示する
+      ansible.builtin.debug:
+        msg: >-
+          VMID {{ vmid }} ({{ pve_destroy_target.name }}) の削除が完了しました。

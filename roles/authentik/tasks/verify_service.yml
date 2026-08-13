@@ -1,0 +1,26 @@
+# 初回はイメージ取得とDBマイグレーションのため数分かかる(既定で最大10分待つ)。
+# VM外から見えるかどうかの確認は、再起動後にplaybook側で行う。
+---
+- name: WebUIのポートが待ち受けるまで待機する
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ authentik_http_port }}"
+    timeout: 300
+    state: started
+
+- name: WebUIが準備完了になるまで待機する
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ authentik_http_port }}/-/health/ready/"
+    status_code: [200, 204]
+  register: authentik_health
+  retries: "{{ authentik_ready_retries }}"
+  delay: "{{ authentik_ready_delay }}"
+  until: authentik_health is succeeded
+  changed_when: false
+
+- name: 初期セットアップの案内を表示する
+  ansible.builtin.debug:
+    msg:
+      - "初期セットアップ: http://{{ ansible_host | default(inventory_hostname) }}:{{ authentik_http_port }}/if/flow/initial-setup/"
+      - "ログイン画面: http://{{ ansible_host | default(inventory_hostname) }}:{{ authentik_http_port }}/"
+      - "HTTPS: https://{{ ansible_host | default(inventory_hostname) }}:{{ authentik_https_port }}/ (自己署名証明書のため警告が出ます)"

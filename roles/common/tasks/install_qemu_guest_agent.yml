@@ -1,0 +1,36 @@
+# ProxmoxからのIP表示・正常なシャットダウン・整合性のあるスナップショットに必要。
+# ホスト側の `qm set <vmid> --agent enabled=1` は playbooks/proxmox/ 側の管轄。
+---
+- name: QEMUゲストエージェントをインストールする
+  ansible.builtin.apt:
+    name: qemu-guest-agent
+    state: present
+  become: true
+
+- name: QEMUゲストエージェントを有効化する
+  ansible.builtin.systemd:
+    name: qemu-guest-agent.service
+    enabled: true
+  become: true
+
+# サービスはvirtio-serialポートにBindsTo=で束縛されており、ホスト側が未設定だと
+# 起動できない。構成全体を失敗させないよう、ポートがある場合のみ起動する。
+- name: QEMUゲストエージェント用のvirtio-serialポートの有無を確認する
+  ansible.builtin.stat:
+    path: /dev/virtio-ports/org.qemu.guest_agent.0
+  register: vm_qga_port
+
+- name: QEMUゲストエージェントを起動する
+  ansible.builtin.systemd:
+    name: qemu-guest-agent.service
+    state: started
+  become: true
+  when: vm_qga_port.stat.exists
+
+- name: ホスト側のQEMUゲストエージェント設定が必要な旨を表示する
+  ansible.builtin.debug:
+    msg: >-
+      /dev/virtio-ports/org.qemu.guest_agent.0 がありません。自動起動は設定済みです。
+      動作させるにはホスト側で `qm set <vmid> --agent enabled=1` を設定し、
+      VMを起動し直してください(playbooks/proxmox/ 側の管轄)。
+  when: not vm_qga_port.stat.exists

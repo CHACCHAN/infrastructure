@@ -1,0 +1,20 @@
+# Proxmox VMの電源状態をstartedまたはstoppedへ冪等に収束させる。
+---
+- name: VMの電源状態を確認する
+  ansible.builtin.assert:
+    that:
+      - pve_vm_power in ['started', 'stopped']
+    fail_msg: >-
+      pve_vm_power は started または stopped を指定してください。
+
+# 停止には猶予時間と強制停止方針が必要だが、起動時はモジュール既定値を使う。
+- name: VMの電源状態を収束させる
+  community.proxmox.proxmox_kvm:
+    vmid: "{{ vmid }}"
+    state: "{{ pve_vm_power }}"
+    timeout: >-
+      {{ (pve_vm_power == 'stopped')
+         | ternary(pve_power_timeout | default(300), omit) }}
+    force: >-
+      {{ (pve_vm_power == 'stopped')
+         | ternary(pve_power_force | default(false) | bool, omit) }}

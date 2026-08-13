@@ -1,0 +1,64 @@
+# 配布元チェックサムを検証し、対象PVEノードのimport領域へCloud imageを置く。
+---
+- name: チェックサムファイルをlocalhostで取得する
+  ansible.builtin.uri:
+    url: "{{ pve_template_catalog.checksum_url }}"
+    return_content: true
+    timeout: 30
+  register: pve_template_checksum_file
+  retries: 3
+  delay: 5
+  until: pve_template_checksum_file is succeeded
+
+- name: チェックサム抽出に必要な値を設定する
+  ansible.builtin.set_fact:
+    pve_template_checksum_hex_len: >-
+      {{ {'sha256': 64, 'sha512': 128}[pve_template_catalog.checksum_algorithm] }}
+    pve_template_checksum_raw: "{{ pve_template_checksum_file.content | trim }}"
+
+# GNU形式・BSD形式・ハッシュ単体の全てに対応し、似た別ファイル名を除外する。
+- name: 対象イメージのチェックサム行を抽出する
+  ansible.builtin.set_fact:
+    pve_template_checksum_line: >-
+      {{
+        (pve_template_checksum_raw
+         | regex_findall('^.*' + (pve_template_catalog.image_filename | regex_escape)
+                         + '(?:[)\s]|$).*$', multiline=True))
+        | select('search', '[a-fA-F0-9]{' + (pve_template_checksum_hex_len | string) + '}')
+        | list | first | default('', true)
+      }}
+
+- name: 対象イメージのチェックサムを抽出する
+  ansible.builtin.set_fact:
+    pve_template_expected_checksum: >-
+      {{
+        (pve_template_checksum_raw | lower)
+        if (pve_template_checksum_raw | length == pve_template_checksum_hex_len | int)
+        else ((pve_template_checksum_line
+          | regex_search('[a-fA-F0-9]{' + (pve_template_checksum_hex_len | string) + '}'))
+          | default('', true) | lower)
+      }}
+
+- name: チェックサムを抽出できたことを確認する
+  ansible.builtin.assert:
+    that:
+      - pve_template_expected_checksum is not none
+      - pve_template_expected_checksum | length == pve_template_checksum_hex_len | int
+    fail_msg: >-
+      {{ pve_template_catalog.checksum_url }} 内に
+      {{ pve_template_catalog.image_filename }} のチェックサムが見つかりませんでした。
+      配布元のフォーマット変更を確認してください。
+    quiet: true
+
+- name: Cloud imageを対象ノードのimport領域へ収束させる
+  community.proxmox.proxmox_template:
+    node: "{{ node }}"
+    storage: "{{ pve_template_image_storage }}"
+    content_type: import
+    template: "{{ pve_template_catalog.image_filename }}"
+    url: "{{ pve_template_catalog.image_url }}"
+    checksum: "{{ pve_template_expected_checksum }}"
+    checksum_algorithm: "{{ pve_template_catalog.checksum_algorithm }}"
+    force: false
+    state: present
+    timeout: "{{ pve_template_download_timeout }}"

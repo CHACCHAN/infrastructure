@@ -1,0 +1,86 @@
+# 既存Proxmox VMのCPU・メモリ・オプション・NICを宣言値へ収束させる。
+---
+- name: VMの現在設定を取得する
+  community.proxmox.proxmox_vm_info:
+    vmid: "{{ vmid }}"
+    config: current
+  register: pve_config_info
+
+- name: VMの基本設定とNIC設定を比較用に組み立てる
+  ansible.builtin.set_fact:
+    pve_current_config: "{{ (pve_config_info.proxmox_vms | first).config }}"
+    pve_vm_net: {}
+    pve_vm_current_net: {}
+    pve_vm_config_desired:
+      name: "{{ pve_vm_name }}"
+      cores: "{{ pve_vm_cores | int }}"
+      memory: "{{ pve_vm_memory | int }}"
+      onboot: "{{ pve_vm_onboot | bool }}"
+      agent: "{{ pve_vm_agent | string }}"
+      bios: "{{ pve_vm_bios }}"
+      machine: "{{ pve_vm_machine }}"
+      vga: "{{ pve_vm_vga }}"
+      cpu: "{{ pve_vm_cpu_type }}"
+
+- name: NIC設定をnet番号の辞書へ変換する
+  ansible.builtin.set_fact:
+    # 既存NICのMACを宣言文字列へ引き継ぐ(設計書§4.2: 更新時のMAC再生成事故の防止)。
+    # 新規NIC(現在値なし)はMACなしで宣言し、PVEに採番させる。
+    pve_vm_net: >-
+      {{ pve_vm_net | combine({
+        'net' ~ pve_net_index:
+          (item.model | default('virtio'))
+          ~ ((pve_net_mac | length > 0) | ternary('=' ~ pve_net_mac, ''))
+          ~ ',bridge=' ~ item.bridge
+      }) }}
+    pve_vm_current_net: >-
+      {{ pve_vm_current_net | combine({
+        'net' ~ pve_net_index:
+          pve_current_config['net' ~ pve_net_index] | default('')
+      }) }}
+  vars:
+    pve_net_mac: >-
+      {{ pve_current_config['net' ~ pve_net_index] | default('')
+         | regex_search('(?i)[0-9A-F]{2}(?::[0-9A-F]{2}){5}')
+         | default('', true) }}
+  loop: "{{ pve_vm_nets }}"
+  loop_control:
+    index_var: pve_net_index
+    label: "net{{ pve_net_index }}"
+
+- name: VMの基本設定を収束させる
+  community.proxmox.proxmox_kvm:
+    vmid: "{{ vmid }}"
+    node: "{{ node }}"
+    name: "{{ pve_vm_name }}"
+    cores: "{{ pve_vm_cores }}"
+    memory: "{{ pve_vm_memory }}"
+    onboot: "{{ pve_vm_onboot | bool }}"
+    agent: "{{ pve_vm_agent }}"
+    bios: "{{ pve_vm_bios }}"
+    machine: "{{ pve_vm_machine }}"
+    vga: "{{ pve_vm_vga }}"
+    cpu: "{{ pve_vm_cpu_type }}"
+    update: true
+  when: >-
+    pve_vm_config_desired != {
+      'name': pve_current_config.name | default(''),
+      'cores': pve_current_config.cores | default(0) | int,
+      'memory': pve_current_config.memory | default(0) | int,
+      'onboot': pve_current_config.onboot | default(false) | bool,
+      'agent': (pve_current_config.agent | default('0') | string).split(',') | first,
+      'bios': pve_current_config.bios | default(''),
+      'machine': pve_current_config.machine | default(''),
+      'vga': pve_current_config.vga | default(''),
+      'cpu': pve_current_config.cpu | default('')
+    }
+
+- name: VMのNIC設定を収束させる
+  community.proxmox.proxmox_kvm:
+    vmid: "{{ vmid }}"
+    node: "{{ node }}"
+    net: "{{ pve_vm_net }}"
+    update: true
+    # proxmox_kvmは安全策としてnet更新を既定で無視するため、差分確認後だけ解除する。
+    update_unsafe: true
+  when: pve_vm_net != pve_vm_current_net

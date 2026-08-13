@@ -1,0 +1,10 @@
+# 構成完了後のVM再起動。各playbookのpost_tasksから import_role(tasks_from: reboot_vm)で呼ぶ。
+# dockerグループへの追加とカーネル更新の反映に再起動が必要。
+# restart: unless-stopped のコンテナは再起動後に自動復帰する。
+---
+- name: 構成を反映するためVMを再起動する
+  ansible.builtin.reboot:
+    msg: Ansibleによる構成変更を反映するため再起動します
+    reboot_timeout: 600
+  become: true
+  when: vm_reboot_after_setup | default(true) | bool

@@ -1,0 +1,20 @@
+# proxmox-backup-server パッケージを導入する。
+# 依存パッケージが多く初回は数分かかる。サービスはインストール時に自動起動する。
+---
+- name: Proxmox Backup Serverをインストールする
+  ansible.builtin.apt:
+    name: proxmox-backup-server
+    state: present
+  become: true
+
+# apt起動に任せず、再起動後も確実に上がるよう明示しておく。
+# proxmox-backup-proxy がWeb UI/API(8007)、proxmox-backup が実処理を担当する
+- name: PBSのサービスを有効化して起動する
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  become: true
+  loop:
+    - proxmox-backup.service
+    - proxmox-backup-proxy.service

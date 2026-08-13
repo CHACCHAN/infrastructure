@@ -1,0 +1,135 @@
+# 自前コンテナ (GHCR 等) を k3s 上で動かすときのひな形。
+#
+# 上流チャートがあるアプリはこれを使わない。同じディレクトリに values.yaml と
+# README.md を置き、本体は helm template で入れる (platform/apps/portainer/ が実例)。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: workload
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  replicas: 1
+  # persistence を使う場合、accessModes が ReadWriteOnce だと
+  # 新旧 Pod が同時に PVC をマウントできず、ローリング更新がデッドロックする。
+  # そのため Recreate にしている。
+  # truenas-nfs は NFS なので ReadWriteMany も使える。複数レプリカで
+  # 共有したい場合は PVC 側を RWX にして、ここを RollingUpdate に戻す。
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      # selector は作成後に変更できない。ここは最小限に固定する。
+      app.kubernetes.io/name: myapp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: myapp
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        # アプリが root を必要としないなら有効にする
+        # runAsNonRoot: true
+        # runAsUser: 1000
+        # fsGroup: 1000
+      containers:
+        - name: myapp
+          # latest は使わない。再起動のたびに中身が変わって再現性がなくなる。
+          # 完全に固定したい場合は tag ではなく digest を使う:
+          #   image: ghcr.io/chacchan/myapp@sha256:...
+          image: ghcr.io/chacchan/myapp:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+          # 秘密情報はここにもマニフェストにも書かない。先に Secret を作る:
+          #   kubectl -n platform create secret generic myapp-secrets \
+          #     --from-literal=DB_PASSWORD='...'
+          # envFrom:
+          #   - secretRef:
+          #       name: myapp-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            # アプリが / に書かないなら有効にする
+            # readOnlyRootFilesystem: true
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: myapp
+      # GHCR のプライベートイメージでも、k3s ノードの
+      # /etc/rancher/k3s/registries.yaml に認証情報があるため通常は不要。
+      # imagePullSecrets:
+      #   - name: ghcr
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: workload
+    app.kubernetes.io/managed-by: kustomize
+  # バックエンドが自己署名 HTTPS の場合はここに書く (Ingress 側ではない)
+  # annotations:
+  #   traefik.ingress.kubernetes.io/service.serversscheme: https
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: myapp
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: http
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myapp
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: workload
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # TrueNAS の NFS 共有。既定クラス (local-path) はノードローカルなので使わない。
+  storageClassName: truenas-nfs
+  resources:
+    requests:
+      storage: 5Gi

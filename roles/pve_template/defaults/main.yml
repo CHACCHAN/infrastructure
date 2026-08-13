@@ -1,0 +1,16 @@
+# Proxmoxテンプレート収束で利用する変数の既定値一覧。
+---
+# VMディスクとイメージ置き場は別ストレージとして扱えるようにする。
+pve_template_storage: "{{ pve_storage }}"
+pve_template_image_storage: local
+pve_template_download_timeout: 300
+pve_template_disk_import_timeout: 600
+
+# 単体テストでは明示値を渡せる。nullならOS・ノードから規則どおり算出する。
+pve_template_vmid: null
+pve_template_name: null
+
+# pve_vmロールと同じディスク既定値を使い、テンプレートからのクローン後も揃える。
+pve_vm_disk_ssd: 1
+pve_vm_disk_iothread: 1
+pve_vm_disk_discard: "on"

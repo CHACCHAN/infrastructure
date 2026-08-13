@@ -1,0 +1,56 @@
+# 起動済みのDebian VMにSSH接続し、Docker ComposeでTechnitium DNS Serverを構築します。
+# VM内部の設定のみを行い、Proxmoxホスト側の操作は一切行いません。
+---
+- name: 接続先のVMホストを登録する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: 対象VMをインベントリに登録して疎通を確認する
+      ansible.builtin.import_role:
+        name: vm_connect
+
+- name: DNSサーバー専用VMを構築する
+  hosts: vms
+  gather_facts: true
+
+  roles:
+    - technitium
+
+  # dockerグループへの追加とカーネル更新の反映に再起動が必要。
+  # 再起動後はrestart: unless-stoppedでコンテナが復帰するので、
+  # 最後に「実行元の端末から」DNSとWebコンソールが見えることまで確認する。
+  post_tasks:
+    - name: 構成を反映するためVMを再起動する
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: reboot_vm
+
+    - name: 実行元の端末からDNSポートに接続できることを確認する
+      ansible.builtin.wait_for:
+        host: "{{ vm_ip }}"
+        port: "{{ technitium_dns_port | default(53) }}"
+        timeout: 300
+        state: started
+      delegate_to: localhost
+      become: false
+
+    - name: 実行元の端末からWebコンソールに接続できることを確認する
+      ansible.builtin.uri:
+        url: "http://{{ vm_ip }}:{{ technitium_http_port | default(5380) }}/"
+        status_code: [200]
+      delegate_to: localhost
+      become: false
+      register: technitium_remote_console
+      retries: 30
+      delay: 10
+      until: technitium_remote_console is succeeded
+      changed_when: false
+
+    - name: 接続先を表示する
+      ansible.builtin.debug:
+        msg:
+          - "Webコンソール: http://{{ vm_ip }}:{{ technitium_http_port | default(5380) }}/"
+          - "ログイン: admin(パスワードは {{ technitium_install_dir | default('/opt/technitium-dns') }}/.env)"
+          - "DNSサーバー: {{ vm_ip }}(クライアントやルーターのDNS設定にこのIPを指定します)"

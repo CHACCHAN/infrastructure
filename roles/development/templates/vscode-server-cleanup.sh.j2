@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Ansible管理: roles/development/templates/vscode-server-cleanup.sh.j2
+set -euo pipefail
+
+TARGET_DIR="/home/{{ vm_ssh_user }}/.vscode-server"
+RETENTION_DAYS="{{ development_vscode_cleanup_retention_days }}"
+BIN_DIR="${TARGET_DIR}/bin"
+
+if [ ! -d "$BIN_DIR" ]; then
+  echo "no ${BIN_DIR}, nothing to clean"
+  exit 0
+fi
+
+find "$BIN_DIR" -mindepth 1 -maxdepth 1 -type d -mtime "+${RETENTION_DAYS}" -print -exec rm -rf {} \;

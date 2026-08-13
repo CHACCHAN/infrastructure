@@ -1,0 +1,61 @@
+# コントロールプレーンは自分自身で、ワーカーは参加先のコントロールプレーン側から
+# ノードの状態を確認する(ワーカーにはkubeconfigが無いため)。
+---
+- name: K3sサービスが動いていることを確認する
+  ansible.builtin.systemd:
+    name: "{{ kubernetes_service_name }}"
+  become: true
+  register: kubernetes_service_state
+  failed_when: kubernetes_service_state.status.ActiveState != 'active'
+
+- name: APIサーバーが応答するまで待機する
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ kubernetes_server_port }}"
+    timeout: 300
+    state: started
+  when: kubernetes_role_resolved == 'server'
+
+- name: ノードがReadyになるまで待機する
+  block:
+    # jsonpath内のダブルクォートはcmdで書くとshlexに剥がされてしまうため、
+    # 分割されないargv形式で渡す。
+    - name: ノードの状態を問い合わせる
+      ansible.builtin.command:
+        argv:
+          - k3s
+          - kubectl
+          - get
+          - node
+          - "{{ kubernetes_node_name_resolved }}"
+          - '-o'
+          - 'jsonpath={.status.conditions[?(@.type=="Ready")].status}'
+      become: true
+      delegate_to: "{{ kubernetes_check_host }}"
+      register: kubernetes_node_ready
+      retries: "{{ kubernetes_ready_retries }}"
+      delay: "{{ kubernetes_ready_delay }}"
+      until: (kubernetes_node_ready.stdout | default('') | trim) == 'True'
+      changed_when: false
+
+  rescue:
+    - name: Readyにならなかったことを通知する
+      ansible.builtin.fail:
+        msg: >-
+          ノード {{ kubernetes_node_name_resolved }} が
+          {{ (kubernetes_ready_retries | int) * (kubernetes_ready_delay | int) }}秒待ってもReadyになりませんでした。
+          `sudo journalctl -u {{ kubernetes_service_name }} -n 50` でログを確認してください
+          {{ '(ワーカーは参加先 ' ~ kubernetes_server_ip ~ ' 側で `sudo k3s kubectl get nodes` も確認してください)'
+             if kubernetes_role_resolved == 'agent' else '' }}。
+
+- name: クラスタのノード一覧を取得する
+  ansible.builtin.command:
+    cmd: k3s kubectl get nodes -o wide
+  become: true
+  delegate_to: "{{ kubernetes_check_host }}"
+  register: kubernetes_node_list
+  changed_when: false
+
+- name: クラスタのノード一覧を表示する
+  ansible.builtin.debug:
+    msg: "{{ kubernetes_node_list.stdout_lines }}"

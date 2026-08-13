@@ -1,0 +1,35 @@
+# 対応バージョンはLTSのみ(26.04 / 24.04 / 22.04)。
+# versions配下のキーを os_version で1つに解決し、トップレベルの共通キーとマージして
+# os_defaults にセットする(tasks/load_os_defaults.yml)。ここに無いバージョンはエラー。
+---
+os_defaults_ubuntu:
+  os_type: ubuntu
+  package_manager: apt
+  cloud_image_checksum_algorithm: sha256
+
+  # os_version省略時に構築するバージョン
+  default_version: "26.04"
+
+  # cloud imageの "current" は各シリーズの最新ポイントリリースを指す(ファイル名は変わらない)。
+  # template_vmidはクラスタ内で一意である必要があるため、バージョンごとに別の値を割り当てている。
+  versions:
+    "26.04":  # Resolute Raccoon
+      cloud_image_url: "https://cloud-images.ubuntu.com/resolute/current/resolute-server-cloudimg-amd64.img"
+      cloud_image_checksum_url: "https://cloud-images.ubuntu.com/resolute/current/SHA256SUMS"
+      cloud_image_filename: "resolute-server-cloudimg-amd64.img"
+      template_vmid: 9001
+      template_name: "ubuntu2604-template"
+
+    "24.04":  # Noble Numbat
+      cloud_image_url: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+      cloud_image_checksum_url: "https://cloud-images.ubuntu.com/noble/current/SHA256SUMS"
+      cloud_image_filename: "noble-server-cloudimg-amd64.img"
+      template_vmid: 9003
+      template_name: "ubuntu2404-template"
+
+    "22.04":  # Jammy Jellyfish
+      cloud_image_url: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+      cloud_image_checksum_url: "https://cloud-images.ubuntu.com/jammy/current/SHA256SUMS"
+      cloud_image_filename: "jammy-server-cloudimg-amd64.img"
+      template_vmid: 9004
+      template_name: "ubuntu2204-template"

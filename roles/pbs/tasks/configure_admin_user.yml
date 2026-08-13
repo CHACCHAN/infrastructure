@@ -1,0 +1,124 @@
+# Web UIにログインするAdmin権限のユーザー(<pbs_admin_user>@pbs)を作成する。
+# cloud-init構築のVMはrootパスワードが無く、root@pamではWeb UIに入れないため。
+#
+# パスワードは「-e の指定 > 既存(変更しない) > 自動生成」の順で決める。
+# 自動生成した値は /root/.pbs_admin_password に保存する(root専用・0600)。
+# -e で指定した場合は既存ユーザーでもその値に更新される(supabase等と同じ方針)。
+#
+# 秘密情報を扱うタスクはno_logで出力を抑止している(失敗しても詳細は出ない)。
+---
+- name: 既存のユーザー一覧を取得する
+  ansible.builtin.command:
+    cmd: proxmox-backup-manager user list --output-format json
+  become: true
+  changed_when: false
+  register: pbs_user_list
+
+- name: 管理者ユーザーの有無を判定する
+  ansible.builtin.set_fact:
+    pbs_admin_userid: "{{ pbs_admin_user }}@pbs"
+    pbs_admin_password_given: "{{ (pbs_admin_password | default('', true)) | length > 0 }}"
+
+- name: 管理者ユーザーの存在を確認する
+  ansible.builtin.set_fact:
+    pbs_admin_exists: >-
+      {{ pbs_admin_userid in
+         ((pbs_user_list.stdout | from_json) | map(attribute='userid') | list) }}
+
+- name: 使用する管理者パスワードを決定する
+  ansible.builtin.set_fact:
+    pbs_admin_password_resolved: >-
+      {{ pbs_admin_password
+         | default(lookup('ansible.builtin.password', '/dev/null',
+                          length=32, chars=['ascii_letters', 'digits']), true) }}
+  no_log: true
+  when: pbs_admin_password_given or not pbs_admin_exists
+
+- name: 管理者ユーザーを作成する
+  ansible.builtin.command:
+    argv:
+      - proxmox-backup-manager
+      - user
+      - create
+      - "{{ pbs_admin_userid }}"
+      - --password
+      - "{{ pbs_admin_password_resolved }}"
+  become: true
+  no_log: true
+  register: pbs_user_create
+  changed_when: pbs_user_create.rc == 0
+  when: not pbs_admin_exists
+
+- name: 手動指定されたパスワードを既存ユーザーに反映する
+  ansible.builtin.command:
+    argv:
+      - proxmox-backup-manager
+      - user
+      - update
+      - "{{ pbs_admin_userid }}"
+      - --password
+      - "{{ pbs_admin_password_resolved }}"
+  become: true
+  no_log: true
+  register: pbs_user_update
+  changed_when: pbs_user_update.rc == 0
+  when:
+    - pbs_admin_exists
+    - pbs_admin_password_given
+
+# 自動生成したパスワードの控え。-e指定時も同じ場所に残して参照先を一本化する
+- name: 管理者パスワードをroot専用ファイルに保存する
+  ansible.builtin.copy:
+    content: "{{ pbs_admin_password_resolved }}\n"
+    dest: /root/.pbs_admin_password
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+  no_log: true
+  when: pbs_admin_password_given or not pbs_admin_exists
+
+- name: 既存のACLを取得する
+  ansible.builtin.command:
+    cmd: proxmox-backup-manager acl list --output-format json
+  become: true
+  changed_when: false
+  register: pbs_acl_list
+
+# フィールド構成が想定と違っても、判定がfalseになって再設定されるだけ
+# (同じ内容のacl updateは何度実行しても結果は同じ)
+- name: Admin権限の有無を判定する
+  ansible.builtin.set_fact:
+    pbs_admin_acl_present: >-
+      {{ (pbs_acl_list.stdout | from_json)
+         | selectattr('ugid', 'defined')
+         | selectattr('ugid', 'equalto', pbs_admin_userid)
+         | selectattr('roleid', 'equalto', 'Admin')
+         | list | length > 0 }}
+
+- name: 管理者ユーザーにAdmin権限を付与する
+  ansible.builtin.command:
+    argv:
+      - proxmox-backup-manager
+      - acl
+      - update
+      - /
+      - Admin
+      - --auth-id
+      - "{{ pbs_admin_userid }}"
+  become: true
+  register: pbs_acl_update
+  changed_when: pbs_acl_update.rc == 0
+  when: not pbs_admin_acl_present
+
+- name: 管理者パスワードの保存先を表示する
+  ansible.builtin.debug:
+    msg: >-
+      Web UIのログインは {{ pbs_admin_userid }}(レルム:
+      Proxmox Backup authentication server)です。パスワードは
+      {{ 'いま指定した値です'
+         if pbs_admin_password_given
+         else 'VM内の /root/.pbs_admin_password にあります
+               (sudo cat /root/.pbs_admin_password)' }}。
+      変更する場合は -e "pbs_admin_password=<値>" で再実行するか、
+      Web UI側で変更してください。

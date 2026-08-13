@@ -1,0 +1,64 @@
+# Docker ComposeでTechnitium DNS Serverを構築する。Debian専用。
+# 全VM共通の処理は common / docker ロール(roles/common, roles/docker)と共有している。
+---
+- name: 対象OSを確認する
+  ansible.builtin.import_role:
+    name: common
+    tasks_from: assert_debian
+
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+# パッケージ更新やイメージ取得の途中で容量が尽きると原因が分かりにくいため先に確認する
+- name: ディスクの空き容量を確認する
+  ansible.builtin.import_role:
+    name: common
+    tasks_from: check_disk_space
+  vars:
+    svc_name: Technitium
+    svc_min_free_gb: "{{ technitium_min_free_disk_gb }}"
+    svc_min_free_var: technitium_min_free_disk_gb
+
+- name: VM共通の初期セットアップを実行する
+  ansible.builtin.import_role:
+    name: common
+
+- name: DNSの動作確認に使うコマンドを導入する
+  ansible.builtin.import_tasks: install_dns_tools.yml
+
+- name: Dockerをインストールする
+  ansible.builtin.import_role:
+    name: docker
+
+# DNSサーバーは53番を占有する。VM側で待ち受けているものがあると起動できない
+- name: DNSのポートを空ける
+  ansible.builtin.import_tasks: free_dns_port.yml
+
+- name: Technitium用のディレクトリを準備する
+  ansible.builtin.import_tasks: prepare_directories.yml
+
+- name: 初期設定(.env)を配置する
+  ansible.builtin.import_tasks: configure_env.yml
+
+- name: Technitiumのコンテナを起動する
+  ansible.builtin.import_tasks: ../../docker/tasks/deploy_compose.yml
+  vars:
+    svc_name: Technitium
+    svc_install_dir: "{{ technitium_install_dir }}"
+    svc_config_changed: "{{ technitium_env_file is changed }}"
+
+- name: DNSとWebコンソールのポートを開放する
+  ansible.builtin.import_role:
+    name: common
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports: >-
+      {{ [{'port': technitium_dns_port, 'proto': 'udp'},
+          {'port': technitium_dns_port, 'proto': 'tcp'},
+          {'port': technitium_http_port, 'proto': 'tcp'}]
+         + ([{'port': technitium_https_port, 'proto': 'tcp'}]
+            if (technitium_enable_https_console | bool) else [])
+         + technitium_extra_ports }}
+
+- name: 名前解決とWebコンソールが応答することを確認する
+  ansible.builtin.import_tasks: verify_service.yml

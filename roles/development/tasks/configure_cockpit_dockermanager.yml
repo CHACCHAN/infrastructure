@@ -1,0 +1,29 @@
+# 署名鍵が提供されていない第三者リポジトリから導入するため trusted: true(署名検証なし)。
+# 信頼できるソースかどうかは利用者側で判断すること。
+# dockerグループが存在する必要があるため install_docker.yml より後に実行する。
+---
+- name: Dockerプラグイン(cockpit-dockermanager)のリポジトリを追加する(GPG未署名)
+  ansible.builtin.deb822_repository:
+    name: cockpit-dockermanager
+    types: deb
+    uris: https://chrisjbawden.github.io/cockpit-dockermanager
+    suites: stable
+    components: main
+    architectures: all
+    trusted: true
+    state: present
+  become: true
+
+- name: Cockpit Docker Managerパッケージ(dockermanager)をインストールする
+  ansible.builtin.apt:
+    name: dockermanager
+    update_cache: true
+    state: present
+  become: true
+
+- name: "Cockpit用ユーザーをdockerグループに追加する({{ development_cockpit_user }})"
+  ansible.builtin.user:
+    name: "{{ development_cockpit_user }}"
+    groups: docker
+    append: true
+  become: true

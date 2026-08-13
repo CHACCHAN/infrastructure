@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myapp
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: route
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    # HTTPS 専用で公開する。これを消すと平文 HTTP (:80) でも見えてしまう。
+    traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+    # Authentik で保護する場合は次の行を有効にし、
+    # platform/external/cloudflare-ddns-ui/ingress.yaml のように
+    # /outpost.goauthentik.io 用の Ingress をもう 1 本足す。
+    # traefik.ingress.kubernetes.io/router.middlewares: "platform-authentik-forward-auth@kubernetescrd"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - "myapp.cc-chacchan.com"
+      # platform/certificates/ の Certificate が作るワイルドカード証明書
+      secretName: cc-chacchan-wildcard-tls
+  rules:
+    - host: "myapp.cc-chacchan.com"
+      http:
+        paths:
+          - path: "/"
+            pathType: Prefix
+            backend:
+              service:
+                name: myapp
+                port:
+                  name: http

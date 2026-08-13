@@ -1,0 +1,35 @@
+# PBSのAPTリポジトリ(既定は pbs-no-subscription)を設定する。
+# 手順は公式ドキュメントのDebianへのインストール手順に沿っている:
+# https://pbs.proxmox.com/docs/installation.html
+---
+- name: Proxmoxリポジトリの署名鍵を配置する
+  ansible.builtin.get_url:
+    url: "{{ pbs_keyring_url }}"
+    dest: "{{ pbs_keyring_path }}"
+    checksum: "sha256:{{ pbs_keyring_sha256 }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+# Debian 13からの推奨形式(deb822)で置く
+- name: PBSのAPTリポジトリを設定する
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/pbs.sources
+    content: |
+      Types: deb
+      URIs: {{ pbs_repo_url }}
+      Suites: {{ ansible_distribution_release }}
+      Components: {{ pbs_repo_component }}
+      Signed-By: {{ pbs_keyring_path }}
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  register: pbs_repo_file
+
+- name: パッケージ情報を更新する
+  ansible.builtin.apt:
+    update_cache: true
+  become: true
+  when: pbs_repo_file is changed

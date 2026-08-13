@@ -1,0 +1,28 @@
+# k3s 上で稼働させるアプリ。
+#
+# アプリの出どころは 2 通りある。
+#
+#   1. 上流チャートがある (Portainer など)
+#      -> <名前>/values.yaml + README.md を置き、本体は helm template で入れる。
+#         kustomize が扱うのは <名前>/ingress.yaml だけ。
+#
+#   2. 上流チャートがない自前コンテナ (GHCR など)
+#      -> Deployment / Service / PVC / Ingress をすべてここに置く。
+#         全部 kustomize が扱う。ひな形は _example/ にある。
+#
+# _example/ はひな形なので意図的に含めていない。
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# postgresql/ はここに書かない。Ingress を持たない
+# (Traefik の Ingress は HTTP しか通せず、PostgreSQL は素の TCP)
+# ので、kustomize が扱うものが 1 つも無い。すべて helm 側。
+resources:
+  - ansible-awx
+  # apache-guacamole/ だけは 2 のパターン (上流チャートが無い自前構成)。
+  # Deployment / Service / Ingress をすべて kustomize が扱う。
+  - apache-guacamole
+  - homarr
+  - nextcloud
+  - pgadmin
+  - portainer

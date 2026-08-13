@@ -1,0 +1,16 @@
+---
+- name: 基本パッケージをインストールする
+  ansible.builtin.apt:
+    name:
+      - git
+      - curl
+      # deb822形式のaptリポジトリを管理するモジュールが必要とする
+      # (cockpit-dockermanager / Google Chrome のリポジトリ追加で使用)
+      - python3-debian
+      # NFSサーバー上の共有をどのVMからでもマウントできるようにする
+      # (Kubernetesのnfs系ボリュームもノード側のこれを使う)
+      - nfs-common
+      - tree
+      - htop
+    state: present
+  become: true

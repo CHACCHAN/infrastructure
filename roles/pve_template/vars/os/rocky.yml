@@ -1,0 +1,15 @@
+# Rocky Linux Cloud imageカタログ。旧os_defaultsから配布元情報を移設したもの。
+---
+pve_template_os_catalog:
+  checksum_algorithm: sha256
+  versions:
+    "10":
+      catalog_index: "02"
+      image_url: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
+      checksum_url: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/CHECKSUM"
+      image_filename: "Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
+    "9":
+      catalog_index: "07"
+      image_url: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"
+      checksum_url: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/CHECKSUM"
+      image_filename: "Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"

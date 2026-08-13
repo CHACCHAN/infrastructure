@@ -1,0 +1,9 @@
+---
+- name: 対象OSがDebianであることを確認する
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'Debian'
+    fail_msg: >-
+      このロールはDebian専用です
+      (検出されたOS: {{ ansible_distribution }} {{ ansible_distribution_version }})。
+    quiet: true

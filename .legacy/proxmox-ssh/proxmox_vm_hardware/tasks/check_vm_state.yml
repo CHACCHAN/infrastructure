@@ -1,0 +1,21 @@
+---
+- name: クラスタ全体のVM一覧を取得する
+  ansible.builtin.import_role:
+    name: proxmox_common
+    tasks_from: get_cluster_vm_info
+
+- name: 対象VMの存在・配置ノードを確認する
+  ansible.builtin.import_role:
+    name: proxmox_common
+    tasks_from: find_vm_on_node
+  vars:
+    proxmox_target_vmid: "{{ vm_id }}"
+
+- name: 対象VMの電源が停止していることを確認する
+  ansible.builtin.assert:
+    that:
+      - proxmox_target_vm_info[0].status == 'stopped'
+    fail_msg: >-
+      VMID {{ vm_id }} は現在 {{ proxmox_target_vm_info[0].status }} 状態です。
+      ハードウェアの変更は電源オフ時のみ行えます。先にVMを停止してください。
+    quiet: true

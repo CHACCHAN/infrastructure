@@ -1,0 +1,8 @@
+# クラスタ全体のVM/テンプレート一覧を取得する。
+# proxmox_template_build / proxmox_vm_build の両ロールから共通で呼び出される。
+---
+- name: クラスタ全体のVM一覧を取得する
+  ansible.builtin.command:
+    cmd: pvesh get /cluster/resources --type vm --output-format json
+  changed_when: false
+  register: proxmox_cluster_vm_info

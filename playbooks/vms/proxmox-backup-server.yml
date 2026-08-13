@@ -1,0 +1,70 @@
+# 起動済みのDebian 13 VMにSSH接続し、Proxmox Backup Server(PBS)をAPTパッケージで
+# 構築します。VM内部の設定のみを行い、Proxmoxホスト側の操作は一切行いません。
+#
+# 構築後、PVE側で「データセンター → ストレージ → 追加 → Proxmox Backup Server」から
+# ストレージとして登録するとバックアップ先に使えます(fingerprintは最後に表示されます)。
+---
+- name: 接続先のVMホストを登録する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: 対象VMをインベントリに登録して疎通を確認する
+      ansible.builtin.import_role:
+        name: vm_connect
+
+- name: Proxmox Backup Server専用VMを構築する
+  hosts: vms
+  gather_facts: true
+
+  roles:
+    - pbs
+
+  # カーネル更新の反映のため最後に再起動する。
+  # PBSのサービスはsystemdで自動起動するので、再起動後に
+  # 「実行元の端末から」Web UIが見えることまで確認する。
+  post_tasks:
+    - name: 構成を反映するためVMを再起動する
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: reboot_vm
+
+    # fstabの書き方が誤っていると、再起動後にデータストアがOS用ディスク上の
+    # 空ディレクトリになってしまう。バックアップを始める前にここで気付けるようにする。
+    - name: 再起動後もデータ用ディスクがマウントされていることを確認する
+      ansible.builtin.command:
+        cmd: >-
+          findmnt --noheadings --output SOURCE,SIZE
+          --mountpoint {{ pbs_datastore_path | default('/mnt/datastore/backup') }}
+      become: true
+      changed_when: false
+      register: pbs_datastore_mount_after_reboot
+      when: pbs_data_disk_enabled | default(true) | bool
+
+    - name: 実行元の端末からWeb UIに接続できることを確認する
+      ansible.builtin.uri:
+        url: "https://{{ vm_ip }}:{{ pbs_web_port | default(8007) }}/"
+        validate_certs: false
+        status_code: [200]
+      delegate_to: localhost
+      become: false
+      register: pbs_remote_web_ui
+      retries: 30
+      delay: 10
+      until: pbs_remote_web_ui is succeeded
+      changed_when: false
+
+    - name: 接続先を表示する
+      ansible.builtin.debug:
+        msg:
+          - "Web UI: https://{{ vm_ip }}:{{ pbs_web_port | default(8007) }}/"
+          - "ログイン: {{ pbs_admin_user | default('admin') }}@pbs
+             (パスワードはVM内の /root/.pbs_admin_password)"
+          - "データストア: {{ pbs_datastore_name | default('backup') }}
+             ({{ pbs_datastore_path | default('/mnt/datastore/backup') }})
+             {{ '→ ' ~ (pbs_datastore_mount_after_reboot.stdout | default('') | trim)
+                if (pbs_data_disk_enabled | default(true) | bool) else '(OS用ディスク上)' }}"
+          - "PVEへの登録: データセンター → ストレージ → 追加 → Proxmox Backup Server
+             (サーバー {{ pbs_cluster_ip | default(vm_ip, true) }}
+             / データストア {{ pbs_datastore_name | default('backup') }})"

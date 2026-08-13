@@ -1,0 +1,46 @@
+# クラスタ外で動いているサービスを指す Service + EndpointSlice。
+#
+# k8s には「クラスタ外の IP を指す Service」を素直に書く方法がないため、
+# セレクタなしの Service と、手書きの EndpointSlice を組み合わせる。
+apiVersion: v1
+kind: Service
+metadata:
+  name: supabase-external
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: supabase
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  # selector を書かない。エンドポイントは下の EndpointSlice で手動管理する。
+  type: ClusterIP
+  ports:
+    # API ゲートウェイ (Kong) — /studio /rest/v1 /auth/v1 /realtime/v1 /storage/v1 等
+    - name: api
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: supabase-external
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: supabase
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+    # このラベルで上の Service と紐付く。値は Service 名と完全に一致させること。
+    kubernetes.io/service-name: supabase-external
+addressType: IPv4
+ports:
+  - name: api
+    protocol: TCP
+    port: 8000
+endpoints:
+  - addresses:
+      - "172.16.11.6"
+    # クラスタ外ホストの死活は kube-proxy が判定できないため、常に Ready 扱いにする。
+    # バックエンドが落ちているときは Traefik が 502 を返す。
+    conditions:
+      ready: true

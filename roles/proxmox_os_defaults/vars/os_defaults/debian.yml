@@ -1,0 +1,27 @@
+# versions配下のキーを os_version で1つに解決し、トップレベルの共通キーとマージして
+# os_defaults にセットする(tasks/load_os_defaults.yml)。ここに無いバージョンはエラー。
+---
+os_defaults_debian:
+  os_type: debian
+  package_manager: apt
+  cloud_image_checksum_algorithm: sha512
+
+  # os_version省略時に構築するバージョン
+  default_version: "13"
+
+  # cloud imageの "latest" は各シリーズの最新ビルドを指す(ファイル名は変わらない)。
+  # template_vmidはクラスタ内で一意である必要があるため、バージョンごとに別の値を割り当てている。
+  versions:
+    "13":  # trixie
+      cloud_image_url: "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2"
+      cloud_image_checksum_url: "https://cloud.debian.org/images/cloud/trixie/latest/SHA512SUMS"
+      cloud_image_filename: "debian-13-generic-amd64.qcow2"
+      template_vmid: 9000
+      template_name: "debian13-template"
+
+    "12":  # bookworm
+      cloud_image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
+      cloud_image_checksum_url: "https://cloud.debian.org/images/cloud/bookworm/latest/SHA512SUMS"
+      cloud_image_filename: "debian-12-generic-amd64.qcow2"
+      template_vmid: 9002
+      template_name: "debian12-template"

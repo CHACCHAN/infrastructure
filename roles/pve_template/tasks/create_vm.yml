@@ -1,0 +1,34 @@
+# Cloud imageを起動ディスクに取り込んだテンプレート元VMを作成する。
+---
+- name: 空のテンプレート元VMを作成する
+  community.proxmox.proxmox_kvm:
+    vmid: "{{ pve_template_resolved_vmid }}"
+    name: "{{ pve_template_resolved_name }}"
+    node: "{{ node }}"
+    memory: 2048
+    cores: 2
+    net:
+      net0: "virtio,bridge={{ pve_bridge }}"
+    scsihw: virtio-scsi-single
+    ostype: l26
+    serial:
+      serial0: socket
+    vga: serial0
+    boot: "order=scsi0"
+    ide:
+      ide2: "{{ pve_template_storage }}:cloudinit"
+    state: present
+
+- name: Cloud imageからscsi0を作成する
+  community.proxmox.proxmox_disk:
+    vmid: "{{ pve_template_resolved_vmid }}"
+    disk: scsi0
+    storage: "{{ pve_template_storage }}"
+    import_from: >-
+      {{ pve_template_image_storage }}:import/{{ pve_template_catalog.image_filename }}
+    ssd: "{{ pve_vm_disk_ssd | bool }}"
+    iothread: "{{ pve_vm_disk_iothread | bool }}"
+    discard: "{{ pve_vm_disk_discard }}"
+    create: regular
+    state: present
+    timeout: "{{ pve_template_disk_import_timeout }}"

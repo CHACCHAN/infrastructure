@@ -1,0 +1,12 @@
+---
+- name: デスクトップ環境・xrdp関連パッケージをインストールする
+  ansible.builtin.apt:
+    name:
+      # デスクトップ環境(X11セッション。Waylandは対象外)
+      - xfce4
+      - xfce4-goodies
+      - dbus-x11        # XFCEのセッション起動にdbus-launchが必要
+      - fonts-noto-cjk  # 無いとデスクトップ上の日本語が豆腐になる
+      - xrdp
+    state: present
+  become: true

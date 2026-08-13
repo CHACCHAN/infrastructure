@@ -1,0 +1,14 @@
+# TrueNAS の証明書は自己署名。検証はスキップするが、
+# SNI には正しいホスト名を送る (TrueNAS 側が SNI を見て応答を変えるため)。
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: truenas-transport
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: truenas
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  serverName: nas.cc-chacchan.com
+  insecureSkipVerify: true

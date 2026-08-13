@@ -1,0 +1,20 @@
+# Ubuntu LTS Cloud imageカタログ。旧os_defaultsから配布元情報を移設したもの。
+---
+pve_template_os_catalog:
+  checksum_algorithm: sha256
+  versions:
+    "26.04":
+      catalog_index: "01"
+      image_url: "https://cloud-images.ubuntu.com/resolute/current/resolute-server-cloudimg-amd64.img"
+      checksum_url: "https://cloud-images.ubuntu.com/resolute/current/SHA256SUMS"
+      image_filename: "resolute-server-cloudimg-amd64.img"
+    "24.04":
+      catalog_index: "05"
+      image_url: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+      checksum_url: "https://cloud-images.ubuntu.com/noble/current/SHA256SUMS"
+      image_filename: "noble-server-cloudimg-amd64.img"
+    "22.04":
+      catalog_index: "06"
+      image_url: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+      checksum_url: "https://cloud-images.ubuntu.com/jammy/current/SHA256SUMS"
+      image_filename: "jammy-server-cloudimg-amd64.img"

@@ -1,0 +1,6 @@
+# 構築済みVMをProxmoxテンプレートへ変換する。
+---
+- name: VMをテンプレートへ変換する
+  community.proxmox.proxmox_kvm:
+    vmid: "{{ pve_template_resolved_vmid }}"
+    state: template

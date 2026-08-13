@@ -1,0 +1,67 @@
+# k3sでKubernetesのノードを構築する。Debian 13(cloud image)専用。
+# 全VM共通の処理は common / docker ロール(roles/common, roles/docker)と共有している。
+#
+# kubernetes_node_role=server でコントロールプレーン、agent でワーカーになる。
+# Dockerは入れない(コンテナランタイムはk3sに同梱のcontainerd)。
+---
+- name: 対象OSを確認する
+  ansible.builtin.import_role:
+    name: common
+    tasks_from: assert_debian
+
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+# Kubernetesはswapが無い前提のため、既定では共通タスクのzramではなく無効化を行う
+- name: スワップを無効化する
+  ansible.builtin.import_tasks: disable_swap.yml
+  when: kubernetes_disable_swap | bool
+
+- name: VM共通の初期セットアップを実行する
+  ansible.builtin.import_role:
+    name: common
+  vars:
+    svc_configure_swap: "{{ not (kubernetes_disable_swap | bool) }}"
+
+- name: K3sノードに必要なパッケージをインストールする
+  ansible.builtin.import_tasks: install_prerequisites.yml
+
+# 設定ファイルにトークンを書き込むため、k3sを入れる前に取得しておく
+- name: 参加用トークンをコントロールプレーンから取得する
+  ansible.builtin.import_tasks: fetch_token.yml
+  when:
+    - kubernetes_join_existing | bool
+    - (kubernetes_token | default('', true)) | length == 0
+
+- name: K3sの導入状況を確認する
+  ansible.builtin.import_tasks: check_installed.yml
+
+- name: K3sの設定を配置する
+  ansible.builtin.import_tasks: configure_k3s.yml
+
+- name: K3sをインストールする
+  ansible.builtin.import_tasks: install_k3s.yml
+
+- name: ノードがクラスタに参加できたことを確認する
+  ansible.builtin.import_tasks: verify_cluster.yml
+
+- name: SSHユーザーのkubeconfigを配置する
+  ansible.builtin.import_tasks: configure_kubeconfig.yml
+  when: kubernetes_role_resolved == 'server'
+
+# 開けるポートは公式の「Networking / Inbound Rules」に合わせている。
+# https://docs.k3s.io/installation/requirements#inbound-rules-for-k3s-nodes
+- name: K3sが使うポートを開放する
+  ansible.builtin.import_role:
+    name: common
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports: >-
+      {{ [{'port': 8472, 'proto': 'udp'},
+          {'port': 10250, 'proto': 'tcp'}]
+         + ([{'port': kubernetes_server_port, 'proto': 'tcp'}]
+            if kubernetes_role_resolved == 'server' else [])
+         + ([{'port': 2379, 'proto': 'tcp'}, {'port': 2380, 'proto': 'tcp'}]
+            if (kubernetes_role_resolved == 'server'
+                and ((kubernetes_cluster_init | bool) or (kubernetes_join_existing | bool)))
+            else []) }}

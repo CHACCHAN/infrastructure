@@ -1,0 +1,19 @@
+# ログインはPAM経由のLinux通常ログインパスワード。
+# そのパスワードはcloud-initで設定される想定のため、ここでは一切設定しない。
+---
+- name: Cockpitをインストールする
+  ansible.builtin.apt:
+    name: cockpit
+    state: present
+  become: true
+
+- name: Cockpitユーザーの既定値を設定する
+  ansible.builtin.set_fact:
+    development_cockpit_user: "{{ cockpit_user | default(vm_ssh_user) }}"
+
+- name: Cockpitサービスを有効化・起動する
+  ansible.builtin.systemd:
+    name: cockpit.socket
+    enabled: true
+    state: started
+  become: true

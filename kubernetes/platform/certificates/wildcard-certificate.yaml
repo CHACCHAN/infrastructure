@@ -1,0 +1,26 @@
+# platform namespace のワイルドカード証明書。
+# 各 Ingress はこの Secret (cc-chacchan-wildcard-tls) を参照する。
+#
+# 注意: Secret は namespace をまたげない。platform 以外の namespace で
+#       公開するサービスを増やす場合は、同じ内容の Certificate を
+#       その namespace にも作ること。
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cc-chacchan-wildcard
+  namespace: platform
+spec:
+  secretName: cc-chacchan-wildcard-tls
+
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+
+  dnsNames:
+    - cc-chacchan.com
+    - "*.cc-chacchan.com"
+
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always

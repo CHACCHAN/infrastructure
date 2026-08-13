@@ -1,0 +1,24 @@
+# 設定とログは名前付きボリュームではなくバインドマウントにしている
+# (設置ディレクトリごとバックアップできるようにするため)。
+# 公式イメージはUSER指定が無くroot権限で動くため、所有者はrootのままでよい。
+---
+- name: Technitiumの設置ディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ technitium_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: コンテナへマウントするディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ technitium_install_dir }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  become: true
+  loop:
+    - config # 設定・ゾーン・統計(/etc/dns)
+    - logs   # クエリログ(/var/log/technitium/dns)

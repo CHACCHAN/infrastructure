@@ -1,0 +1,18 @@
+---
+- name: Proxmox_ip変数を検証する
+  ansible.builtin.assert:
+    that:
+      - proxmox_ip is defined
+      - (proxmox_ip | default('', true)) | length > 0
+    fail_msg: >-
+      proxmox_ip が指定されていません。-e "proxmox_ip=192.168.10.11" のように
+      対象ProxmoxホストのIPアドレスを指定してください。
+    quiet: true
+
+- name: 対象ProxmoxホストをインベントリにIPで登録する
+  ansible.builtin.add_host:
+    name: "{{ proxmox_ip }}"
+    groups: proxmox
+    ansible_user: "{{ proxmox_ssh_user | default('root', true) }}"
+    ansible_password: "{{ vault_proxmox_ssh_password }}"
+  changed_when: false

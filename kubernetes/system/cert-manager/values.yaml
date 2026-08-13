@@ -1,0 +1,45 @@
+# cert-manager
+# chart: oci://quay.io/jetstack/charts/cert-manager (バージョンは helmfile.yaml で固定)
+#
+# ClusterIssuer と Certificate は manifests/certificates/ 側で管理する。
+
+crds:
+  enabled: true
+
+prometheus:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+webhook:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+cainjector:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+startupapicheck:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
