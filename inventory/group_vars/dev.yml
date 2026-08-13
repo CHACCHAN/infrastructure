@@ -1,9 +1,12 @@
-# 開発VMのProxmox VMプロファイル。CPU機能を開発用途へそのまま公開する。
+# 開発VMのProxmox VMプロファイル。個人利用のため高スペック・ネスト仮想化(cpu: host)。
 ---
-pve_vm_cores: 4
+pve_vm_cores: 8
 pve_vm_cpu_type: host
-pve_vm_memory: 4096
-pve_vm_disk_size: 64
+pve_vm_memory: 8192
+pve_vm_disk_size: 256
+
+# SSHユーザーはcloud-init管理(ciuser=dev)だが、公開鍵は利用者個人のもののため
+# ここでは宣言しない(未定義ならcloud-initの鍵設定に触れない)。
+# playbooks/vm/dev.yml でVM内セットアップを行うときは、自分の鍵を指定する:
+#   ansible-playbook playbooks/vm/dev.yml -l yuya-dev -e pve_ssh_prikey=~/.ssh/<自分の鍵>
 pve_ssh_user: dev
-pve_ssh_pubkey_file: ~/.ssh/id_ed25519_test_dev.pub
-pve_ssh_prikey: ~/.ssh/id_ed25519_test_dev

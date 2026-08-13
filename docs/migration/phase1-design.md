@@ -216,6 +216,8 @@ pve_vm_nets:
 | K1 | `playbooks/k8s/apply.yml` | SSA所有権移行を`-e force=true`で1回実施(差分ゼロ確認済み)、以後 `--check --diff` 差分ゼロ / apply changed=0 — **完了** |
 | K2 | `apply-vault.yml` | `--check` でdry-run検証まで — **完了**(実適用は手元vaultの鮮度を利用者が確認してから) |
 | K3 | `kubernetes/README.md` 更新 | 適用手順をAnsible経由(apply/apply-vault)へ更新 — **完了** |
+| P1 | Phase 3 新旧パリティ監査: APIで全VMの実configを吸い上げて宣言と突合。cpu表記ゆれ(`cputype=`プレフィックス混在)の比較正規化をconfigure.ymlへ追加。宣言修正: shun-devの実ノードはpve02 / k8s各ノードのcores・memory・diskは個体値 / devグループの鍵は個人持ちのため非管理化(未定義=触れない) | 本番13台+990へ `provision.yml --check` → **全14台 changed=0**(sshkeysも全サービスVMで内容一致を確認) — **完了** |
+| P2 | Phase 3 旧成果物の掃除 | **利用者操作待ち**(自動実行は環境の権限制約で保留): ①VM990削除 `destroy.yml -e vmid=990 -e confirm=990` → inventoryのtestグループも削除 ②旧テンプレ9000削除 `destroy.yml -e vmid=9000 -e confirm=9000`(本番VMは全てフルクローンで依存なし) ③`.legacy/` をgit rm ④**旧 `root@pam!ansible` トークンの失効確認**(.legacy内に平文秘密が2件あり、git履歴にも残存。公開前に失効+履歴除去が必要) |
 
 ## 8. リスクと安全策
 

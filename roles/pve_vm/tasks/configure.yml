@@ -1,4 +1,6 @@
 # 既存Proxmox VMのCPU・メモリ・オプション・NICを宣言値へ収束させる。
+# cpuの現在値は「cputype=x86-64-v3」形式で返るVMと「x86-64-v3」形式のVMが混在する
+# (設定した時代のツールによる)ため、比較時にプレフィックスを剥がして正規化する。
 ---
 - name: VMの現在設定を取得する
   community.proxmox.proxmox_vm_info:
@@ -72,7 +74,8 @@
       'bios': pve_current_config.bios | default(''),
       'machine': pve_current_config.machine | default(''),
       'vga': pve_current_config.vga | default(''),
-      'cpu': pve_current_config.cpu | default('')
+      'cpu': (pve_current_config.cpu | default('') | string).split(',') | first
+             | regex_replace('^cputype=', '')
     }
 
 - name: VMのNIC設定を収束させる

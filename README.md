@@ -127,7 +127,7 @@ sequenceDiagram
 ├── vault/               # Ansible Vault(全ファイル暗号化済み)
 ├── collections/         # requirements.yml(AWX互換の標準位置)
 ├── docs/                # ドキュメント(migration/ に移行の設計・調査記録)
-└── .legacy/             # 旧実装のアーカイブ(切替完了後に削除予定)
+└── .legacy/             # 旧実装のアーカイブ(削除待ち。手順は設計書§7のP2)
 ```
 
 ## 秘匿情報の扱い
