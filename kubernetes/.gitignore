@@ -1,3 +1,0 @@
-vault/*
-!vault/README.md
-.migration-backup/

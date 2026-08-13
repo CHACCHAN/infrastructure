@@ -33,7 +33,7 @@ flowchart TB
 | --- | --- | --- | --- |
 | ① Proxmox操作 | `roles/pve` `pve_vm` `pve_template` | インベントリの宣言そのもの | `playbooks/pve/` |
 | ② VMセットアップ | `roles/vm` `vm_docker` | `vm_authentik` `vm_wg_easy` `vm_k3s` … | `playbooks/vm/` |
-| ③ Kubernetes | `roles/k8s`(予定) | `k8s_portainer` 等(マニフェスト完全移行後) | `playbooks/k8s/` |
+| ③ Kubernetes | `roles/k8s` | `k8s_external` `k8s_portainer` `k8s_guacamole` … | `playbooks/k8s/` |
 
 ```mermaid
 flowchart LR
@@ -45,7 +45,7 @@ flowchart LR
         VM["vm / vm_docker / vm_サービス"]
     end
     subgraph D3["③ Kubernetes (kubeconfig)"]
-        K8S["apply / apply-vault"]
+        K8S["k8s / k8s_アプリ"]
     end
     INV --> D1 & D2
     D1 -->|"VMを用意"| PVECLUSTER["Proxmox VEクラスタ<br>pve01〜pve10"]
@@ -76,9 +76,10 @@ ansible-playbook playbooks/pve/template.yml -e os=debian -e version=13 -e target
 # サービスVMの一気通貫構築(①provision + ②SSHセットアップ)
 ansible-playbook playbooks/vm/authentik.yml
 
-# Kubernetesマニフェスト適用(kubectl apply -k . --server-side 相当)
-ansible-playbook playbooks/k8s/apply.yml --check --diff   # 差分確認
-ansible-playbook playbooks/k8s/apply.yml                  # 適用
+# Kubernetesアプリの収束(Secretも含めて全部。収束済みなら changed=0)
+ansible-playbook playbooks/k8s/deploy.yml --check          # 差分の有無を確認
+ansible-playbook playbooks/k8s/deploy.yml                  # 全アプリ
+ansible-playbook playbooks/k8s/deploy.yml -e app=portainer # 1アプリだけ
 ```
 
 ### provision が収束させる流れ
@@ -121,9 +122,8 @@ sequenceDiagram
 ├── playbooks/
 │   ├── pve/             # ① provision / power / destroy / template
 │   ├── vm/              # ② サービスVMの一気通貫構築
-│   └── k8s/             # ③ apply / apply-vault
+│   └── k8s/             # ③ deploy(全アプリ or -e app=X)
 ├── roles/               # ドメイン別: pve* / vm* / k8s*
-├── kubernetes/          # kustomizeマニフェスト(将来③のロールへ完全移行予定)
 ├── vault/               # Ansible Vault(全ファイル暗号化済み)
 ├── collections/         # requirements.yml(AWX互換の標準位置)
 ├── docs/                # ドキュメント(migration/ に移行の設計・調査記録)
@@ -133,7 +133,7 @@ sequenceDiagram
 ## 秘匿情報の扱い
 
 - **Ansible側**: `vault/*.yml` は全て `ansible-vault` で暗号化(同一パスワード)。平文の秘密情報・実IP以外のトークン類はコミットしない
-- **Kubernetes側**: `kubernetes/vault/` は git 管理外(README以外)。適用は `playbooks/k8s/apply-vault.yml` で明示的に行う(通常の `apply.yml` とは混ざらない)
+- **Kubernetes側**: アプリのSecretも `vault/k8s_secrets.yml`(暗号化済み)に一元化。`deploy.yml` が各アプリのSecretを `no_log` で適用する(--diffでも中身は出ない)
 - PVE APIトークンは `vault/proxmox_api.yml`(暗号化済み)の4変数。各playbookが `module_defaults` で全モジュールへ一括供給する
 
 ## ドキュメント
@@ -142,8 +142,7 @@ sequenceDiagram
 | --- | --- |
 | [docs/pve.md](docs/pve.md) | ① Proxmox操作ドメインの使い方(provision/power/destroy/template) |
 | [docs/vm.md](docs/vm.md) | ② VMセットアップドメインの使い方(サービス別playbook・k3sクラスタ構築) |
-| [docs/k8s.md](docs/k8s.md) | ③ Kubernetes適用ドメインの使い方(apply/apply-vault・SSA所有権) |
-| [kubernetes/README.md](kubernetes/README.md) | k8sマニフェスト側の構成と追加手順(Helmチャートの手順を含む) |
+| [docs/k8s.md](docs/k8s.md) | ③ Kubernetesドメインの使い方(deploy・アプリ追加・Secret・チャート管理) |
 | [docs/devcontainer.md](docs/devcontainer.md) | Dev Containerのセットアップ注意点 |
 | [docs/migration/phase0-investigation.md](docs/migration/phase0-investigation.md) | 移行前調査(旧SSH方式の棚卸し・モジュールマッピング) |
 | [docs/migration/phase1-design.md](docs/migration/phase1-design.md) | 設計書(3層思想・ドメイン構成・実装計画と検証記録) |

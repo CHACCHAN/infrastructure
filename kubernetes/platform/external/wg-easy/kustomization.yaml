@@ -1,8 +1,0 @@
-# WG-Easy (WireGuard 管理 WebUI) — 172.16.11.5:51821
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - service.yaml
-  - middleware.yaml
-  - ingress.yaml

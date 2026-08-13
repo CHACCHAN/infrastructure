@@ -131,7 +131,17 @@ k8s_external_routes:
 5. Secretを含むタスクは `no_log: true`
 6. 実クラスタへの適用はFable 5が行う。Codexは実装とsyntax-checkまで
 
-## 4. 撤去対象(M4)
+## 検証記録(2026-08-13 実施)
+
+| ゲート | 結果 |
+| --- | --- |
+| M1(自前・データ型) | namespaces/external/certificates/cloudflared/guacamole 全て `--check` **changed=0**。外部経路は実測64リソース・17バックエンド(設計書の62/11は誤記)で、宣言生成と現物の構造比較一致をCodexが自己検証、ライブとのSSA dry-run差分ゼロをFable 5が確認 |
+| M2(Helm型8本) | values転記は8/8で意味的同値(4本は逐語一致、4本はドメイン変数解決後に一致)を機械照合。cert-manager/nfs/portainer/homarr/pgadmin/nextcloudはライブ差分ゼロ。**真のドリフト2件検出**: postgresql(nextcloud/guacamoleのCREATE DATABASEがライブ未反映)、awx(OIDC設定一式が未適用=awx-oidc Secretがライブに無い理由)。**実装バグ1件検出・修正**: nextcloudチャートの `defaultMode: 0o755`(YAML 1.2 8進)をPyYAMLが文字列扱い→helm.ymlに正規化を追加 |
+| M3(Secret) | ライブから16個+バックアップ専用3個を暗号化vault化(値は画面に出さない手順)。`--check` で衝突ゼロ=値の完全一致を確認。Secret適用順をロール先頭へ統一(AWXブートストラップと再構築の順序要件) |
+| 適用 | アプリ単位で段階適用。postgresql再起動は22秒で復旧、AWXはOperatorがOIDC設定(awx-oidc-py-secretボリューム)を反映してロールアウト。適用後の異常Pod **0** |
+| 最終 | 全体 `deploy.yml --check` = **ok=113 changed=0 failed=0**(完全収束)。kustomize解体(kubernetes/撤去、apply/apply-vault廃止)実施済み |
+
+## 4. 撤去対象(M4) — 実施済み
 
 - `kubernetes/namespaces|platform|cloudflare/`(全マニフェスト+kustomization)、`kubernetes/system/`、`kubernetes/kustomization.yaml`
 - `playbooks/k8s/apply.yml` / `apply-vault.yml`
