@@ -1,0 +1,72 @@
+# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+---
+k8s_postgresql_helm_version: "1.6.7"
+k8s_postgresql_values:
+  fullnameOverride: postgresql
+
+  image:
+    # **alpine は使わない。** alpine 版の postgres ユーザは uid 70 で、
+    # チャート既定の securityContext (runAsUser: 999) と食い違って起動しない。
+    # debian 版が 999 なので、そちらに合わせる。
+    #
+    # **16 系にしているのは AWX の都合。** AWX 24.6.1 が同梱する PostgreSQL は
+    # 15 で、上流が動作確認しているのもそのバージョンだけ。外部 DB として
+    # 使う分には新しいものでも動くとされているが、18 は検証範囲外。
+    tag: "16.14"
+
+  settings:
+    # superuser のパスワードを読む Secret。中身は vault/postgresql.yaml。
+    existingSecret: postgresql-superuser
+    superuserPassword:
+      secretKey: postgres-password
+
+    # PGDATA は settings.dataDir + settings.pgDir になる。
+    # マウントポイント (dataDir) と PGDATA を分けているのは、
+    # PostgreSQL がデータディレクトリのパーミッションを 0700 でないと
+    # 受け付けないため。NFS プロビジョナが作るディレクトリは 0777 なので、
+    # その 1 つ下に initdb 自身に作らせる。**既定のまま触らない。**
+    dataDir: "/var/lib/postgresql/data"
+    pgDir: "pg"
+
+  # 初回起動時 (データディレクトリが空のとき) だけ実行されるスクリプト。
+  # 空の DB を 5 つ作るだけ。
+  #
+  # ロールは作らない。アプリは postgres ユーザで自分の DB に繋ぐ。
+  # アプリごとにロールを分けると、同じパスワードを「PostgreSQL 側」と
+  # 「アプリ側の接続情報」の 2 か所に書くことになり、事故のほうが大きい。
+  #
+  # **2 回目以降は実行されない。** DB を後から足す場合は
+  # psql で手動で作ること (README.md に手順がある)。
+  customScripts:
+    10-create-databases.sh: |
+      #!/bin/sh
+      set -e
+      psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<'EOSQL'
+      CREATE DATABASE homarr;
+      CREATE DATABASE awx;
+      CREATE DATABASE pgadmin;
+      CREATE DATABASE nextcloud;
+      CREATE DATABASE guacamole;
+      EOSQL
+
+  storage:
+    # TrueNAS の NFS 共有。既定クラス (local-path) はノードローカルなので使わない。
+    className: truenas-nfs
+    # NFS の StorageClass は expansion 非対応。後から広げられない。
+    requestedSize: 200Gi
+    # StatefulSet を消しても PVC を残す。
+    persistentVolumeClaimRetentionPolicy:
+      whenDeleted: Retain
+      whenScaled: Retain
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  env:
+    - name: TZ
+      value: Asia/Tokyo

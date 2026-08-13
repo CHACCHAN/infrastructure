@@ -1,0 +1,10 @@
+# Namespace登録簿を逐語的なNamespaceリソースへ展開する。
+{% for namespace in k8s_namespaces_list %}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ namespace }}
+{% if not loop.last %}
+---
+{% endif %}
+{% endfor %}

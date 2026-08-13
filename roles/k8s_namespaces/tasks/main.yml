@@ -1,0 +1,12 @@
+# 宣言登録簿にあるNamespaceをまとめてSSAで収束させる。
+---
+- name: Namespaceマニフェストを描画する
+  ansible.builtin.set_fact:
+    k8s_namespaces_definition: "{{ lookup('ansible.builtin.template', 'namespaces.yaml.j2') }}"
+
+- name: NamespaceをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_namespaces_definition }}"

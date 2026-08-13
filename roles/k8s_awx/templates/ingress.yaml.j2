@@ -1,0 +1,43 @@
+# AWX の公開経路。
+#
+# AWX 本体は Operator が作る。Operator は同じディレクトリの values.yaml を
+# 使って helm template -> kubectl apply で入れる (手順は README.md)。
+# ここには Ingress だけを置く。Operator 側の Ingress は
+# values.yaml で ingress_type: none にして止めてある。
+#
+# 経路の書き方 (TLS、エントリポイント、Middleware) を 1 箇所に揃えるため、
+# 上流に Ingress を作らせない方針にしている。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ansible-awx
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: ansible-awx
+    app.kubernetes.io/component: route
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    # HTTPS 専用で公開する。平文 HTTP (:80) では 404 になる。
+    traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - "ansible.{{ k8s_domain }}"
+      # platform/certificates/ の Certificate が作るワイルドカード証明書
+      secretName: {{ k8s_tls_secret }}
+  rules:
+    - host: "ansible.{{ k8s_domain }}"
+      http:
+        paths:
+          - path: "/"
+            pathType: Prefix
+            backend:
+              service:
+                # Operator が作る Service。名前は AWX リソース名 + "-service" で、
+                # values.yaml の AWX.name を変えるとここも変わる。
+                name: awx-service
+                port:
+                  # 番号 (80) ではなく名前で指定しておくと、
+                  # 上流がポート番号を変えても壊れない。
+                  name: http

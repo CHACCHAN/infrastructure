@@ -1,0 +1,123 @@
+# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+---
+k8s_awx_helm_version: "3.2.1"
+k8s_awx_values:
+  rbac:
+    create: true
+
+  AWX:
+    # AWX リソースを一緒に出力する。false だと Operator だけになる。
+    enabled: true
+
+    # AWX リソースの名前。子リソースの名前がすべてこれで決まるので、
+    # 後から変えると作り直しになる。
+    #   Service     awx-service
+    #   Secret      awx-admin-password / awx-secret-key
+    name: awx
+
+    # チャート側で postgres の StatefulSet を出力させない。
+    # DB は platform namespace 共用の PostgreSQL を使う
+    # (下の spec.postgres_configuration_secret)。
+    postgres:
+      enabled: false
+
+    # ここから下が AWX リソースの spec。上流の既定値との差分だけ書く。
+    spec:
+      admin_user: admin
+      # admin のパスワードは書かない。指定しなければ Operator が
+      # Secret awx-admin-password を生成する (取り出し方は README.md)。
+
+      # ingress_type: none なので Operator は Ingress を作らない。
+      # それでも hostname が要るのは、AWX が自分の URL を組み立てる
+      # (通知メールのリンクなど) のに使うため。
+      hostname: ansible.{{ k8s_domain }}
+      ingress_type: none
+      service_type: ClusterIP
+
+      # TLS は Traefik で終端していて、AWX 自身は平文 HTTP で受ける。
+      # AWX (Django) はそのままだと POST を Origin 不一致で弾くので、
+      # 信頼するオリジンを明示する。値は Python のリテラルとして
+      # 評価されるため、文字列として渡す。
+      extra_settings:
+        - setting: TOWER_URL_BASE
+          value: "'https://ansible.{{ k8s_domain }}'"
+
+        # Traefik で HTTPS を終端しているため、
+        # Django が Origin 不一致として POST を拒否しないよう
+        # 信頼する Origin を登録する。
+        - setting: CSRF_TRUSTED_ORIGINS
+          value: "['https://ansible.{{ k8s_domain }}']"
+
+        # --- OIDC (Authentik) ---------------------------------------------
+        #
+        # AWX は "Generic OIDC" として 4 つの設定しか持たない。
+        #   SOCIAL_AUTH_OIDC_KEY           クライアント ID   -> Secret 側
+        #   SOCIAL_AUTH_OIDC_SECRET        クライアント秘密  -> Secret 側
+        #   SOCIAL_AUTH_OIDC_OIDC_ENDPOINT プロバイダの URL  -> ここ
+        #   SOCIAL_AUTH_OIDC_VERIFY_SSL    証明書を検証するか -> ここ
+        #
+        # 秘密でない 2 つだけここに置き、資格情報は
+        # 下の extra_settings_files (Secret awx-oidc) から読ませる。
+        #
+        # **末尾のスラッシュを付けないこと。** social-core が
+        #   f"{OIDC_ENDPOINT}/.well-known/openid-configuration"
+        # と連結するので、付けると // になって discovery に失敗する。
+        # (Homarr は逆に末尾スラッシュが要る。実装が違うので揃わない)
+        - setting: SOCIAL_AUTH_OIDC_OIDC_ENDPOINT
+          value: "'https://auth.{{ k8s_domain }}/application/o/awx'"
+
+        # Authentik の証明書は Let's Encrypt なので検証する。
+        - setting: SOCIAL_AUTH_OIDC_VERIFY_SSL
+          value: "True"
+
+      # OIDC のクライアント資格情報。
+      #
+      # extra_settings は ConfigMap になって平文で見えてしまうので、
+      # 秘密にしたい設定はこちらで Secret から渡す。Operator は
+      # Secret の中身を /etc/tower/conf.d/<key> にマウントし、
+      # AWX が settings.py の後に読む (= こちらが勝つ)。
+      #
+      # key は必ず .py で終わること。中身は Python の設定ファイル:
+      #   SOCIAL_AUTH_OIDC_KEY = '...'
+      #   SOCIAL_AUTH_OIDC_SECRET = '...'
+      #
+      # 実体は vault/ansible-awx.yaml (git 追跡外)。
+      #
+      # **Secret が無いと Pod が起動しない** (マウントできないため)。
+      # あとから作れば kubelet が拾って起動する。
+      extra_settings_files:
+        secrets:
+          - name: awx-oidc
+            key: oidc.py
+
+      # DB は platform namespace 共用の PostgreSQL を使う。
+      # (platform/apps/postgresql/。接続先は postgresql.platform.svc:5432)
+      #
+      # この行があると Operator は postgres の StatefulSet を作らず、
+      # Secret に書かれた外部 DB へ接続する。Secret には
+      # host / port / database / username / password / sslmode / type の
+      # 7 つのキーが要り、type は必ず "unmanaged" にする。
+      # 作り方は ../postgresql/README.md にまとめてある。
+      #
+      # **後から managed <-> unmanaged を切り替えると DB が引き継がれない。**
+      # 移行する場合は pg_dump / pg_restore が要る (README.md 参照)。
+      postgres_configuration_secret: awx-postgres-configuration
+
+      # 上流の既定 (web 1000m/2Gi, task 500m/1Gi, ee 500m/1Gi) は
+      # このクラスタには大きすぎて、requests だけでノードを 1 台占有する。
+      # limits は付けない。ジョブ実行中に OOMKill されると
+      # 原因が分かりにくい形で失敗するため。
+      web_resource_requirements:
+        requests:
+          cpu: 200m
+          memory: 1Gi
+      task_resource_requirements:
+        requests:
+          cpu: 200m
+          memory: 1Gi
+      ee_resource_requirements:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+      # postgres_* の項目は書かない。Operator が DB を管理していないので
+      # 効かない。DB 側のリソースは platform/apps/postgresql/values.yaml。

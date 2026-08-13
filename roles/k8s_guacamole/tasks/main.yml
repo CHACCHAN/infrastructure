@@ -1,0 +1,51 @@
+# Apache Guacamole一式と任意の接続資格情報Secretを収束させる。
+---
+# Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
+
+- name: Guacamole DB Secretを描画する
+  ansible.builtin.set_fact:
+    k8s_guacamole_db_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
+  vars:
+    k8s_secret_manifest_name: guacamole-db
+    k8s_secret_manifest_namespace: platform
+    k8s_secret_manifest_data: "{{ k8s_secret_guacamole_db }}"
+  when: k8s_secret_guacamole_db is defined
+  no_log: true
+
+- name: Guacamole DB SecretをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_guacamole_db_secret_definition }}"
+    k8s_apply_no_log: true
+  when: k8s_secret_guacamole_db is defined
+
+- name: Guacamole OIDC Secretを描画する
+  ansible.builtin.set_fact:
+    k8s_guacamole_oidc_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
+  vars:
+    k8s_secret_manifest_name: guacamole-oidc
+    k8s_secret_manifest_namespace: platform
+    k8s_secret_manifest_data: "{{ k8s_secret_guacamole_oidc }}"
+  when: k8s_secret_guacamole_oidc is defined
+  no_log: true
+
+- name: Guacamole OIDC SecretをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_guacamole_oidc_secret_definition }}"
+    k8s_apply_no_log: true
+  when: k8s_secret_guacamole_oidc is defined
+- name: Guacamoleマニフェストを描画する
+  ansible.builtin.set_fact:
+    k8s_guacamole_definition: "{{ lookup('ansible.builtin.template', 'guacamole.yaml.j2') }}"
+
+- name: GuacamoleマニフェストをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_guacamole_definition }}"

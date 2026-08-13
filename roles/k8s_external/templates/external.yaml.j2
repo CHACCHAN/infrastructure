@@ -1,0 +1,163 @@
+# 外部経路登録簿をselectorless ServiceとTraefik経路へ展開する。
+{% for transport in k8s_external_transports %}
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: {{ transport.name }}
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: {{ transport.label_name }}
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+{% if transport.server_name is defined %}
+  serverName: {{ transport.server_name }}
+{% endif %}
+  insecureSkipVerify: {{ transport.insecure_skip_verify | bool | lower }}
+---
+{% endfor %}
+{% for route in k8s_external_routes %}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ route.name }}-external
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: {{ route.name }}
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+{% if route.scheme != 'none' or route.transport is defined %}
+  annotations:
+{% if route.scheme != 'none' %}
+    traefik.ingress.kubernetes.io/service.serversscheme: "{{ route.scheme }}"
+{% endif %}
+{% if route.transport is defined %}
+    traefik.ingress.kubernetes.io/service.serverstransport: "platform-{{ route.transport }}@kubernetescrd"
+{% endif %}
+{% endif %}
+spec:
+  # selectorを書かず、下のEndpointSliceでクラスタ外の宛先を管理する。
+  type: ClusterIP
+  ports:
+{% for port in route.ports %}
+    - name: {{ port.name }}
+      protocol: TCP
+      port: {{ port.port }}
+      targetPort: {{ port.port }}
+{% endfor %}
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: {{ route.name }}-external
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: {{ route.name }}
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+    kubernetes.io/service-name: {{ route.name }}-external
+addressType: IPv4
+ports:
+{% for port in route.ports %}
+  - name: {{ port.name }}
+    protocol: TCP
+    port: {{ port.port }}
+{% endfor %}
+endpoints:
+  - addresses:
+      - "{{ route.backend_ip }}"
+    conditions:
+      ready: true
+---
+{% if route.forward_auth | default(false) | bool %}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authentik-forward-auth
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: {{ route.name }}
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  forwardAuth:
+    address: http://authentik-external.platform.svc.cluster.local:9000/outpost.goauthentik.io/auth/traefik
+    trustForwardHeader: true
+    authResponseHeaders:
+      - X-authentik-username
+      - X-authentik-groups
+      - X-authentik-entitlements
+      - X-authentik-email
+      - X-authentik-name
+      - X-authentik-uid
+      - X-authentik-jwt
+      - X-authentik-meta-jwks
+      - X-authentik-meta-outpost
+      - X-authentik-meta-provider
+      - X-authentik-meta-app
+      - X-authentik-meta-version
+---
+{% endif %}
+{% for ingress in route.ingresses %}
+{% if ingress.forwarded_https | default(false) | bool %}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ ingress.forwarded_https_name | default(ingress.name ~ '-forwarded-https') }}
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: {{ route.name }}
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: https
+      X-Forwarded-Port: "443"
+      X-Forwarded-Host: {{ ingress.host }}
+---
+{% endif %}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ ingress.name }}
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: {{ route.name }}
+    app.kubernetes.io/component: external-service
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: "{{ ingress.entrypoints | default('websecure') }}"
+{% set middleware_names = ingress.middlewares | default([]) %}
+{% if ingress.forwarded_https | default(false) | bool %}
+{% set middleware_names = middleware_names + [ingress.forwarded_https_name | default(ingress.name ~ '-forwarded-https')] %}
+{% endif %}
+{% if middleware_names | length > 0 %}
+    traefik.ingress.kubernetes.io/router.middlewares: "{% for middleware in middleware_names %}platform-{{ middleware }}@kubernetescrd{% if not loop.last %},{% endif %}{% endfor %}"
+{% endif %}
+spec:
+  ingressClassName: traefik
+{% if ingress.tls | default(true) | bool %}
+  tls:
+    - hosts:
+        - "{{ ingress.host }}"
+      secretName: {{ k8s_tls_secret }}
+{% endif %}
+  rules:
+    - host: "{{ ingress.host }}"
+      http:
+        paths:
+{% for path in ingress.paths | default([ingress.path | default('/')]) %}
+          - path: "{{ path }}"
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ ingress.backend_service | default(route.name ~ '-external') }}
+                port:
+                  name: {{ ingress.port }}
+{% endfor %}
+{% if not (loop.last and route.name == (k8s_external_routes | last).name) %}
+---
+{% endif %}
+{% endfor %}
+{% endfor %}

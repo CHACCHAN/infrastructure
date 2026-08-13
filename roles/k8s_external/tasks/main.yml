@@ -1,0 +1,12 @@
+# 外部バックエンド宣言からTraefik向け経路一式を量産する。
+---
+- name: 外部経路マニフェストを描画する
+  ansible.builtin.set_fact:
+    k8s_external_definition: "{{ lookup('ansible.builtin.template', 'external.yaml.j2') }}"
+
+- name: 外部経路マニフェストをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_external_definition }}"

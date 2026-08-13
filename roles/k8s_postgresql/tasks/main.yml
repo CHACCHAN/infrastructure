@@ -1,0 +1,36 @@
+# 上流Helmチャート、公開経路、任意のSecretを順に収束させる。
+---
+# Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
+
+- name: postgresql-superuser Secretを描画する
+  ansible.builtin.set_fact:
+    k8s_postgresql_postgresql_superuser_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
+  vars:
+    k8s_secret_manifest_name: postgresql-superuser
+    k8s_secret_manifest_namespace: platform
+    k8s_secret_manifest_data: "{{ k8s_secret_postgresql_superuser }}"
+  when: k8s_secret_postgresql_superuser is defined
+  no_log: true
+
+- name: postgresql-superuser SecretをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_postgresql_postgresql_superuser_secret_definition }}"
+    k8s_apply_no_log: true
+  when: k8s_secret_postgresql_superuser is defined
+- name: postgresql Helmチャートを描画して適用する
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: helm
+  vars:
+    k8s_helm_release: postgresql
+    k8s_helm_chart: postgres
+    k8s_helm_repo_url: https://groundhog2k.github.io/helm-charts/
+    k8s_helm_version: "{{ k8s_postgresql_helm_version }}"
+    k8s_helm_namespace: platform
+    k8s_helm_values: "{{ k8s_postgresql_values }}"
+    k8s_helm_no_hooks: false
+    k8s_helm_include_crds: false
+    k8s_helm_inject_namespace: true

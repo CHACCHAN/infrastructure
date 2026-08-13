@@ -1,0 +1,16 @@
+# 上流Helmチャート、公開経路、任意のSecretを順に収束させる。
+---
+- name: nfs Helmチャートを描画して適用する
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: helm
+  vars:
+    k8s_helm_release: nfs
+    k8s_helm_chart: nfs-subdir-external-provisioner
+    k8s_helm_repo_url: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+    k8s_helm_version: "{{ k8s_nfs_provisioner_helm_version }}"
+    k8s_helm_namespace: storage
+    k8s_helm_values: "{{ k8s_nfs_provisioner_values }}"
+    k8s_helm_no_hooks: true
+    k8s_helm_include_crds: false
+    k8s_helm_inject_namespace: true

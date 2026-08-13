@@ -1,0 +1,42 @@
+# Nextcloud の公開経路。
+#
+# Deployment / Service / PVC は上流チャート由来。同じディレクトリの values.yaml を
+# 使って helm template -> kubectl apply で入れる (手順は README.md)。
+# ここには Ingress だけを置く。上流チャートの ingress は
+# values.yaml で enabled: false にしてある。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcloud
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: nextcloud
+    app.kubernetes.io/component: route
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    # HTTPS 専用で公開する。平文 HTTP (:80) では 404 になる。
+    traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+    # Authentik の forwardAuth Middleware は付けない。
+    # Nextcloud のデスクトップ / モバイルクライアントと WebDAV は
+    # ブラウザのリダイレクトを辿れないので、前段で認証を挟むと繋がらなくなる。
+    # SSO が要る場合は Nextcloud 側に user_oidc アプリを入れる (README.md)。
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - "nextcloud.{{ k8s_domain }}"
+      # platform/certificates/ の Certificate が作るワイルドカード証明書
+      secretName: {{ k8s_tls_secret }}
+  rules:
+    - host: "nextcloud.{{ k8s_domain }}"
+      http:
+        paths:
+          - path: "/"
+            pathType: Prefix
+            backend:
+              service:
+                # values.yaml の fullnameOverride で固定している名前。
+                name: nextcloud
+                port:
+                  # チャートが出す Service のポート名。実体は :8080。
+                  name: http

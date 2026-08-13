@@ -1,0 +1,102 @@
+# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+---
+k8s_homarr_helm_version: "8.26.0"
+k8s_homarr_values:
+  strategyType: Recreate
+
+  # DB は外部 PostgreSQL なので原理的には増やせるが、/appdata が RWO の
+  # PVC なので 1 のままにしている。
+  replicaCount: 1
+
+  env:
+    TZ: Asia/Tokyo
+
+    # 認証方式。credentials を残しているのは、Authentik (172.16.11.2) が
+    # 落ちているときの退避経路を確保するため。
+    # 上流は「1 つだけ有効にするのを強く推奨」としているので、
+    # 運用が安定したら "oidc" 単体に絞ってよい。
+    AUTH_PROVIDERS: "credentials,oidc"
+
+    # Authentik の OIDC プロバイダ。
+    # 上流ドキュメントいわく issuer は末尾スラッシュなしが基本だが、
+    # **Authentik だけは例外で末尾スラッシュが要る**。
+    #   https://homarr.dev/docs/advanced/single-sign-on/
+    AUTH_OIDC_ISSUER: "https://auth.{{ k8s_domain }}/application/o/homarr/"
+
+    # ログイン画面のボタンに出る名前。
+    AUTH_OIDC_CLIENT_NAME: "Authentik"
+
+    # true にするとログイン画面を出さずに Authentik へ直行する。
+    # credentials を併用している間は false のままにしておく
+    # (true にすると退避経路のログイン画面に辿り着けなくなる)。
+    AUTH_OIDC_AUTO_LOGIN: "false"
+
+    # groups クレームで Authentik のグループを Homarr のグループに同期する。
+    # Authentik 側に "groups" のスコープマッピングが必要 (README.md 参照)。
+    AUTH_OIDC_SCOPE_OVERWRITE: "openid email profile groups"
+    AUTH_OIDC_GROUPS_ATTRIBUTE: "groups"
+
+  database:
+    # sqlite / mysql / postgresql。
+    #
+    # platform namespace 共用の PostgreSQL を使う (platform/apps/postgresql/)。
+    # sqlite だと DB ファイルが NFS 上に置かれることになり、
+    # SQLite のファイルロックが NFS で正しく効かないため破損の危険がある。
+    #
+    # 接続 URL は envSecrets.dbCredentials の Secret から読む。
+    type: postgresql
+
+  # 秘密情報はマニフェストに書かない。先に Secret を作っておくこと (README.md 参照)。
+  # 名前は platform namespace に他アプリと同居するため homarr- で始める
+  # (上流の既定は auth-oidc-secret / db-encryption という汎用名)。
+  envSecrets:
+    authOidcCredentials:
+      existingSecret: "homarr-oidc"
+      oidcClientId: "oidc-client-id"
+      oidcClientSecret: "oidc-client-secret"
+    dbEncryption:
+      existingSecret: "homarr-db-encryption"
+      key: "db-encryption-key"
+    # PostgreSQL の接続 URL。
+    #   postgresql://postgres:<pw>@postgresql.platform.svc.cluster.local:5432/homarr
+    # DB は platform/apps/postgresql/ の初回起動スクリプトが作る。
+    dbCredentials:
+      existingSecret: "homarr-db"
+      dbUrlKey: "db-url"
+
+  persistence:
+    homarrDatabase:
+      # DB は PostgreSQL に移したが、/appdata 自体はまだ要る
+      # (アイコンのキャッシュ、信頼する証明書などが置かれる)。
+      enabled: true
+      # PVC 名。上流の既定のまま。
+      name: "homarr-database"
+      # TrueNAS の NFS 共有。既定クラス (local-path) はノードローカルなので使わない。
+      storageClassName: "truenas-nfs"
+      accessMode: "ReadWriteOnce"
+      # 既定は 50Mi。DB が抜けた分もう要らないが、キャッシュが載るので少し持たせる。
+      # NFS の StorageClass は拡張に対応していないので後から広げられない。
+      size: "2Gi"
+      mountPath: "/appdata"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Kubernetes 連携ウィジェット用の RBAC。クラスタ全体の閲覧権限
+  # (ClusterRole) を Pod に渡すことになるので、必要になるまで無効のままにする。
+  rbac:
+    enabled: true
+
+  # 経路の書き方をリポジトリ全体で 1 箇所に揃えるため、上流の ingress は使わない。
+  # 実体は同ディレクトリの ingress.yaml。
+  ingress:
+    enabled: false
+
+  # Gateway API は使っていない。
+  httproute:
+    enabled: false

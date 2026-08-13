@@ -1,0 +1,21 @@
+# 全アプリの差分確認: ansible-playbook playbooks/k8s/deploy.yml --check --diff
+# 単一アプリの収束: ansible-playbook playbooks/k8s/deploy.yml -e app=portainer
+# 所有権衝突の初回移行のみ: ansible-playbook playbooks/k8s/deploy.yml -e force=true
+---
+- name: Kubernetesアプリを宣言順に収束させる
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # Kubernetesライブラリを持つAnsible自身のPythonをモジュールにも使う。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_files:
+    - ../../inventory/group_vars/all/k8s.yml
+    - ../../vault/k8s_secrets.yml
+
+  tasks:
+    # app指定時は1ロールだけ、未指定時は登録簿の順序ですべてを実行する。
+    - name: Kubernetesアプリロールを実行する
+      ansible.builtin.include_role:
+        name: "k8s_{{ item }}"
+      loop: "{{ [app] if app is defined else k8s_apps }}"

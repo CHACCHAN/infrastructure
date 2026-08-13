@@ -1,0 +1,44 @@
+# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+---
+k8s_cert_manager_helm_version: "v1.21.0"
+k8s_cert_manager_values:
+  crds:
+    enabled: true
+
+  prometheus:
+    enabled: true
+
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  webhook:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+  cainjector:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  startupapicheck:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi

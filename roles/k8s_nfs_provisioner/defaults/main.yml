@@ -1,0 +1,18 @@
+# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+---
+k8s_nfs_provisioner_helm_version: "4.0.18"
+k8s_nfs_provisioner_values:
+  nfs:
+    server: 10.10.20.10
+    path: /mnt/Storage/Kubernetes
+
+  storageClass:
+    create: true
+    name: truenas-nfs
+
+    # 既定 StorageClass は k3s 同梱の local-path のままにする
+    defaultClass: false
+
+    # PVC を消しても NFS 上のデータは残す
+    reclaimPolicy: Retain
+    archiveOnDelete: true

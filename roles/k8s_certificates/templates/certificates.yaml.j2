@@ -1,0 +1,75 @@
+# テスト用 (証明書はブラウザに信頼されないが、レート制限が緩い)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    email: chacchan.info@gmail.com
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - {{ k8s_domain }}
+
+---
+# 本番用 (レート制限あり。まず staging で検証すること)
+# 前提: cert-manager namespace に Secret cloudflare-api-token が存在すること
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    email: chacchan.info@gmail.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - {{ k8s_domain }}
+
+---
+# platform namespace のワイルドカード証明書。
+# 各 Ingress はこの Secret ({{ k8s_tls_secret }}) を参照する。
+#
+# 注意: Secret は namespace をまたげない。platform 以外の namespace で
+#       公開するサービスを増やす場合は、同じ内容の Certificate を
+#       その namespace にも作ること。
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cc-chacchan-wildcard
+  namespace: platform
+spec:
+  secretName: {{ k8s_tls_secret }}
+
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+
+  dnsNames:
+    - {{ k8s_domain }}
+    - "*.{{ k8s_domain }}"
+
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always

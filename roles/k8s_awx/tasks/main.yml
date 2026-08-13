@@ -1,0 +1,81 @@
+# 上流Helmチャート、公開経路、任意のSecretを順に収束させる。
+---
+# Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
+
+- name: awx-postgres-configuration Secretを描画する
+  ansible.builtin.set_fact:
+    k8s_awx_awx_postgres_configuration_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
+  vars:
+    k8s_secret_manifest_name: awx-postgres-configuration
+    k8s_secret_manifest_namespace: platform
+    k8s_secret_manifest_data: "{{ k8s_secret_awx_postgres_configuration }}"
+  when: k8s_secret_awx_postgres_configuration is defined
+  no_log: true
+
+- name: awx-postgres-configuration SecretをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_awx_awx_postgres_configuration_secret_definition }}"
+    k8s_apply_no_log: true
+  when: k8s_secret_awx_postgres_configuration is defined
+
+- name: awx-oidc Secretを描画する
+  ansible.builtin.set_fact:
+    k8s_awx_awx_oidc_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
+  vars:
+    k8s_secret_manifest_name: awx-oidc
+    k8s_secret_manifest_namespace: platform
+    k8s_secret_manifest_data: "{{ k8s_secret_awx_oidc }}"
+  when: k8s_secret_awx_oidc is defined
+  no_log: true
+
+- name: awx-oidc SecretをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_awx_awx_oidc_secret_definition }}"
+    k8s_apply_no_log: true
+  when: k8s_secret_awx_oidc is defined
+- name: awx-operator Helmチャートを描画して適用する
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: helm
+  vars:
+    k8s_helm_release: awx-operator
+    k8s_helm_chart: awx-operator
+    k8s_helm_repo_url: https://ansible-community.github.io/awx-operator-helm/
+    k8s_helm_version: "{{ k8s_awx_helm_version }}"
+    k8s_helm_namespace: platform
+    k8s_helm_values: "{{ k8s_awx_values }}"
+    k8s_helm_no_hooks: false
+    k8s_helm_include_crds: true
+    k8s_helm_inject_namespace: true
+
+- name: AWX CRDを取得する
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: awxs.awx.ansible.com
+  register: k8s_awx_crd
+  until: >-
+    k8s_awx_crd.resources | length > 0 and
+    (k8s_awx_crd.resources[0].status.conditions | default([])
+    | selectattr('type', 'equalto', 'Established')
+    | selectattr('status', 'equalto', 'True') | list | length > 0)
+  retries: 24
+  delay: 5
+  when: not ansible_check_mode
+
+- name: 公開Ingressを描画する
+  ansible.builtin.set_fact:
+    k8s_awx_ingress_definition: "{{ lookup('ansible.builtin.template', 'ingress.yaml.j2') }}"
+
+- name: 公開IngressをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_awx_ingress_definition }}"

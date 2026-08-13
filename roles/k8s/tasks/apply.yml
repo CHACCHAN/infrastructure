@@ -23,5 +23,7 @@
       field_manager: kubectl
       force_conflicts: "{{ force | default(false) | bool }}"
     definition: "{{ k8s_definition }}"
+    # Helmチャートがmetadata.namespaceを出力しない場合だけ呼び出し側で補う。
+    namespace: "{{ k8s_namespace | default(omit) }}"
   # Secret等を含む適用では--diffでも中身を出さない(呼び出し側がtrueを渡す)
   no_log: "{{ k8s_apply_no_log | default(false) }}"

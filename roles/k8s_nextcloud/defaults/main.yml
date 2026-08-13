@@ -1,0 +1,412 @@
+# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+---
+k8s_nextcloud_helm_version: "9.2.5"
+k8s_nextcloud_values:
+  fullnameOverride: nextcloud
+
+  image:
+    # チャートは未指定だと appVersion からタグを組み立てる (34.0.2-apache)。
+    # 結果は同じだが、**チャートのバージョンとアプリのバージョンは別物**
+    # なので明示的に固定する。上げるときは README.md の表も直すこと。
+    tag: "34.0.2-apache"
+    # nginx + php-fpm の 2 コンテナ構成 (flavor: fpm) にもできるが、
+    # apache 単体のほうが構成要素が少ない。nginx: enabled は既定の false。
+    flavor: apache
+
+  # /var/www/html が RWO の PVC なので、ローリング更新だと新旧 Pod が
+  # 同時にマウントできずデッドロックする。既定のまま Recreate。
+  replicaCount: 1
+
+  nextcloud:
+    # NEXTCLOUD_TRUSTED_DOMAINS になる。ここに無いホスト名で来ると
+    # "信頼できないドメイン" の画面が出てログインできない。
+    host: nextcloud.{{ k8s_domain }}
+
+    ## 初期管理者 (ローカルアカウント)
+    #
+    # 普段のログインは Authentik の OIDC を使う (下の hooks)。
+    # ここで作るローカル管理者は **Authentik が落ちたときの退避経路** で、
+    # 他のアプリ (homarr / pgAdmin) と同じ考え方。
+    #
+    # パスワードは values.yaml に書かない。Secret から読ませる。
+    # 既定のまま (username / password) にすると平文が Deployment に埋まる。
+    #
+    # **この 2 つは初回セットアップ時にしか読まれない。** アカウントが
+    # できたあとに Secret を変えても、Nextcloud 側のパスワードは変わらない
+    # (変えるには occ user:resetpassword)。
+    existingSecret:
+      enabled: true
+      secretName: nextcloud-admin
+      usernameKey: nextcloud-username
+      passwordKey: nextcloud-password
+
+    # OVERWRITEPROTOCOL=https を入れる。
+    # Traefik が TLS を終端して Pod へは平文 HTTP で渡すため、これが無いと
+    # Nextcloud が自分の URL を http:// で組み立て、iOS/Android クライアントや
+    # WebDAV が mixed content で落ちる。
+    extraEnv:
+      # Nextcloud に「この範囲から来た X-Forwarded-For は信じてよい」と教える。
+      # k3s の Pod CIDR (Traefik はこの中にいる)。
+      # 設定しないと全アクセスの送信元が Traefik の Pod IP に見え、
+      # ブルートフォース対策とレート制限が誤作動する。
+      - name: TRUSTED_PROXIES
+        value: "10.42.0.0/16"
+
+      # occ が生成する URL (メール通知のリンクなど) のベース。
+      # cron sidecar は Ingress を通らないので、これが無いと
+      # localhost 宛のリンクが混ざる。
+      - name: OVERWRITECLIURL
+        value: "https://nextcloud.{{ k8s_domain }}"
+
+      # アップロード上限。既定は 512M。External Storage に大きなファイルを
+      # 置くので広げておく。Traefik 側にボディサイズ上限は無い
+      # (nginx-ingress と違い proxy-body-size 相当の既定値を持たない)。
+      - name: PHP_UPLOAD_LIMIT
+        value: "16G"
+      - name: PHP_MEMORY_LIMIT
+        value: "1G"
+
+      # Authentik の OIDC クライアント資格情報。下の hooks が使う。
+      # マニフェストには書かない。実体は Secret nextcloud-oidc (vault/)。
+      - name: NEXTCLOUD_OIDC_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: nextcloud-oidc
+            key: oidc-client-id
+      # occ には --clientsecret ではなく --clientsecret-env で渡す。
+      # コマンドライン引数にすると Pod の ps とログに平文で出るため。
+      - name: NEXTCLOUD_OIDC_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: nextcloud-oidc
+            key: oidc-client-secret
+
+    ## データディレクトリのパーミッションを直す
+    #
+    # **これが無いと occ が一切動かない。**
+    #
+    # Nextcloud は data ディレクトリの "other" のビットが立っていると
+    # 起動を拒否する。
+    #
+    #   Your data directory is readable by other people.
+    #   Please change the permissions to 0770 ...
+    #   Exception: Environment not properly prepared. (Console/Application.php:160)
+    #
+    # ところが nfs-subdir-external-provisioner が NFS 共有の下に作る
+    # ディレクトリは **0777 root:root**。subPath でマウントされる
+    # /var/www/html/data もそのままなので、条件に引っかかる。
+    # (../postgresql/values.yaml の PGDATA の話と同じ性質の問題)
+    #
+    # 実害は「Nextcloud が入らない」では済まない。entrypoint は
+    # インストールの最後に occ で trusted_domains を設定するので、
+    # そこで異常終了し、**コンテナが exit 1 で落ちて起動ループになる。**
+    # 下の before-starting フック (OIDC 設定) も同じ理由で失敗する。
+    #
+    # **initContainer にしている理由。** hooks でも直せるが、occ が走る
+    # タイミングが 3 つ (インストール / アップグレード / before-starting) あり、
+    # pre-installation・pre-upgrade・before-starting の 3 か所に同じ処理を
+    # 書く必要が出る。initContainer なら本体コンテナより前に必ず 1 回走るので、
+    # どの経路でも取りこぼさない。
+    extraInitContainers:
+      - name: fix-datadir-permissions
+        # **image.tag と同じものを指定すること。** 既にノードに落ちている
+        # イメージを使い回すためで、中身は chown/chmod しか使っていない。
+        image: docker.io/library/nextcloud:34.0.2-apache
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+          # 33 は www-data。Pod の securityContext は fsGroup: 33 だけで
+          # runAsUser を指定していないため、initContainer は root で動く。
+          - chown 33:33 /mnt/data && chmod 0770 /mnt/data && ls -ld /mnt/data
+        volumeMounts:
+          # チャートが作る PVC のボリューム名。data の subPath だけを見る。
+          - name: nextcloud-main
+            mountPath: /mnt/data
+            subPath: data
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+
+    ## 認証 — Authentik の OIDC
+    #
+    # Nextcloud には OIDC の設定を環境変数で入れる仕組みが無く、チャートにも
+    # 値が用意されていない。公式アプリ user_oidc を入れて occ で設定する。
+    #
+    # イメージは /docker-entrypoint-hooks.d/<hook>/helm.sh を実行する仕組みを
+    # 持っていて、チャートがここの文字列を ConfigMap にして 0755 でマウントする。
+    #
+    # **before-starting を使っている。** 5 つあるフックのうち、これだけが
+    # 「インストール/アップグレードの有無にかかわらず毎回の起動で走る」。
+    # post-installation は初回だけ、post-upgrade はバージョンが上がったときだけ
+    # なので、設定を変えたあと再起動しても反映されない。
+    #
+    # cron sidecar では走らない。あちらは command: [/cron.sh] で
+    # イメージの ENTRYPOINT を置き換えているため、二重実行にはならない。
+    #
+    # 中身は冪等。毎回走るが、既にこの通りなら何も変わらない。
+    hooks:
+      before-starting: |-
+        #!/bin/sh
+        # Authentik を OIDC プロバイダとして登録する。
+        #
+        # occ user_oidc:provider は upsert (無ければ作る、あれば更新する)。
+        # 識別子 authentik は変えないこと。変えると別プロバイダ扱いになり、
+        # 既存ユーザとの紐付けが切れる。
+
+        log() { echo "[helm-hook] $*"; }
+
+        # NEXTCLOUD_TRUSTED_DOMAINS を config.php に反映する。
+        #
+        # **イメージはこの環境変数をインストール時にしか見ない。** 一度
+        # インストールが終わった環境では、値を変えても config.php は変わらない。
+        #
+        # さらに、インストールの「Setting trusted domains」の途中で occ が
+        # 落ちると (data ディレクトリが 0777 だと落ちる。上の
+        # extraInitContainers を参照) trusted_domains が localhost だけの
+        # 状態で取り残される。こうなると
+        #
+        #   - startupProbe は Host: <host> を付けて /status.php を叩く
+        #   - Nextcloud は {"error": "Trusted domain error.", "code": 15} を
+        #     HTTP 400 で返す
+        #   - Ready にならないまま失敗し続ける
+        #
+        # という、原因の分かりにくい起動失敗になる。毎回入れ直して直す。
+        configure_trusted_domains() {
+          # 0 は localhost のまま残す (Pod 内から叩くときに使う)。
+          php occ config:system:set trusted_domains 1 \
+            --value="nextcloud.{{ k8s_domain }}" || return 1
+          return 0
+        }
+
+        configure_oidc() {
+          # 初回はアプリストアから取ってくる。2 回目以降は app:install が
+          # "already installed" で失敗するので app:enable に落ちる。
+          php occ app:install user_oidc || php occ app:enable user_oidc || return 1
+
+          php occ user_oidc:provider authentik \
+            --clientid="$NEXTCLOUD_OIDC_CLIENT_ID" \
+            --clientsecret-env=NEXTCLOUD_OIDC_CLIENT_SECRET \
+            --discoveryuri="https://auth.{{ k8s_domain }}/application/o/next-cloud/.well-known/openid-configuration" \
+            --scope="openid email profile" \
+            --unique-uid=0 \
+            --mapping-uid=preferred_username \
+            --mapping-email=email \
+            --mapping-display-name=name \
+            --check-bearer=0 || return 1
+
+          # 1 のままにするとログイン画面にローカルのユーザ名/パスワード欄も出る。
+          # Authentik が落ちたときの退避経路として残しておく。
+          # OIDC 一本に絞るなら 0 にする (そのときは ?direct=1 で退避)。
+          php occ config:app:set user_oidc allow_multiple_user_backends --value=1 || return 1
+
+          return 0
+        }
+
+        # **失敗しても起動は止めない。** アプリストアに繋がらない、Authentik が
+        # 落ちている、といった一時的な理由で Nextcloud 全体が CrashLoopBackOff に
+        # なるほうが困る。失敗してもローカル管理者では入れるので、
+        # ログを見て occ を手で叩けばよい (README.md)。
+        # **trusted_domains は先に、かつ確実に直す。** これが入っていないと
+        # startupProbe が通らず Pod が Ready にならない。
+        if configure_trusted_domains; then
+          log "trusted_domains is set."
+        else
+          log "ERROR: failed to set trusted_domains. startupProbe will keep failing with HTTP 400."
+        fi
+
+        if configure_oidc; then
+          log "OIDC provider 'authentik' is configured."
+        else
+          log "WARNING: failed to configure OIDC. Local admin login still works."
+        fi
+
+        exit 0
+
+    # 内部で使う PHP の設定ファイル群。既定のままにしている。
+    # redis.config.php は REDIS_HOST が未設定なら何もしないので、
+    # Redis を使わない今の構成でも害は無い。
+    #
+    # apcu.config.php が memcache.local を APCu にする。
+    # **memcache.locking (ファイルロック) は設定されない。** Redis が無いので
+    # DB ベースのロックにフォールバックする (README.md「気をつけること」)。
+
+  # TLS 終端は Traefik。Pod には平文で届くので、Nextcloud に
+  # 「外から見たときのプロトコルは https」と教える。
+  phpClientHttpsFix:
+    enabled: true
+    protocol: https
+
+  ## DB — platform namespace 共用の PostgreSQL を使う
+  #
+  # 同梱の PostgreSQL / MariaDB (どちらも bitnami のサブチャート) は使わない。
+  # bitnami は 2025 年 8 月に無償カタログが latest タグだけになり、
+  # チャート側も bitnamilegacy/ の凍結イメージを指すようになったため、
+  # このリポジトリの方針 (../postgresql/README.md) と両立しない。
+  #
+  # internalDatabase は SQLite。DB ファイルが NFS 上に載ることになり、
+  # SQLite のファイルロックが NFS で正しく効かないので使わない。
+  internalDatabase:
+    enabled: false
+
+  externalDatabase:
+    enabled: true
+    type: postgresql
+    # 接続先・DB 名・ユーザ・パスワードはすべて Secret から読む。
+    # host も Secret に入れているのは、パスワードだけ別扱いにすると
+    # 接続情報が values と vault の 2 か所に散るため。
+    #
+    # DB (nextcloud) は ../postgresql/ 側に用意する。
+    # **初回起動スクリプトは 2 回目以降実行されない**ので、
+    # 既に PostgreSQL が動いている場合は psql で作ること (README.md)。
+    existingSecret:
+      enabled: true
+      secretName: nextcloud-db
+      usernameKey: db-username
+      passwordKey: db-password
+      hostKey: db-hostname
+      databaseKey: db-name
+
+  ## Redis は使わない
+  #
+  # 同梱の redis も bitnami のサブチャート (bitnamilegacy/redis) なので入れない。
+  # 外部 Redis も今は無いので externalRedis も無効のまま。
+  #
+  # 影響は「ファイルロックが DB ベースになる」ことだけ。
+  # 利用者 1 人規模なら問題にならない。詳細は README.md。
+  redis:
+    enabled: false
+    # **チャートの不具合への対処。** REDIS_URL を出すブロックが
+    # redis.enabled の外に書かれていて、無効にしても env が 1 つ残る。
+    # 既定 (auth.enabled: true / password: changeme) のままだと
+    #   REDIS_URL=redis://:$(REDIS_HOST_PASSWORD)@$(REDIS_HOST):$(REDIS_HOST_PORT)
+    # という「パスワード付き」の形で出る。REDIS_HOST も REDIS_HOST_PASSWORD も
+    # 定義されないので $(...) は展開されず、値としては無意味なまま残る。
+    #
+    # 動作に影響は無い (イメージ側の redis.config.php は REDIS_HOST を見ていて、
+    # それが未定義なので Redis の設定自体が入らない) が、
+    # 認証情報らしきものを残さないよう auth を切っておく。
+    auth:
+      enabled: false
+      password: ""
+  externalRedis:
+    enabled: false
+
+  ## 同梱 DB のサブチャートも明示的に切っておく (既定も false)。
+  mariadb:
+    enabled: false
+  postgresql:
+    enabled: false
+
+  ## バックグラウンドジョブ
+  #
+  # 既定は無効。有効にしないと「AJAX で cron を回している」状態のままで、
+  # ファイルスキャンや共有の期限切れ処理が遅れる。
+  cronjob:
+    enabled: true
+    # sidecar (同じ Pod で crond) と cronjob (別 Pod) が選べる。
+    #
+    # **sidecar にしている。** PVC が RWO なので、別 Pod の CronJob は
+    # 本体と違うノードに載ると /var/www/html をマウントできない。
+    # sidecar なら必ず同じ Pod なので、その事故が起きない。
+    # crond は root が要るが、apache flavor は root で起動するので問題ない。
+    type: sidecar
+    sidecar:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+  ## /var/www/html の永続化
+  #
+  # 中身は Nextcloud 本体のソース、インストールしたアプリ、config/、
+  # それに data/ (プレビュー、バージョン履歴、アップロードの一時領域)。
+  #
+  # **ユーザのファイル本体はここに置かない方針。** External Storage を
+  # WebUI から追加して、そちらに向ける。
+  persistence:
+    enabled: true
+    # TrueNAS の NFS 共有。既定クラス (local-path) はノードローカルなので使わない。
+    storageClass: truenas-nfs
+    accessMode: ReadWriteOnce
+    # 本体 + アプリで 1GB ほど、残りはプレビューとバージョン履歴の余裕。
+    #
+    # nfs-subdir-external-provisioner が作るのは NFS 共有の下のディレクトリで、
+    # このサイズを強制する仕組みは無い (StorageClass は
+    # allowVolumeExpansion: true だが、実際には広げる操作自体が要らない)。
+    # 本当の上限は TrueNAS 側のデータセットの空き容量。
+    size: 20Gi
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  ## 起動プローブ
+  #
+  # **NFS では必須。しかも猶予をかなり大きく取る必要がある。**
+  #
+  # Nextcloud の entrypoint は起動のたびに本体一式を rsync で
+  # /var/www/html へ展開する。rsync が終わるまで Apache は起動しないので、
+  # その間 :80 は connection refused になる。
+  #
+  #   rsync -rlDog --chown www-data:www-data --delete \
+  #     --exclude-from=/upgrade.exclude /usr/src/nextcloud/ /var/www/html/
+  #
+  # **この構成での実測値 (k3s-worker04 → TrueNAS 10.10.20.10, nfs4.2)。**
+  #
+  #   小さいファイルの作成:  NFS 41 files/s / コンテナのローカル 21051 files/s
+  #   Nextcloud 34.0.2 の本体: 30214 ファイル / 868 MB
+  #
+  # 作成だけで 30214 / 41 = 約 12 分。rsync は 1 ファイルにつき
+  # open(O_CREAT|O_EXCL) → write → fchmodat → lchown → rename と
+  # 4〜5 回 RPC を往復するので、実際には **50〜100 分**かかる。
+  #
+  # 以前は failureThreshold: 60 (= 10 分) にしていた。これだと
+  # 初回同期が終わる前に kubelet がコンテナを殺し、
+  # 再起動 → rsync が最初からやり直し → また 10 分で殺される、
+  # という無限ループになる。**これが「Initializing nextcloud ... で
+  # 止まる」ように見えていた正体。**
+  #
+  # 10s × 720 = 2 時間の猶予にしてある。正常なら Apache が応答した
+  # 時点で成功するので、2 回目以降の起動が遅くなることはない。
+  #
+  # 進み具合はこれで見られる (数が 30214 に近づいていけば正常):
+  #   kubectl -n platform exec deploy/nextcloud -c nextcloud -- \
+  #     sh -c 'find /var/www/html | wc -l'
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 720
+
+  ## 経路の書き方をリポジトリ全体で 1 箇所に揃えるため、上流の ingress は使わない。
+  ## 実体は同ディレクトリの ingress.yaml。
+  ingress:
+    enabled: false
+
+  ## Gateway API は使っていない。
+  httpRoute:
+    enabled: false
+
+  ## Prometheus は入れていないので exporter も ServiceMonitor も出さない。
+  metrics:
+    enabled: false
+
+  ## Collabora (オンライン Office) と imaginary (プレビュー生成) は使わない。
+  ## 必要になったら別途検討する。どちらも常駐プロセスが増える。
+  collabora:
+    enabled: false
+  imaginary:
+    enabled: false

@@ -1,0 +1,68 @@
+# 上流Helmチャートを固定条件で描画し、リリースを作らずSSAで収束させる。
+---
+# 一時ファイル操作は収束対象ではないため、changed表示から除外する
+# (--checkの結果が「クラスタとの差分」だけを意味するように保つ)
+- name: Helm values用の一時ファイルを作成する
+  ansible.builtin.tempfile:
+    state: file
+    suffix: .yaml
+  register: k8s_helm_values_file
+  check_mode: false
+  changed_when: false
+
+- name: Helm valuesを一時ファイルへ書き出す
+  ansible.builtin.copy:
+    dest: "{{ k8s_helm_values_file.path }}"
+    content: "{{ k8s_helm_values | to_nice_yaml(indent=2, sort_keys=false) }}"
+    mode: "0600"
+  check_mode: false
+  changed_when: false
+
+- name: Helmチャートを描画する
+  ansible.builtin.command:
+    argv: >-
+      {{
+        [
+          'helm', 'template', k8s_helm_release, k8s_helm_chart,
+          '--repo', k8s_helm_repo_url,
+          '--version', k8s_helm_version,
+          '--namespace', k8s_helm_namespace,
+          '--values', k8s_helm_values_file.path
+        ]
+        + (['--no-hooks'] if k8s_helm_no_hooks | default(false) | bool else [])
+        + (['--include-crds'] if k8s_helm_include_crds | default(false) | bool else [])
+      }}
+  register: k8s_helm_template
+  changed_when: false
+  check_mode: false
+
+# PyYAML(YAML 1.1)はYAML 1.2の8進表記「0oNNN」を文字列として読み、数値を要求する
+# フィールドで型エラーになる(実例: nextcloudチャートの defaultMode: 0o755)。
+# kubectlはYAML 1.2対応のため旧手順では顕在化しなかった。主要なパーミッション値を
+# 10進へ正規化してから適用する。
+- name: チャート出力のYAML 1.2 8進表記を10進へ正規化する
+  ansible.builtin.set_fact:
+    k8s_helm_manifest: >-
+      {{ k8s_helm_template.stdout
+         | regex_replace('(?m): 0o755$', ': 493')
+         | regex_replace('(?m): 0o750$', ': 488')
+         | regex_replace('(?m): 0o644$', ': 420')
+         | regex_replace('(?m): 0o444$', ': 292')
+         | regex_replace('(?m): 0o440$', ': 288')
+         | regex_replace('(?m): 0o400$', ': 256') }}
+
+- name: Helm描画結果をServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_helm_manifest }}"
+    k8s_namespace: >-
+      {{ k8s_helm_namespace if k8s_helm_inject_namespace | default(false) | bool else omit }}
+
+- name: Helm values用の一時ファイルを削除する
+  ansible.builtin.file:
+    path: "{{ k8s_helm_values_file.path }}"
+    state: absent
+  check_mode: false
+  changed_when: false

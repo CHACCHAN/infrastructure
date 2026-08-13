@@ -1,0 +1,32 @@
+# Cloudflare Tunnelコネクタと任意のトークンSecretを収束させる。
+---
+# Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
+
+- name: TunnelトークンSecretを描画する
+  ansible.builtin.set_fact:
+    k8s_cloudflared_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
+  vars:
+    k8s_secret_manifest_name: tunnel-token
+    k8s_secret_manifest_namespace: cloudflare
+    k8s_secret_manifest_data: "{{ k8s_secret_tunnel_token }}"
+  when: k8s_secret_tunnel_token is defined
+  no_log: true
+
+- name: TunnelトークンSecretをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_cloudflared_secret_definition }}"
+    k8s_apply_no_log: true
+  when: k8s_secret_tunnel_token is defined
+- name: cloudflaredマニフェストを描画する
+  ansible.builtin.set_fact:
+    k8s_cloudflared_definition: "{{ lookup('ansible.builtin.template', 'deployment.yaml.j2') }}"
+
+- name: cloudflaredマニフェストをServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_cloudflared_definition }}"

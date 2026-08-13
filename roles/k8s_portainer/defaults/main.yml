@@ -1,0 +1,22 @@
+# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+---
+k8s_portainer_helm_version: "239.5.0"
+k8s_portainer_values:
+  service:
+    type: ClusterIP
+
+  persistence:
+    enabled: true
+    storageClass: truenas-nfs
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  ingress:
+    enabled: false

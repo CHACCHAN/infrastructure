@@ -1,0 +1,189 @@
+# Kubernetesアプリの共通設定と、適用順を含む宣言登録簿。
+---
+k8s_domain: cc-chacchan.com
+k8s_tls_secret: cc-chacchan-wildcard-tls
+
+k8s_apps:
+  - namespaces
+  - cert_manager
+  - certificates
+  - nfs_provisioner
+  - postgresql
+  - external
+  - cloudflared
+  - guacamole
+  - portainer
+  - awx
+  - homarr
+  - pgadmin
+  - nextcloud
+
+k8s_namespaces_list:
+  - cert-manager
+  - cloudflare
+  - platform
+  - sandbox
+  - storage
+
+# Traefikが外部HTTPSバックエンドへ接続する際のTLS設定。
+k8s_external_transports:
+  - name: proxmox-transport
+    label_name: proxmox
+    insecure_skip_verify: true
+  - name: truenas-transport
+    label_name: truenas
+    server_name: "nas.{{ k8s_domain }}"
+    insecure_skip_verify: true
+
+# selectorless ServiceとEndpointSlice、および公開Ingressの宣言。
+k8s_external_routes:
+  - name: authentik
+    backend_ip: 172.16.11.2
+    scheme: http
+    ports: [{name: http, port: 9000}]
+    forward_auth: true
+    ingresses:
+      - name: authentik
+        host: "auth.{{ k8s_domain }}"
+        port: http
+        entrypoints: "web,websecure"
+        forwarded_https: true
+
+  - name: cloudflare-ddns-ui
+    backend_ip: 172.16.11.4
+    scheme: http
+    ports: [{name: http, port: 8080}]
+    ingresses:
+      - name: cloudflare-ddns-ui
+        host: "ddns.{{ k8s_domain }}"
+        port: http
+        middlewares: [authentik-forward-auth]
+      - name: cloudflare-ddns-ui-authentik-outpost
+        host: "ddns.{{ k8s_domain }}"
+        port: http
+        path: /outpost.goauthentik.io
+        backend_service: authentik-external
+        forwarded_https: true
+
+  - name: supabase
+    backend_ip: 172.16.11.6
+    scheme: none
+    ports: [{name: api, port: 8000}]
+    ingresses:
+      - name: supabase-authentik-outpost
+        host: "supabase.{{ k8s_domain }}"
+        port: http
+        path: /outpost.goauthentik.io
+        backend_service: authentik-external
+        forwarded_https: true
+        forwarded_https_name: supabase-forwarded-https
+      - name: supabase-studio
+        host: "supabase.{{ k8s_domain }}"
+        port: api
+        middlewares: [authentik-forward-auth, supabase-forwarded-https]
+      - name: supabase-api
+        host: "api.{{ k8s_domain }}"
+        port: api
+        entrypoints: "web,websecure"
+        tls: false
+        forwarded_https: true
+        forwarded_https_name: api-forwarded-https
+        paths: [/rest/v1, /auth/v1, /storage/v1, /realtime/v1, /functions/v1]
+
+  - name: technitium-dns
+    backend_ip: 172.16.11.3
+    scheme: http
+    ports: [{name: doh, port: 8053}, {name: web, port: 5380}]
+    ingresses:
+      - name: technitium-dns-web
+        host: "dns.{{ k8s_domain }}"
+        port: web
+        forwarded_https: true
+      - name: technitium-dns-doh
+        host: "doh.{{ k8s_domain }}"
+        port: doh
+
+  - name: truenas
+    backend_ip: 172.16.11.10
+    scheme: https
+    transport: truenas-transport
+    ports: [{name: https, port: 443}]
+    ingresses: [{name: truenas, host: "nas.{{ k8s_domain }}", port: https}]
+
+  - name: wg-easy
+    backend_ip: 172.16.11.5
+    scheme: http
+    ports: [{name: http, port: 51821}]
+    ingresses:
+      - name: wg-easy
+        host: "wgui.{{ k8s_domain }}"
+        port: http
+        forwarded_https: true
+
+  - name: pbs
+    backend_ip: 172.16.11.7
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8007}]
+    ingresses: [{name: pbs, host: "pbs.{{ k8s_domain }}", port: https}]
+
+  - name: pve01
+    backend_ip: 172.16.11.11
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8006}]
+    ingresses: [{name: pve01, host: "pve01.{{ k8s_domain }}", port: https}]
+  - name: pve02
+    backend_ip: 172.16.11.12
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8006}]
+    ingresses: [{name: pve02, host: "pve02.{{ k8s_domain }}", port: https}]
+  - name: pve03
+    backend_ip: 172.16.11.13
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8006}]
+    ingresses: [{name: pve03, host: "pve03.{{ k8s_domain }}", port: https}]
+  - name: pve04
+    backend_ip: 172.16.11.14
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8006}]
+    ingresses: [{name: pve04, host: "pve04.{{ k8s_domain }}", port: https}]
+  - name: pve05
+    backend_ip: 172.16.11.15
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8006}]
+    ingresses: [{name: pve05, host: "pve05.{{ k8s_domain }}", port: https}]
+  - name: pve06
+    backend_ip: 172.16.11.16
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8006}]
+    ingresses: [{name: pve06, host: "pve06.{{ k8s_domain }}", port: https}]
+  - name: pve07
+    backend_ip: 172.16.11.17
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8006}]
+    ingresses: [{name: pve07, host: "pve07.{{ k8s_domain }}", port: https}]
+  - name: pve08
+    backend_ip: 172.16.11.18
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8006}]
+    ingresses: [{name: pve08, host: "pve08.{{ k8s_domain }}", port: https}]
+  - name: pve09
+    backend_ip: 172.16.11.19
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8006}]
+    ingresses: [{name: pve09, host: "pve09.{{ k8s_domain }}", port: https}]
+  - name: pve10
+    backend_ip: 172.16.11.20
+    scheme: https
+    transport: proxmox-transport
+    ports: [{name: https, port: 8006}]
+    ingresses: [{name: pve10, host: "pve10.{{ k8s_domain }}", port: https}]
