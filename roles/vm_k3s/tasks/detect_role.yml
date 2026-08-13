@@ -1,0 +1,31 @@
+# 通常収束でserver/agentを入れ替えると旧unitやデータが残るため、設定変更前に止める。
+---
+- name: k3s serverサービスの存在を確認する
+  ansible.builtin.stat:
+    path: /etc/systemd/system/k3s.service
+  register: kubernetes_server_service_unit
+
+- name: k3s agentサービスの存在を確認する
+  ansible.builtin.stat:
+    path: /etc/systemd/system/k3s-agent.service
+  register: kubernetes_agent_service_unit
+
+- name: 導入済みの実役割と宣言した役割が一致することを確認する
+  ansible.builtin.assert:
+    that:
+      - >-
+        not (kubernetes_server_service_unit.stat.exists
+             and kubernetes_agent_service_unit.stat.exists)
+      - >-
+        not kubernetes_server_service_unit.stat.exists
+        or kubernetes_role_resolved == 'server'
+      - >-
+        not kubernetes_agent_service_unit.stat.exists
+        or kubernetes_role_resolved == 'agent'
+    fail_msg: >-
+      宣言役割={{ kubernetes_role_resolved }} に対し、実VMには
+      k3s.service={{ kubernetes_server_service_unit.stat.exists }},
+      k3s-agent.service={{ kubernetes_agent_service_unit.stat.exists }} が存在します。
+      k3sの役割変更は既存データやunitの削除が必要なため、通常収束では行えません。
+      専用の移行・再構築手順で対応してください。
+    quiet: true

@@ -15,6 +15,21 @@
     k8s_helm_include_crds: false
     k8s_helm_inject_namespace: false
 
+- name: portainer Deploymentのrolloutを待つ
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: portainer
+    namespace: platform
+  register: k8s_portainer_rollout
+  until: >-
+    k8s_portainer_rollout.resources | length > 0
+    and (k8s_portainer_rollout.resources[0].status.readyReplicas | default(0) | int)
+        >= (k8s_portainer_rollout.resources[0].spec.replicas | default(1) | int)
+  retries: 60
+  delay: 5
+  when: not ansible_check_mode
+
 - name: 公開Ingressを描画する
   ansible.builtin.set_fact:
     k8s_portainer_ingress_definition: "{{ lookup('ansible.builtin.template', 'ingress.yaml.j2') }}"

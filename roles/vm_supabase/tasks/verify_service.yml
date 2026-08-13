@@ -3,11 +3,20 @@
 # 11個のコンテナが順番に起動するため、初回はイメージ取得とDB初期化で数分かかる。
 # 1つでも落ち続けている場合は、そのコンテナのログを見せて止める。
 ---
+- name: Composeで宣言されたサービス一覧を取得する
+  ansible.builtin.command:
+    cmd: docker compose config --services
+    chdir: "{{ supabase_project_dir }}"
+  become: true
+  changed_when: false
+  register: supabase_compose_services
+
 - name: すべてのコンテナが起動するまで待機する
   block:
     - name: コンテナの状態を問い合わせる
       ansible.builtin.command:
-        cmd: docker compose ps --format json
+        # 停止済みも含め、宣言サービスの欠落を成功扱いしない。
+        cmd: docker compose ps --all --format json
         chdir: "{{ supabase_project_dir }}"
       become: true
       changed_when: false
@@ -15,16 +24,26 @@
       retries: "{{ supabase_ready_retries }}"
       delay: "{{ supabase_ready_delay }}"
       until: >-
-        ((supabase_ps.stdout_lines | default([]) | length) > 0)
-        and ((supabase_ps.stdout_lines
-              | map('from_json')
-              | rejectattr('State', 'equalto', 'running')
-              | list | length) == 0)
-        and ((supabase_ps.stdout_lines
-              | map('from_json')
-              | selectattr('Health', 'defined')
-              | selectattr('Health', 'equalto', 'starting')
-              | list | length) == 0)
+        (supabase_expected_services | length) > 0
+        and (supabase_expected_services | difference(supabase_ps_service_names) | length) == 0
+        and (supabase_ps_records
+             | selectattr('Service', 'in', supabase_expected_services)
+             | rejectattr('State', 'equalto', 'running') | list | length) == 0
+        and (supabase_ps_records
+             | selectattr('Service', 'in', supabase_expected_services)
+             | selectattr('Health', 'defined')
+             | rejectattr('Health', 'in', [none, '', 'healthy']) | list | length) == 0
+      vars:
+        supabase_expected_services: >-
+          {{ supabase_compose_services.stdout_lines | map('trim')
+             | reject('equalto', '') | list }}
+        # Composeの版によりJSON配列または1行1JSONのどちらでも返り得るため正規化する。
+        supabase_ps_records: >-
+          {{ (supabase_ps.stdout | trim | from_json)
+             if (supabase_ps.stdout | trim).startswith('[')
+             else (supabase_ps.stdout_lines | default([]) | map('from_json') | list) }}
+        supabase_ps_service_names: >-
+          {{ supabase_ps_records | map(attribute='Service') | list }}
 
     - name: 起動を確認できたことを記録する
       ansible.builtin.set_fact:
@@ -34,10 +53,26 @@
     - name: 起動できていないコンテナを特定する
       ansible.builtin.set_fact:
         supabase_bad_containers: >-
-          {{ (supabase_ps.stdout_lines | default([]))
-             | map('from_json')
-             | rejectattr('State', 'equalto', 'running')
-             | map(attribute='Service') | list }}
+          {{ ((supabase_expected_services | difference(supabase_ps_service_names))
+              + (supabase_ps_records
+                 | selectattr('Service', 'in', supabase_expected_services)
+                 | rejectattr('State', 'equalto', 'running')
+                 | map(attribute='Service') | list)
+              + (supabase_ps_records
+                 | selectattr('Service', 'in', supabase_expected_services)
+                 | selectattr('Health', 'defined')
+                 | rejectattr('Health', 'in', [none, '', 'healthy'])
+                 | map(attribute='Service') | list)) | unique | list }}
+      vars:
+        supabase_expected_services: >-
+          {{ supabase_compose_services.stdout_lines | map('trim')
+             | reject('equalto', '') | list }}
+        supabase_ps_records: >-
+          {{ (supabase_ps.stdout | default('') | trim | from_json)
+             if (supabase_ps.stdout | default('') | trim).startswith('[')
+             else (supabase_ps.stdout_lines | default([]) | map('from_json') | list) }}
+        supabase_ps_service_names: >-
+          {{ supabase_ps_records | map(attribute='Service') | list }}
 
     - name: 起動できていないコンテナのログを取得する
       ansible.builtin.command:

@@ -5,7 +5,8 @@
 - name: VMの現在設定を取得する
   community.proxmox.proxmox_vm_info:
     vmid: "{{ vmid }}"
-    config: current
+    # 稼働中VMの再起動待ち設定も収束済みとして比較する。
+    config: pending
   register: pve_config_info
 
 - name: VMの基本設定とNIC設定を比較用に組み立てる
@@ -64,6 +65,7 @@
     vga: "{{ pve_vm_vga }}"
     cpu: "{{ pve_vm_cpu_type }}"
     update: true
+  register: pve_vm_basic_update
   when: >-
     pve_vm_config_desired != {
       'name': pve_current_config.name | default(''),
@@ -86,4 +88,17 @@
     update: true
     # proxmox_kvmは安全策としてnet更新を既定で無視するため、差分確認後だけ解除する。
     update_unsafe: true
+  register: pve_vm_net_update
   when: pve_vm_net != pve_vm_current_net
+
+- name: 稼働中VMの変更が再起動待ちになる可能性を表示する
+  ansible.builtin.debug:
+    msg: >-
+      VMID {{ vmid }} は稼働中です。今回の構成変更はPVE上で保留され、
+      VMを再起動するまで実行中の構成へ反映されない可能性があります。
+      このロールでは電源操作を追加実行しません。
+  when:
+    - (pve_config_info.proxmox_vms | first).status == 'running'
+    - >-
+      (pve_vm_basic_update is changed)
+      or (pve_vm_net_update is changed)

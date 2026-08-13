@@ -30,6 +30,9 @@
       vars:
         pve_vmid: "{{ vmid }}"
         pve_require_vm: false
+        # pve_vm_nameを上書きした既存VMでは、解決後のPVE上の実名を照合する。
+        pve_expected_name: "{{ pve_vm_name | default(inventory_hostname) }}"
+        pve_expected_node: "{{ node }}"
 
     - name: 未作成VM用のテンプレートを収束させる
       ansible.builtin.include_role:

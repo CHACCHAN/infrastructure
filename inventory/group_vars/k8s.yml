@@ -13,7 +13,19 @@ pve_ssh_pubkey_file: ~/.ssh/id_ed25519_k3s.pub
 pve_ssh_prikey: ~/.ssh/id_ed25519_k3s
 
 # --- k3sの設定 ---
+# 明示されたserverを優先し、移行途中の旧inventoryだけ先頭ホストへフォールバックする。
+kubernetes_server_inventory_host: >-
+  {{ (groups['k8s'] | map('extract', hostvars)
+      | selectattr('k3s_role', 'defined')
+      | selectattr('k3s_role', 'equalto', 'server')
+      | map(attribute='inventory_hostname') | first)
+     | default(groups['k8s'][0], true) }}
+
 # vm_k3sはトークン取得に管理IP、ノード間通信に占有ネットワークIPを使い分ける。
-kubernetes_server_ip: "{{ hostvars[groups['k8s'][0]].ansible_host }}"
+kubernetes_server_ip: "{{ hostvars[kubernetes_server_inventory_host].ansible_host }}"
 kubernetes_server_node_ip: >-
-  {{ hostvars[groups['k8s'][0]].cluster_ip | regex_replace('/.*$', '') }}
+  {{ hostvars[kubernetes_server_inventory_host].cluster_ip | regex_replace('/.*$', '') }}
+
+# 新規ノードにも既存クラスタと同じ版を入れる(stableチャネル任せの版ズレ防止。レビューSEC-07)
+# クラスタ更新時はこの値を上げてから全ノードを順に再構築する
+kubernetes_version: v1.36.2+k3s1

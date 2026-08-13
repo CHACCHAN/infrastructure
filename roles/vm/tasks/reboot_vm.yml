@@ -1,10 +1,20 @@
 # 構成完了後のVM再起動。各playbookのpost_tasksから import_role(tasks_from: reboot_vm)で呼ぶ。
-# dockerグループへの追加とカーネル更新の反映に再起動が必要。
+# カーネル等の更新があった場合(/var/run/reboot-required)だけ再起動する(レビューREL-04)。
+# 差分がないのに毎回再起動すると「収束済みならchanged=0」に反し、単一レプリカの
+# サービスを不要に中断するため。強制したいときは -e vm_reboot_force=true。
 # restart: unless-stopped のコンテナは再起動後に自動復帰する。
 ---
+- name: 再起動が必要か確認する
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: vm_reboot_required_flag
+
 - name: 構成を反映するためVMを再起動する
   ansible.builtin.reboot:
     msg: Ansibleによる構成変更を反映するため再起動します
     reboot_timeout: 600
   become: true
-  when: vm_reboot_after_setup | default(true) | bool
+  when: >-
+    (vm_reboot_after_setup | default(true) | bool)
+    and (vm_reboot_required_flag.stat.exists
+         or vm_reboot_force | default(false) | bool)

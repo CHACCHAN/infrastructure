@@ -37,6 +37,9 @@
         tasks_from: find_vm
       vars:
         pve_vmid: "{{ vmid }}"
+        # pve_vm_nameを上書きした既存VMでは、解決後のPVE上の実名を照合する。
+        pve_expected_name: "{{ pve_vm_name | default(inventory_hostname) }}"
+        pve_expected_node: "{{ node }}"
 
     # 停止には猶予時間と強制停止方針が必要だが、起動時はモジュール既定値を使う。
     - name: VMの電源状態を収束させる

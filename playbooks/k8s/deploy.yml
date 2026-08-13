@@ -14,6 +14,21 @@
     - ../../vault/k8s_secrets.yml
 
   tasks:
+    # 誤ったkubeconfig/contextのまま別クラスタへ適用する事故を防ぐ(レビューSAF-03)。
+    # 接続先APIサーバーが宣言(k8s_api_server)と一致しない限り一切書き込まない。
+    - name: 接続先クラスタが宣言と一致することを確認する
+      kubernetes.core.k8s_cluster_info:
+      register: k8s_preflight_info
+
+    - name: 接続先APIサーバーを検証する
+      ansible.builtin.assert:
+        that:
+          - k8s_preflight_info.connection.host == k8s_api_server
+        fail_msg: >-
+          接続先 {{ k8s_preflight_info.connection.host }} が宣言
+          {{ k8s_api_server }} と一致しません。kubeconfigのcurrent-contextを確認してください。
+        quiet: true
+
     # app指定時は1ロールだけ、未指定時は登録簿の順序ですべてを実行する。
     - name: Kubernetesアプリロールを実行する
       ansible.builtin.include_role:

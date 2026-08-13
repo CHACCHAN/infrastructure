@@ -6,6 +6,8 @@
     tasks_from: find_vm
   vars:
     pve_vmid: "{{ vmid }}"
+    pve_expected_name: "{{ pve_vm_name }}"
+    pve_expected_node: "{{ node }}"
     # VMが存在しない場合は後続のclone.ymlがテンプレートから作成する。
     pve_require_vm: false
 

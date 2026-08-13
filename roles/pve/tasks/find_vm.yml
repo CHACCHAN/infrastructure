@@ -16,3 +16,28 @@
     fail_msg: >-
       VMID {{ pve_vmid }} が見つかりません。
       inventory/hosts.yml の宣言と実機を確認してください。
+
+# VMIDの取り違えで別VMを更新・電源操作しないよう、期待値が渡された呼び出しでは
+# PVEが返した実体の名前・配置先・種別も照合する。
+- name: 見つかったVMが宣言した対象と一致することを確認する
+  ansible.builtin.assert:
+    that:
+      - pve_found_vm.type | default('') == 'qemu'
+      - >-
+        pve_expected_name is not defined
+        or pve_found_vm.name | default('') == pve_expected_name
+      - >-
+        pve_expected_node is not defined
+        or pve_found_vm.node | default('') == pve_expected_node
+    fail_msg: >-
+      VMID {{ pve_vmid }} は宣言した対象と一致しません。
+      実体: name={{ pve_found_vm.name | default('(不明)') }},
+      node={{ pve_found_vm.node | default('(不明)') }},
+      type={{ pve_found_vm.type | default('(不明)') }} /
+      期待値: name={{ pve_expected_name | default('(未指定)') }},
+      node={{ pve_expected_node | default('(未指定)') }}, type=qemu。
+      inventoryのvmid・pve_vm_name・nodeを確認してください。
+    quiet: true
+  when:
+    - pve_found_vm is not none
+    - pve_expected_name is defined or pve_expected_node is defined

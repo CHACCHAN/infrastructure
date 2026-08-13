@@ -2,6 +2,17 @@
 ---
 # Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
 
+- name: 必須Secret変数が定義されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - vars[item] is defined
+    fail_msg: >-
+      {{ item }} が未定義です。
+      ansible-vault edit vault/k8s_secrets.yml で実値を設定してください。
+    quiet: true
+  loop:
+    - k8s_secret_cloudflare_api_token
+
 - name: Cloudflare APIトークンSecretを描画する
   ansible.builtin.set_fact:
     k8s_certificates_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
@@ -9,7 +20,6 @@
     k8s_secret_manifest_name: cloudflare-api-token
     k8s_secret_manifest_namespace: cert-manager
     k8s_secret_manifest_data: "{{ k8s_secret_cloudflare_api_token }}"
-  when: k8s_secret_cloudflare_api_token is defined
   no_log: true
 
 - name: Cloudflare APIトークンSecretをServer-Side Applyする
@@ -19,7 +29,7 @@
   vars:
     k8s_definition: "{{ k8s_certificates_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_cloudflare_api_token is defined
+
 - name: 証明書マニフェストを描画する
   ansible.builtin.set_fact:
     k8s_certificates_definition: "{{ lookup('ansible.builtin.template', 'certificates.yaml.j2') }}"

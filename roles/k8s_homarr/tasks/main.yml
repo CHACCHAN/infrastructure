@@ -2,6 +2,19 @@
 ---
 # Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
 
+- name: 必須Secret変数が定義されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - vars[item] is defined
+    fail_msg: >-
+      {{ item }} が未定義です。
+      ansible-vault edit vault/k8s_secrets.yml で実値を設定してください。
+    quiet: true
+  loop:
+    - k8s_secret_homarr_db
+    - k8s_secret_homarr_db_encryption
+    - k8s_secret_homarr_oidc
+
 - name: homarr-db Secretを描画する
   ansible.builtin.set_fact:
     k8s_homarr_homarr_db_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
@@ -9,7 +22,6 @@
     k8s_secret_manifest_name: homarr-db
     k8s_secret_manifest_namespace: platform
     k8s_secret_manifest_data: "{{ k8s_secret_homarr_db }}"
-  when: k8s_secret_homarr_db is defined
   no_log: true
 
 - name: homarr-db SecretをServer-Side Applyする
@@ -19,7 +31,6 @@
   vars:
     k8s_definition: "{{ k8s_homarr_homarr_db_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_homarr_db is defined
 
 - name: homarr-db-encryption Secretを描画する
   ansible.builtin.set_fact:
@@ -28,7 +39,6 @@
     k8s_secret_manifest_name: homarr-db-encryption
     k8s_secret_manifest_namespace: platform
     k8s_secret_manifest_data: "{{ k8s_secret_homarr_db_encryption }}"
-  when: k8s_secret_homarr_db_encryption is defined
   no_log: true
 
 - name: homarr-db-encryption SecretをServer-Side Applyする
@@ -38,7 +48,6 @@
   vars:
     k8s_definition: "{{ k8s_homarr_homarr_db_encryption_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_homarr_db_encryption is defined
 
 - name: homarr-oidc Secretを描画する
   ansible.builtin.set_fact:
@@ -47,7 +56,6 @@
     k8s_secret_manifest_name: homarr-oidc
     k8s_secret_manifest_namespace: platform
     k8s_secret_manifest_data: "{{ k8s_secret_homarr_oidc }}"
-  when: k8s_secret_homarr_oidc is defined
   no_log: true
 
 - name: homarr-oidc SecretをServer-Side Applyする
@@ -57,7 +65,7 @@
   vars:
     k8s_definition: "{{ k8s_homarr_homarr_oidc_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_homarr_oidc is defined
+
 - name: homarr Helmチャートを描画して適用する
   ansible.builtin.import_role:
     name: k8s
@@ -83,3 +91,30 @@
     tasks_from: apply
   vars:
     k8s_definition: "{{ k8s_homarr_ingress_definition }}"
+
+- name: homarr Deploymentのrolloutを待つ
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: homarr
+    namespace: platform
+  register: k8s_homarr_rollout
+  until: >-
+    k8s_homarr_rollout.resources | length > 0
+    and (k8s_homarr_rollout.resources[0].status.readyReplicas | default(0) | int)
+        >= (k8s_homarr_rollout.resources[0].spec.replicas | default(1) | int)
+  retries: 60
+  delay: 5
+  when: not ansible_check_mode
+
+# rbac.enabled: false 化(レビューSEC-03)以前に適用された、クラスタ全体のSecretまで
+# 読める広域RBACの残骸を削除する。SSAは宣言から消えたリソースを削除しないため明示的に消す。
+- name: 旧Kubernetes連携RBACの残骸を削除する
+  kubernetes.core.k8s:
+    state: absent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: "{{ item }}"
+    name: "homarr-cluster-role{{ 'binding' if item == 'ClusterRoleBinding' else '' }}"
+  loop:
+    - ClusterRole
+    - ClusterRoleBinding

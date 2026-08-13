@@ -51,6 +51,22 @@
       ansible.builtin.set_fact:
         pve_destroy_target: "{{ pve_destroy_vm_info.proxmox_vms | first }}"
 
+    - name: 削除対象を表示する
+      ansible.builtin.debug:
+        msg: >-
+          削除対象: VMID={{ vmid }}, name={{ pve_destroy_target.name }},
+          node={{ pve_destroy_target.node }}, status={{ pve_destroy_target.status }}
+
+    - name: 任意指定された期待VM名と削除対象を照合する
+      ansible.builtin.assert:
+        that:
+          - pve_destroy_target.name == expect_name
+        fail_msg: >-
+          VMID {{ vmid }} の実VM名 {{ pve_destroy_target.name }} が、
+          -e expect_name={{ expect_name }} と一致しません。削除を中止します。
+        quiet: true
+      when: expect_name is defined
+
     # templateフラグでは拒否せず、旧実装どおり停止状態だけを削除可能にする。
     - name: 削除対象が停止中であることを確認する
       ansible.builtin.assert:
@@ -73,4 +89,5 @@
     - name: 削除完了を表示する
       ansible.builtin.debug:
         msg: >-
-          VMID {{ vmid }} ({{ pve_destroy_target.name }}) の削除が完了しました。
+          VMID {{ vmid }} ({{ pve_destroy_target.name }},
+          node={{ pve_destroy_target.node }}) の削除が完了しました。

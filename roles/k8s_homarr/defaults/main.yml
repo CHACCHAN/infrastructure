@@ -87,10 +87,10 @@ k8s_homarr_values:
       cpu: 1000m
       memory: 1Gi
 
-  # Kubernetes 連携ウィジェット用の RBAC。クラスタ全体の閲覧権限
-  # (ClusterRole) を Pod に渡すことになるので、必要になるまで無効のままにする。
+  # Kubernetes 連携ウィジェット用の RBAC。有効にするとクラスタ全体のSecretまで
+  # 読めるClusterRoleがPodへ渡る(レビューSEC-03)ため、必要になるまで無効。
   rbac:
-    enabled: true
+    enabled: false
 
   # 経路の書き方をリポジトリ全体で 1 箇所に揃えるため、上流の ingress は使わない。
   # 実体は同ディレクトリの ingress.yaml。

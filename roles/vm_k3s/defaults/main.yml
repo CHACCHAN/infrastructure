@@ -24,8 +24,8 @@ kubernetes_server_node_ip: ""
 # ワーカーとコントロールプレーンでログインユーザーや鍵が違う場合に指定する
 kubernetes_server_ssh_user: ""
 kubernetes_server_ssh_prikey: ""
-# 参加用トークン。未指定ならコントロールプレーンの
-# /var/lib/rancher/k3s/server/node-token をSSH経由で自動取得する
+# 参加用トークン。未指定ならコントロールプレーンのagent-tokenを優先し、
+# agent-tokenが無い既存環境だけnode-tokenへフォールバックしてSSH取得する。
 kubernetes_token: ""
 
 # --- ノードの設定 ---

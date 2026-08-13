@@ -12,6 +12,9 @@
 - name: 必須変数を検証する
   ansible.builtin.import_tasks: validate.yml
 
+- name: 導入済みのK3s実役割を検証する
+  ansible.builtin.import_tasks: detect_role.yml
+
 # Kubernetesはswapが無い前提のため、既定では共通タスクのzramではなく無効化を行う
 - name: スワップを無効化する
   ansible.builtin.import_tasks: disable_swap.yml

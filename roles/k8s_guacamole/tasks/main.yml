@@ -2,6 +2,18 @@
 ---
 # Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
 
+- name: 必須Secret変数が定義されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - vars[item] is defined
+    fail_msg: >-
+      {{ item }} が未定義です。
+      ansible-vault edit vault/k8s_secrets.yml で実値を設定してください。
+    quiet: true
+  loop:
+    - k8s_secret_guacamole_db
+    - k8s_secret_guacamole_oidc
+
 - name: Guacamole DB Secretを描画する
   ansible.builtin.set_fact:
     k8s_guacamole_db_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
@@ -9,7 +21,6 @@
     k8s_secret_manifest_name: guacamole-db
     k8s_secret_manifest_namespace: platform
     k8s_secret_manifest_data: "{{ k8s_secret_guacamole_db }}"
-  when: k8s_secret_guacamole_db is defined
   no_log: true
 
 - name: Guacamole DB SecretをServer-Side Applyする
@@ -19,7 +30,6 @@
   vars:
     k8s_definition: "{{ k8s_guacamole_db_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_guacamole_db is defined
 
 - name: Guacamole OIDC Secretを描画する
   ansible.builtin.set_fact:
@@ -28,7 +38,6 @@
     k8s_secret_manifest_name: guacamole-oidc
     k8s_secret_manifest_namespace: platform
     k8s_secret_manifest_data: "{{ k8s_secret_guacamole_oidc }}"
-  when: k8s_secret_guacamole_oidc is defined
   no_log: true
 
 - name: Guacamole OIDC SecretをServer-Side Applyする
@@ -38,7 +47,7 @@
   vars:
     k8s_definition: "{{ k8s_guacamole_oidc_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_guacamole_oidc is defined
+
 - name: Guacamoleマニフェストを描画する
   ansible.builtin.set_fact:
     k8s_guacamole_definition: "{{ lookup('ansible.builtin.template', 'guacamole.yaml.j2') }}"
@@ -49,3 +58,21 @@
     tasks_from: apply
   vars:
     k8s_definition: "{{ k8s_guacamole_definition }}"
+
+- name: Guacamole Deploymentのrolloutを待つ
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: "{{ item }}"
+    namespace: platform
+  register: k8s_guacamole_rollout
+  until: >-
+    k8s_guacamole_rollout.resources | length > 0
+    and (k8s_guacamole_rollout.resources[0].status.readyReplicas | default(0) | int)
+        >= (k8s_guacamole_rollout.resources[0].spec.replicas | default(1) | int)
+  retries: 60
+  delay: 5
+  loop:
+    - guacd
+    - guacamole
+  when: not ansible_check_mode

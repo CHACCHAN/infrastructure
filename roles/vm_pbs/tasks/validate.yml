@@ -39,16 +39,30 @@
       英数字で始まり、英数字と `_` `.` `-` のみを使って指定してください。
     quiet: true
 
-- name: データ用ディスクの指定を検証する
+- name: 未初期化ディスクの候補を表示用に収集する
+  ansible.builtin.set_fact:
+    pbs_data_disk_candidates: >-
+      {{ (ansible_devices | default({})) | dict2items
+         | selectattr('key', 'match', '^(sd|vd|xvd|nvme)')
+         | selectattr('value.partitions', 'falsy')
+         | map(attribute='key') | map('regex_replace', '^', '/dev/') | list }}
+  when: pbs_data_disk_enabled | bool
+
+- name: データ用ディスクの明示指定を検証する
   ansible.builtin.assert:
     that:
       - pbs_data_disk_fstype in ['ext4', 'xfs']
-      - ((pbs_data_disk_device | length) == 0) or (pbs_data_disk_device is match('^/dev/.+'))
+      - (pbs_data_disk_device | default('', true) | length) > 0
+      - pbs_data_disk_device is match('^/dev/.+')
     fail_msg: >-
-      データ用ディスクの指定が不正です。
+      pbs_data_disk_device が未指定または不正です。
+      自動選択は安全のため廃止しました。
+      検出した未初期化候補: {{ pbs_data_disk_candidates | join(', ') | default('なし', true) }}。
+      lsblkで対象を確認し、可能なら永続名を使って
+      -e "pbs_data_disk_device=/dev/disk/by-id/<デバイスID>" のように指定してください。
       pbs_data_disk_fstype は ext4 か xfs(指定値: {{ pbs_data_disk_fstype }})、
-      pbs_data_disk_device は /dev/sdb のようなデバイスファイルで指定してください
-      (指定値: {{ pbs_data_disk_device | default('(自動判別)', true) }})。
+      pbs_data_disk_device は /dev/... のデバイスファイルで指定してください
+      (指定値: {{ pbs_data_disk_device | default('(未指定)', true) }})。
     quiet: true
   when: pbs_data_disk_enabled | bool
 

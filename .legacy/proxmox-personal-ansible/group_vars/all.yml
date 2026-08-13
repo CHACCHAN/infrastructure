@@ -1,4 +1,0 @@
-proxmox_api_host: "https://192.168.68.11:8006"
-proxmox_node: "pve01"
-proxmox_api_token_id: "root@pam!ansible"
-proxmox_validate_certs: false

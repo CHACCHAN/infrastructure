@@ -2,6 +2,19 @@
 ---
 # Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
 
+- name: 必須Secret変数が定義されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - vars[item] is defined
+    fail_msg: >-
+      {{ item }} が未定義です。
+      ansible-vault edit vault/k8s_secrets.yml で実値を設定してください。
+    quiet: true
+  loop:
+    - k8s_secret_pgadmin_admin
+    - k8s_secret_pgadmin_oidc
+    - k8s_secret_pgadmin_db
+
 - name: pgadmin-admin Secretを描画する
   ansible.builtin.set_fact:
     k8s_pgadmin_pgadmin_admin_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
@@ -9,7 +22,6 @@
     k8s_secret_manifest_name: pgadmin-admin
     k8s_secret_manifest_namespace: platform
     k8s_secret_manifest_data: "{{ k8s_secret_pgadmin_admin }}"
-  when: k8s_secret_pgadmin_admin is defined
   no_log: true
 
 - name: pgadmin-admin SecretをServer-Side Applyする
@@ -19,7 +31,6 @@
   vars:
     k8s_definition: "{{ k8s_pgadmin_pgadmin_admin_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_pgadmin_admin is defined
 
 - name: pgadmin-oidc Secretを描画する
   ansible.builtin.set_fact:
@@ -28,7 +39,6 @@
     k8s_secret_manifest_name: pgadmin-oidc
     k8s_secret_manifest_namespace: platform
     k8s_secret_manifest_data: "{{ k8s_secret_pgadmin_oidc }}"
-  when: k8s_secret_pgadmin_oidc is defined
   no_log: true
 
 - name: pgadmin-oidc SecretをServer-Side Applyする
@@ -38,7 +48,6 @@
   vars:
     k8s_definition: "{{ k8s_pgadmin_pgadmin_oidc_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_pgadmin_oidc is defined
 
 - name: pgadmin-db Secretを描画する
   ansible.builtin.set_fact:
@@ -47,7 +56,6 @@
     k8s_secret_manifest_name: pgadmin-db
     k8s_secret_manifest_namespace: platform
     k8s_secret_manifest_data: "{{ k8s_secret_pgadmin_db }}"
-  when: k8s_secret_pgadmin_db is defined
   no_log: true
 
 - name: pgadmin-db SecretをServer-Side Applyする
@@ -57,7 +65,7 @@
   vars:
     k8s_definition: "{{ k8s_pgadmin_pgadmin_db_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_pgadmin_db is defined
+
 - name: pgadmin Helmチャートを描画して適用する
   ansible.builtin.import_role:
     name: k8s
@@ -83,3 +91,18 @@
     tasks_from: apply
   vars:
     k8s_definition: "{{ k8s_pgadmin_ingress_definition }}"
+
+- name: pgadmin Deploymentのrolloutを待つ
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: pgadmin
+    namespace: platform
+  register: k8s_pgadmin_rollout
+  until: >-
+    k8s_pgadmin_rollout.resources | length > 0
+    and (k8s_pgadmin_rollout.resources[0].status.readyReplicas | default(0) | int)
+        >= (k8s_pgadmin_rollout.resources[0].spec.replicas | default(1) | int)
+  retries: 60
+  delay: 5
+  when: not ansible_check_mode

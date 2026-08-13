@@ -2,6 +2,17 @@
 ---
 # Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
 
+- name: 必須Secret変数が定義されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - vars[item] is defined
+    fail_msg: >-
+      {{ item }} が未定義です。
+      ansible-vault edit vault/k8s_secrets.yml で実値を設定してください。
+    quiet: true
+  loop:
+    - k8s_secret_tunnel_token
+
 - name: TunnelトークンSecretを描画する
   ansible.builtin.set_fact:
     k8s_cloudflared_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
@@ -9,7 +20,6 @@
     k8s_secret_manifest_name: tunnel-token
     k8s_secret_manifest_namespace: cloudflare
     k8s_secret_manifest_data: "{{ k8s_secret_tunnel_token }}"
-  when: k8s_secret_tunnel_token is defined
   no_log: true
 
 - name: TunnelトークンSecretをServer-Side Applyする
@@ -19,7 +29,7 @@
   vars:
     k8s_definition: "{{ k8s_cloudflared_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_tunnel_token is defined
+
 - name: cloudflaredマニフェストを描画する
   ansible.builtin.set_fact:
     k8s_cloudflared_definition: "{{ lookup('ansible.builtin.template', 'deployment.yaml.j2') }}"
@@ -30,3 +40,18 @@
     tasks_from: apply
   vars:
     k8s_definition: "{{ k8s_cloudflared_definition }}"
+
+- name: cloudflared Deploymentのrolloutを待つ
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: cloudflared
+    namespace: cloudflare
+  register: k8s_cloudflared_rollout
+  until: >-
+    k8s_cloudflared_rollout.resources | length > 0
+    and (k8s_cloudflared_rollout.resources[0].status.readyReplicas | default(0) | int)
+        >= (k8s_cloudflared_rollout.resources[0].spec.replicas | default(1) | int)
+  retries: 60
+  delay: 5
+  when: not ansible_check_mode

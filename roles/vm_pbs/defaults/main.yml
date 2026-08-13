@@ -24,9 +24,13 @@ pbs_datastore_path: "/mnt/datastore/{{ pbs_datastore_name }}"
 # 専用ディスクを使わずOSと同じディスクにデータストアを作る場合は false にする。
 pbs_data_disk_enabled: true
 
-# 空ならVM内で自動判別する(パーティションが1つも無いディスクが1本だけなら
-# それを使う)。候補が複数ある場合は /dev/sdb のように明示すること。
+# 誤選択による初期化を防ぐため明示指定が必須。接続順で変わる /dev/sdb より
+# /dev/disk/by-id/... の永続名を推奨する。
 pbs_data_disk_device: ""
+
+# 既存のFSTYPE/署名があるwhole diskを意図して初期化する場合だけtrueにする。
+# OSディスク、マウント中、子パーティションあり、holderありはtrueでも拒否する。
+pbs_data_disk_wipe: false
 
 # ディスク全体を使うパーティションをGPTで作る(既定)。
 # false にすると、パーティションを作らずディスク全体にファイルシステムを作る。

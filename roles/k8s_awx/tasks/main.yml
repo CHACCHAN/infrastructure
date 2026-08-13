@@ -2,6 +2,18 @@
 ---
 # Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
 
+- name: 必須Secret変数が定義されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - vars[item] is defined
+    fail_msg: >-
+      {{ item }} が未定義です。
+      ansible-vault edit vault/k8s_secrets.yml で実値を設定してください。
+    quiet: true
+  loop:
+    - k8s_secret_awx_postgres_configuration
+    - k8s_secret_awx_oidc
+
 - name: awx-postgres-configuration Secretを描画する
   ansible.builtin.set_fact:
     k8s_awx_awx_postgres_configuration_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
@@ -9,7 +21,6 @@
     k8s_secret_manifest_name: awx-postgres-configuration
     k8s_secret_manifest_namespace: platform
     k8s_secret_manifest_data: "{{ k8s_secret_awx_postgres_configuration }}"
-  when: k8s_secret_awx_postgres_configuration is defined
   no_log: true
 
 - name: awx-postgres-configuration SecretをServer-Side Applyする
@@ -19,7 +30,6 @@
   vars:
     k8s_definition: "{{ k8s_awx_awx_postgres_configuration_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_awx_postgres_configuration is defined
 
 - name: awx-oidc Secretを描画する
   ansible.builtin.set_fact:
@@ -28,7 +38,6 @@
     k8s_secret_manifest_name: awx-oidc
     k8s_secret_manifest_namespace: platform
     k8s_secret_manifest_data: "{{ k8s_secret_awx_oidc }}"
-  when: k8s_secret_awx_oidc is defined
   no_log: true
 
 - name: awx-oidc SecretをServer-Side Applyする
@@ -38,7 +47,7 @@
   vars:
     k8s_definition: "{{ k8s_awx_awx_oidc_secret_definition }}"
     k8s_apply_no_log: true
-  when: k8s_secret_awx_oidc is defined
+
 - name: awx-operator Helmチャートを描画して適用する
   ansible.builtin.import_role:
     name: k8s
@@ -66,6 +75,21 @@
     | selectattr('type', 'equalto', 'Established')
     | selectattr('status', 'equalto', 'True') | list | length > 0)
   retries: 24
+  delay: 5
+  when: not ansible_check_mode
+
+- name: awx-operator Deploymentのrolloutを待つ
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: awx-operator-controller-manager
+    namespace: platform
+  register: k8s_awx_operator_rollout
+  until: >-
+    k8s_awx_operator_rollout.resources | length > 0
+    and (k8s_awx_operator_rollout.resources[0].status.readyReplicas | default(0) | int)
+        >= (k8s_awx_operator_rollout.resources[0].spec.replicas | default(1) | int)
+  retries: 60
   delay: 5
   when: not ansible_check_mode
 

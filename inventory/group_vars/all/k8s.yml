@@ -2,6 +2,9 @@
 ---
 k8s_domain: cc-chacchan.com
 k8s_tls_secret: cc-chacchan-wildcard-tls
+# deploy.ymlのpreflightが照合する接続先(k3s APIサーバー=k3s-master01の占有網IP)。
+# kubeconfigの取り違えによる別クラスタへの適用を防ぐ
+k8s_api_server: https://10.10.20.11:6443
 
 k8s_apps:
   - namespaces

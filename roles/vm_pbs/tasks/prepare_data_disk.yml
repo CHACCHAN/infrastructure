@@ -1,92 +1,226 @@
-# OS用ディスク(scsi0)とは別のディスクをGPTで初期化し、データストアのパスへ
-# マウントする。バックアップの実データはこのディスクだけに置かれ、
-# OS用ディスクは消費しない。
-#
-# 初期化の内容: GPTのパーティションテーブル + ディスク全体を使うパーティション1つ
-#              + ファイルシステム(ラベル付き)
-#
-# 再実行しても作り直さない。次の順に「既にあるもの」を探し、
-# どれも無いときだけ初期化する:
-#   1. データストアのパスに既にマウントされているデバイス
-#   2. 同じラベルのファイルシステム(前回の実行が途中で終わった場合もここで拾う)
-#   3. パーティションを1つも持たないディスク(= 追加したばかりの空ディスク)
+# 明示指定されたOS用とは別のディスクを、安全性を検証してからデータストアへ
+# マウントする。期待どおりのGPT+FSが既にあれば破壊的処理をすべてスキップする。
 ---
-- name: OSが載っているブロックデバイスを特定する
-  ansible.builtin.set_fact:
-    # /dev/sda1 → sda、/dev/nvme0n1p1 → nvme0n1
-    pbs_os_device: >-
-      {{ ((ansible_mounts | selectattr('mount', 'equalto', '/')
-           | map(attribute='device') | first) | default('', true))
-         | regex_replace('^/dev/', '') | regex_replace('p?[0-9]+$', '') }}
-
-- name: データストアのパスに既にマウントされているデバイスを調べる
-  ansible.builtin.set_fact:
-    pbs_datastore_mounted_device: >-
-      {{ (ansible_mounts | selectattr('mount', 'equalto', pbs_datastore_path)
-          | map(attribute='device') | first) | default('', true) }}
-
-# 前回の実行が「初期化したがマウント前」で終わっていた場合や、
-# パーティションを作らずに構築した古い環境を引き継ぐ場合にここで見つかる
-- name: 同じラベルのファイルシステムを探す
+- name: 指定されたデータ用ディスクの実体を解決する
   ansible.builtin.command:
-    cmd: blkid -L {{ pbs_data_disk_label }}
+    argv:
+      - readlink
+      - -f
+      - "{{ pbs_data_disk_device }}"
   become: true
   changed_when: false
   failed_when: false
-  register: pbs_data_disk_by_label
+  register: pbs_data_disk_realpath
 
-- name: 既に使えるファイルシステムがあるかを判定する
-  ansible.builtin.set_fact:
-    pbs_data_disk_existing: >-
-      {{ pbs_datastore_mounted_device
-         if ((pbs_datastore_mounted_device | length) > 0)
-         else (pbs_data_disk_by_label.stdout | trim) }}
+- name: 指定されたデータ用ディスクの状態を取得する
+  ansible.builtin.stat:
+    path: "{{ pbs_data_disk_realpath.stdout | trim }}"
+    follow: true
+  register: pbs_data_disk_stat
 
-# パーティションを1つも持たないディスク = 追加したばかりの空ディスク。
-# OS用ディスクも、初期化済みのデータ用ディスクもパーティションを持つため候補から外れる。
-- name: 初期化していないディスクの候補を洗い出す
-  ansible.builtin.set_fact:
-    pbs_data_disk_candidates: >-
-      {{ (ansible_devices | default({})) | dict2items
-         | selectattr('key', 'match', '^(sd|vd|xvd|nvme)')
-         | rejectattr('key', 'equalto', pbs_os_device)
-         | selectattr('value.partitions', 'falsy')
-         | map(attribute='key') | list }}
-
-- name: データ用ディスクを特定できることを確認する
+- name: 指定されたデータ用ディスクがブロックデバイスであることを確認する
   ansible.builtin.assert:
     that:
-      - ((pbs_data_disk_existing | length) > 0)
-        or ((pbs_data_disk_device | length) > 0)
-        or ((pbs_data_disk_candidates | length) == 1)
+      - (pbs_data_disk_realpath.stdout | trim | length) > 0
+      - pbs_data_disk_stat.stat.exists
+      - pbs_data_disk_stat.stat.isblk | default(false)
     fail_msg: >-
-      データ用ディスクを自動判別できませんでした
-      (初期化していないディスクの候補: {{ pbs_data_disk_candidates | join(', ') | default('なし', true) }})。
-      VMに2本目のディスクがあるか確認してください
-      (vm_hardware の disks で scsi1 を追加します)。
-      候補が複数ある場合は -e "pbs_data_disk_device=/dev/sdb" のように明示してください。
-      OS用ディスクにデータストアを作る場合は -e "pbs_data_disk_enabled=false" を指定します。
+      {{ pbs_data_disk_device }} は実在するブロックデバイスではありません。
+      lsblkで確認し、可能なら /dev/disk/by-id/... の永続名を指定してください。
     quiet: true
 
-# 明示指定 > 自動判別。既に使えるものがある場合はそちらを優先するため、ここは使われない
-- name: 初期化するディスクを決定する
-  ansible.builtin.set_fact:
-    pbs_data_disk_target: >-
-      {{
-        pbs_data_disk_device
-        if ((pbs_data_disk_device | length) > 0)
-        else '/dev/' ~ pbs_data_disk_candidates[0]
-      }}
-  when: (pbs_data_disk_existing | length) == 0
+- name: 指定されたデータ用ディスクの構成を取得する
+  ansible.builtin.command:
+    argv:
+      - lsblk
+      - --json
+      - --bytes
+      - --paths
+      - --output
+      - NAME,KNAME,TYPE,SIZE,SERIAL,FSTYPE,LABEL,MOUNTPOINTS,PKNAME,PTTYPE
+      - "{{ pbs_data_disk_realpath.stdout | trim }}"
+  become: true
+  changed_when: false
+  register: pbs_data_disk_lsblk
 
-# ディスク全体(/dev/sdb)を指しているならGPTで初期化する。
-# パーティション(/dev/sdb1)を直接指定された場合はそのまま使う。
-- name: 初期化の要否を判定する
+- name: データ用ディスクの構成を比較用に保持する
   ansible.builtin.set_fact:
-    pbs_data_disk_needs_init: >-
-      {{ ((pbs_data_disk_existing | length) == 0)
+    pbs_data_disk_target: "{{ pbs_data_disk_realpath.stdout | trim }}"
+    pbs_data_disk_tree: "{{ (pbs_data_disk_lsblk.stdout | from_json).blockdevices | first }}"
+    pbs_data_disk_children: >-
+      {{ ((pbs_data_disk_lsblk.stdout | from_json).blockdevices | first).children
+         | default([]) }}
+
+# whole disk指定かつpartition作成が有効なら、GPTと単一partition上の期待FSを確認する。
+# partitionを直接指定した場合とwhole disk FS構成では、指定先自身のFSを確認する。
+- name: 期待どおりに初期化済みか判定する
+  ansible.builtin.set_fact:
+    pbs_data_disk_existing: >-
+      {{
+        (pbs_data_disk_tree.type == 'disk'
          and (pbs_data_disk_partition | bool)
-         and ((pbs_data_disk_target | basename) in (ansible_devices | default({}))) }}
+         and pbs_data_disk_tree.pttype | default('') == 'gpt'
+         and (pbs_data_disk_children | length) == 1
+         and (pbs_data_disk_children[0].type | default('')) == 'part'
+         and (pbs_data_disk_children[0].fstype | default('')) == pbs_data_disk_fstype
+         and (pbs_data_disk_children[0].label | default('')) == pbs_data_disk_label)
+        or
+        ((pbs_data_disk_tree.type != 'disk' or not (pbs_data_disk_partition | bool))
+         and (pbs_data_disk_tree.fstype | default('')) == pbs_data_disk_fstype
+         and (pbs_data_disk_tree.label | default('')) == pbs_data_disk_label)
+      }}
+
+- name: 使用するファイルシステムのデバイスを決定する
+  ansible.builtin.set_fact:
+    pbs_data_disk_resolved: >-
+      {{ pbs_data_disk_children[0].name
+         if (pbs_data_disk_existing | bool
+             and pbs_data_disk_tree.type == 'disk'
+             and (pbs_data_disk_partition | bool))
+         else (pbs_data_disk_target ~ ('p1' if (pbs_data_disk_target is match('.*[0-9]$')) else '1')
+               if (not (pbs_data_disk_existing | bool)
+                   and pbs_data_disk_tree.type == 'disk'
+                   and (pbs_data_disk_partition | bool))
+               else pbs_data_disk_target) }}
+
+# / と /boot系mountのデバイスから親diskまでを列挙し、指定対象がその系統なら拒否する。
+- name: OSマウントを含むブロックデバイスの親系統を取得する
+  ansible.builtin.command:
+    argv:
+      - lsblk
+      - --inverse
+      - --raw
+      - --noheadings
+      - --output
+      - KNAME
+      - "{{ item.device }}"
+  become: true
+  changed_when: false
+  register: pbs_os_disk_ancestry
+  loop: >-
+    {{ ansible_mounts
+       | selectattr('mount', 'in', ['/', '/boot', '/boot/efi']) | list }}
+  loop_control:
+    label: "{{ item.mount }}"
+
+- name: OSディスク系統を比較用に保持する
+  ansible.builtin.set_fact:
+    pbs_os_block_names: >-
+      {{ pbs_os_disk_ancestry.results | default([])
+         | map(attribute='stdout_lines') | flatten
+         | map('trim') | reject('equalto', '') | list }}
+
+- name: 指定対象と配下がマウント中でないか調べる
+  ansible.builtin.command:
+    argv:
+      - lsblk
+      - --noheadings
+      - --output
+      - MOUNTPOINTS
+      - "{{ pbs_data_disk_target }}"
+  become: true
+  changed_when: false
+  register: pbs_data_disk_mountpoints
+
+- name: 指定対象のholderを調べる
+  ansible.builtin.command:
+    argv:
+      - find
+      - "/sys/class/block/{{ pbs_data_disk_tree.kname }}/holders"
+      - -mindepth
+      - "1"
+      - -maxdepth
+      - "1"
+      - -printf
+      - "%f\\n"
+  become: true
+  changed_when: false
+  register: pbs_data_disk_holders
+
+- name: 指定対象のFSTYPEと署名を調べる
+  ansible.builtin.command:
+    argv:
+      - blkid
+      - -p
+      - -o
+      - export
+      - "{{ pbs_data_disk_target }}"
+  become: true
+  changed_when: false
+  failed_when: false
+  register: pbs_data_disk_blkid
+
+- name: 指定対象のby-id名を調べる
+  ansible.builtin.command:
+    argv:
+      - find
+      - /dev/disk/by-id
+      - -maxdepth
+      - "1"
+      - -type
+      - l
+      - -samefile
+      - "{{ pbs_data_disk_target }}"
+      - -print
+  become: true
+  changed_when: false
+  failed_when: false
+  register: pbs_data_disk_by_ids
+
+# 初期化済みの期待構成はこのガードの対象外。新規初期化だけを厳格に拒否する。
+- name: 新規初期化して安全なデータ用ディスクであることを確認する
+  ansible.builtin.assert:
+    that:
+      - pbs_data_disk_tree.kname not in pbs_os_block_names
+      - (pbs_data_disk_mountpoints.stdout_lines | map('trim') | reject('equalto', '') | list | length) == 0
+      - (pbs_data_disk_children | length) == 0
+      - (pbs_data_disk_holders.stdout_lines | map('trim') | reject('equalto', '') | list | length) == 0
+      - >-
+        ((pbs_data_disk_tree.fstype | default('', true) | length) == 0
+         and (pbs_data_disk_blkid.stdout | trim | length) == 0)
+        or (pbs_data_disk_wipe | bool)
+    fail_msg: >-
+      {{ pbs_data_disk_device }} (実体 {{ pbs_data_disk_target }}) は安全に初期化できません。
+      OS系統={{ pbs_data_disk_tree.kname in pbs_os_block_names }},
+      mount={{ pbs_data_disk_mountpoints.stdout_lines | map('trim') | reject('equalto', '') | list | join(', ') | default('なし', true) }},
+      子デバイス={{ pbs_data_disk_children | map(attribute='name') | list | join(', ') | default('なし', true) }},
+      holder={{ pbs_data_disk_holders.stdout_lines | join(', ') | default('なし', true) }},
+      FSTYPE={{ pbs_data_disk_tree.fstype | default('なし', true) }},
+      署名={{ pbs_data_disk_blkid.stdout_lines | join(', ') | default('なし', true) }}。
+      OSディスク・マウント中・子partitionあり・holderありは初期化できません。
+      既存署名だけを意図して消去する場合は、対象を再確認して
+      -e pbs_data_disk_wipe=true を明示してください。
+    quiet: true
+  when: not (pbs_data_disk_existing | bool)
+
+- name: 初期化直前のデータ用ディスク情報を表示する
+  ansible.builtin.debug:
+    msg: >-
+      初期化対象: name={{ pbs_data_disk_tree.name }},
+      size={{ pbs_data_disk_tree.size }} bytes,
+      serial={{ pbs_data_disk_tree.serial | default('(不明)', true) }},
+      by-id={{ (([pbs_data_disk_device]
+                  if pbs_data_disk_device is match('^/dev/disk/by-id/') else [])
+                 + pbs_data_disk_by_ids.stdout_lines)
+                | unique | join(', ') | default('(なし)', true) }}
+  when: not (pbs_data_disk_existing | bool)
+
+- name: 明示許可された既存署名を消去する
+  ansible.builtin.command:
+    argv:
+      - wipefs
+      - --all
+      - --force
+      - "{{ pbs_data_disk_target }}"
+  become: true
+  changed_when: true
+  when:
+    - not (pbs_data_disk_existing | bool)
+    - pbs_data_disk_wipe | bool
+    - >-
+      (pbs_data_disk_tree.fstype | default('', true) | length) > 0
+      or (pbs_data_disk_blkid.stdout | trim | length) > 0
+    - not ansible_check_mode
 
 - name: GPTのパーティションテーブルとパーティションを作成する
   community.general.parted:
@@ -98,68 +232,69 @@
     name: "{{ pbs_data_disk_label }}"
     state: present
   become: true
-  when: pbs_data_disk_needs_init | bool
+  when:
+    - not (pbs_data_disk_existing | bool)
+    - pbs_data_disk_tree.type == 'disk'
+    - pbs_data_disk_partition | bool
 
-# nvme0n1 → nvme0n1p1、sdb → sdb1
-- name: 使用するデバイスを決定する
-  ansible.builtin.set_fact:
-    pbs_data_disk_resolved: >-
-      {{
-        pbs_data_disk_existing
-        if ((pbs_data_disk_existing | length) > 0)
-        else (pbs_data_disk_target ~ ('p1' if (pbs_data_disk_target is match('.*[0-9]$')) else '1')
-              if (pbs_data_disk_needs_init | bool)
-              else pbs_data_disk_target)
-      }}
-
-# パーティション作成の直後はデバイスファイルがまだ現れていないことがある
-- name: デバイスファイルが現れるまで待つ
+- name: パーティション作成後にデバイス情報が更新されるまで待つ
   ansible.builtin.command:
     cmd: udevadm settle --timeout=30
   become: true
   changed_when: false
-  when: pbs_data_disk_needs_init | bool
+  when:
+    - not (pbs_data_disk_existing | bool)
+    - pbs_data_disk_tree.type == 'disk'
+    - pbs_data_disk_partition | bool
+    - not ansible_check_mode
 
-- name: データ用ディスクの状態を取得する
+- name: 使用するデータ用ディスクの状態を取得する
   ansible.builtin.stat:
     path: "{{ pbs_data_disk_resolved }}"
-  register: pbs_data_disk_stat
+    follow: true
+  register: pbs_data_disk_resolved_stat
+  when: not ansible_check_mode or (pbs_data_disk_existing | bool)
 
-- name: データ用ディスクがブロックデバイスであることを確認する
+- name: 使用するデータ用ディスクがブロックデバイスであることを確認する
   ansible.builtin.assert:
     that:
-      - pbs_data_disk_stat.stat.exists
-      - pbs_data_disk_stat.stat.isblk | default(false)
+      - pbs_data_disk_resolved_stat.stat.exists
+      - pbs_data_disk_resolved_stat.stat.isblk | default(false)
     fail_msg: >-
       {{ pbs_data_disk_resolved }} はブロックデバイスではありません。
-      pbs_data_disk_device には /dev/sdb のようなデバイスファイルを指定してください。
+      pbs_data_disk_device の指定とパーティション作成結果を確認してください。
     quiet: true
+  when: not ansible_check_mode or (pbs_data_disk_existing | bool)
 
-- name: 使用するデータ用ディスクを表示する
-  ansible.builtin.debug:
-    msg: >-
-      データストア用に {{ pbs_data_disk_resolved }} を使います
-      ({{ 'GPTで初期化しました'
-          if (pbs_data_disk_needs_init | bool)
-          else '既にあるものをそのまま使います' }})。
-
-# 既に同じ種類のファイルシステムがあれば何もしない。
-# 別の種類のファイルシステムがある場合は「データが入っているかもしれない
-# ディスク」なので、上書きせずに失敗する(forceは指定しない)。
 - name: データ用ディスクにファイルシステムを作成する
   community.general.filesystem:
     dev: "{{ pbs_data_disk_resolved }}"
     fstype: "{{ pbs_data_disk_fstype }}"
     opts: "-L {{ pbs_data_disk_label }}"
   become: true
+  when: not (pbs_data_disk_existing | bool)
 
-# デバイス名(/dev/sdb1)は接続順で変わることがあるため、fstabにはUUIDで書く
+- name: 使用するデータ用ディスクを表示する
+  ansible.builtin.debug:
+    msg: >-
+      データストア用に {{ pbs_data_disk_resolved }} を使います
+      ({{ '期待どおりに初期化済みのため再利用します'
+          if (pbs_data_disk_existing | bool) else '新規に初期化しました' }})。
+
+# デバイス名は接続順で変わることがあるため、fstabにはUUIDで書く。
 - name: ファイルシステムのUUIDを取得する
   ansible.builtin.command:
-    cmd: blkid -s UUID -o value {{ pbs_data_disk_resolved }}
+    argv:
+      - blkid
+      - -s
+      - UUID
+      - -o
+      - value
+      - "{{ pbs_data_disk_resolved }}"
   become: true
   changed_when: false
   register: pbs_data_disk_uuid
+  when: not ansible_check_mode or (pbs_data_disk_existing | bool)
 
 - name: データストアのパスへマウントする
   ansible.posix.mount:
@@ -171,13 +306,20 @@
     passno: "2"
     state: mounted
   become: true
+  when: not ansible_check_mode or (pbs_data_disk_existing | bool)
 
-# マウントに失敗したままデータストアを作ると、バックアップがOS用ディスクへ
-# 書き込まれてしまう。データストアを作る前にここで止める。
+# マウントに失敗したままデータストアを作ると、OS用ディスクへ書き込まれるため止める。
 - name: データストアのパスがデータ用ディスクであることを確認する
   ansible.builtin.command:
-    cmd: findmnt --noheadings --output SOURCE --mountpoint {{ pbs_datastore_path }}
+    argv:
+      - findmnt
+      - --noheadings
+      - --output
+      - SOURCE
+      - --mountpoint
+      - "{{ pbs_datastore_path }}"
   become: true
   changed_when: false
   register: pbs_datastore_mount_check
   failed_when: pbs_datastore_mount_check.rc != 0
+  when: not ansible_check_mode or (pbs_data_disk_existing | bool)

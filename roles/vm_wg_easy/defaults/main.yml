@@ -1,7 +1,7 @@
 # タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
 # 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
 #
-# ここの変数はコンテナの環境変数と1対1で対応させている(対応は docs/vms/wg-easy.md の表)。
+# ここの変数はコンテナの環境変数と1対1で対応させている。
 # 未指定(空)の項目は .env に書き出さず、イメージ側の既定値がそのまま使われる。
 ---
 wg_easy_install_dir: /opt/wg-easy

@@ -72,16 +72,14 @@
                 "editor.insertSpaces": true,
                 "files.trimTrailingWhitespace": true,
                 "files.insertFinalNewline": true,
-                "ansible.python.interpreterPath": "/usr/local/bin/python",
+                "ansible.python.interpreterPath": "/usr/local/py-utils/venvs/ansible/bin/python",
                 "ansible.validation.lint.enabled": true,
                 "yaml.schemas": {
                     "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/tasks": [
-                        "proxmox-hosts/**/tasks/**/*.yml",
-                        "proxmox-vms/**/tasks/**/*.yml"
+                        "roles/**/tasks/**/*.yml"
                     ],
                     "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/playbook": [
-                        "proxmox-hosts/**/playbooks/**/*.yml",
-                        "proxmox-vms/**/playbooks/**/*.yml"
+                        "playbooks/**/*.yml"
                     ]
                 },
                 "[yaml]": {
