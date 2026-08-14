@@ -1,6 +1,6 @@
 # レビュー対応記録(REVIEW.md への回答)
 
-- 対象レビュー: [../../REVIEW.md](../../REVIEW.md)(2026-08-13、対象コミット e38ddf6)
+- 対象レビュー: REVIEW.md(2026-08-13、対象コミット e38ddf6。処理済みのためファイルは削除 — 内容はgit履歴の82de36e時点を参照)
 - 対応日: 2026-08-13
 - 凡例: **済**=実装・反映済み / **済(一部)**=中核のみ実装 / **計画**=短期改善計画に登録 / **受容**=理由付きでリスク受容
 
@@ -49,7 +49,7 @@
 
 | ID | 状態 | 対応内容 |
 | --- | --- | --- |
-| QA-01 | **済(一部)** | CI導入: gitleaks(履歴込み)+yamllint(全ファイル緑化済み)+syntax-check(要 `ANSIBLE_VAULT_PASSWORD` シークレット)。ansible-lintは警告運用から開始。冪等テスト・failure-pathテストは改善計画 |
+| QA-01 | **済(一部)** | ansible-lintをローカル/エディタ標準化(`.ansible-lint`、0 failure・productionプロファイル。VSCode拡張がリアルタイム検査)。GitHub Actions版CIは一度導入後、利用者判断で撤去(6b1810e) — 必要になれば82de36e時点のci.ymlを履歴から復元可能。冪等テスト・failure-pathテストは改善計画 |
 | DOC-01 | **済** | requirements案内パス、vault/README全面刷新(現行5ファイルに整合)、未参照の旧 `vault/proxmox.yml` 削除、defaults内の旧docs参照、devcontainerのinterpreterPath/schema globを修正 |
 | DEV-01 | **計画** | base imageのdigest固定とExecution Environment定義の共有 |
 
