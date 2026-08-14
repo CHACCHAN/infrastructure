@@ -11,7 +11,10 @@
             "packages": "openssh-client,rsync,sshpass,jq,less,vim,locales,bubblewrap"
         },
         "ghcr.io/devcontainers-extra/features/ansible:2": {
-            "injections": "proxmoxer requests kubernetes"
+            // ansible-lintも同じvenvへ注入する(ansible-coreと版ズレしない)。
+            // featureのinjectはグローバルbinへ公開しないため、実体は
+            // /usr/local/py-utils/venvs/ansible/bin/ に入る(remoteEnvのPATHで解決)
+            "injections": "proxmoxer requests kubernetes ansible-lint"
         },
         "ghcr.io/devcontainers/features/node:1": {},
         "ghcr.io/anthropics/devcontainer-features/claude-code:latest": {},
@@ -30,9 +33,10 @@
     },
     "workspaceFolder": "/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder},target=/${localWorkspaceFolderBasename},type=bind,consistency=cached",
-    // lintツールを導入する(VSCodeのAnsible拡張とCIと同じ物を使う)。
-    // ansible-lintはansible本体と同じvenvへ注入し、ansible-coreの版ズレを防ぐ
-    "postCreateCommand": "sudo env PIPX_HOME=/usr/local/py-utils PIPX_BIN_DIR=/usr/local/py-utils/bin /usr/local/py-utils/bin/pipx inject --include-apps ansible ansible-lint && sudo env PIPX_HOME=/usr/local/py-utils PIPX_BIN_DIR=/usr/local/py-utils/bin /usr/local/py-utils/bin/pipx install yamllint || true",
+    // ansible venv内のツール(ansible-lint等)をターミナルからも使えるようにする
+    "remoteEnv": {
+        "PATH": "${containerEnv:PATH}:/usr/local/py-utils/venvs/ansible/bin"
+    },
     "mounts": [
         "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind",
         "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
@@ -77,6 +81,7 @@
                 "files.insertFinalNewline": true,
                 "ansible.python.interpreterPath": "/usr/local/py-utils/venvs/ansible/bin/python",
                 "ansible.validation.lint.enabled": true,
+                "ansible.validation.lint.path": "/usr/local/py-utils/venvs/ansible/bin/ansible-lint",
                 "yaml.schemas": {
                     "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/tasks": [
                         "roles/**/tasks/**/*.yml"
