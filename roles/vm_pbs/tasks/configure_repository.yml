@@ -28,7 +28,9 @@
   become: true
   register: pbs_repo_file
 
-- name: パッケージ情報を更新する
+# リポジトリ変更直後にこの場で更新したい(後続タスクが新リポジトリを前提とするため
+# handlerの遅延実行にはしない)
+- name: パッケージ情報を更新する # noqa: no-handler
   ansible.builtin.apt:
     update_cache: true
   become: true

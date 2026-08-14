@@ -1,6 +1,7 @@
 # VM内から見た確認。VM外から見えるかどうかは、再起動後にplaybook側で行う。
 ---
-- name: PBSのサービスが起動していることを確認する
+# systemdモジュールは状態変更用のため、読み取り専用の確認はis-activeをそのまま使う
+- name: PBSのサービスが起動していることを確認する # noqa: command-instead-of-module
   ansible.builtin.command:
     cmd: systemctl is-active {{ item }}
   become: true

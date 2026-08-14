@@ -30,6 +30,9 @@
     },
     "workspaceFolder": "/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder},target=/${localWorkspaceFolderBasename},type=bind,consistency=cached",
+    // lintツールを導入する(VSCodeのAnsible拡張とCIと同じ物を使う)。
+    // ansible-lintはansible本体と同じvenvへ注入し、ansible-coreの版ズレを防ぐ
+    "postCreateCommand": "sudo env PIPX_HOME=/usr/local/py-utils PIPX_BIN_DIR=/usr/local/py-utils/bin /usr/local/py-utils/bin/pipx inject --include-apps ansible ansible-lint && sudo env PIPX_HOME=/usr/local/py-utils PIPX_BIN_DIR=/usr/local/py-utils/bin /usr/local/py-utils/bin/pipx install yamllint || true",
     "mounts": [
         "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind",
         "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
@@ -91,16 +94,33 @@
                 "terminal.integrated.shell.linux": "/bin/bash",
                 "workbench.iconTheme": "material-icon-theme",
                 "explorer.compactFolders": false,
+                // playbook/ロールのYAMLをansible言語として開く(lintの有効化とアイコンの両方に効く)
+                "files.associations": {
+                    "**/playbooks/**/*.yml": "ansible",
+                    "**/roles/**/tasks/**/*.yml": "ansible",
+                    "**/roles/**/handlers/**/*.yml": "ansible"
+                },
                 "material-icon-theme.folders.associations": {
-                    "proxmox-hosts": "project",
-                    "proxmox-vms": "project",
-                    "kubernetes": "kubernetes",
                     "roles": "components",
                     "playbooks": "pipe",
+                    "inventory": "database",
                     "group_vars": "constant",
                     "host_vars": "constant",
-                    "inventory": "database",
-                    "vault": "keys"
+                    "vault": "keys",
+                    "collections": "packages",
+                    "docs": "docs",
+                    "migration": "archive",
+                    "templates": "template",
+                    "defaults": "config",
+                    "tasks": "tools",
+                    "vars": "constant",
+                    "pve": "server",
+                    "vm": "terminal",
+                    "k8s": "kubernetes"
+                },
+                "material-icon-theme.files.associations": {
+                    "ansible.cfg": "settings",
+                    "*.yaml.j2": "ansible"
                 }
             }
         }
