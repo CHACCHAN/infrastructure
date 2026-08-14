@@ -11,9 +11,6 @@
             "packages": "openssh-client,rsync,sshpass,jq,less,vim,locales,bubblewrap"
         },
         "ghcr.io/devcontainers-extra/features/ansible:2": {
-            // ansible-lintも同じvenvへ注入する(ansible-coreと版ズレしない)。
-            // featureのinjectはグローバルbinへ公開しないため、実体は
-            // /usr/local/py-utils/venvs/ansible/bin/ に入る(remoteEnvのPATHで解決)
             "injections": "proxmoxer requests kubernetes ansible-lint"
         },
         "ghcr.io/devcontainers/features/node:1": {},
@@ -33,10 +30,6 @@
     },
     "workspaceFolder": "/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder},target=/${localWorkspaceFolderBasename},type=bind,consistency=cached",
-    // ansible venv内のツール(ansible-lint等)をターミナルからも使えるようにする
-    "remoteEnv": {
-        "PATH": "${containerEnv:PATH}:/usr/local/py-utils/venvs/ansible/bin"
-    },
     "mounts": [
         "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind",
         "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
@@ -79,9 +72,9 @@
                 "editor.insertSpaces": true,
                 "files.trimTrailingWhitespace": true,
                 "files.insertFinalNewline": true,
-                "ansible.python.interpreterPath": "/usr/local/py-utils/venvs/ansible/bin/python",
+                "ansible.python.interpreterPath": "/usr/local/py-utils/venvs/ansible-core/bin/python",
                 "ansible.validation.lint.enabled": true,
-                "ansible.validation.lint.path": "/usr/local/py-utils/venvs/ansible/bin/ansible-lint",
+                "ansible.validation.lint.path": "/usr/local/py-utils/venvs/ansible-core/bin/ansible-lint",
                 "yaml.schemas": {
                     "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/tasks": [
                         "roles/**/tasks/**/*.yml"
@@ -99,7 +92,6 @@
                 "terminal.integrated.shell.linux": "/bin/bash",
                 "workbench.iconTheme": "material-icon-theme",
                 "explorer.compactFolders": false,
-                // playbook/ロールのYAMLをansible言語として開く(lintの有効化とアイコンの両方に効く)
                 "files.associations": {
                     "**/playbooks/**/*.yml": "ansible",
                     "**/roles/**/tasks/**/*.yml": "ansible",
