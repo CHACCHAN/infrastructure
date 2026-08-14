@@ -64,7 +64,7 @@ k8s_awx_values:
         # と連結するので、付けると // になって discovery に失敗する。
         # (Homarr は逆に末尾スラッシュが要る。実装が違うので揃わない)
         - setting: SOCIAL_AUTH_OIDC_OIDC_ENDPOINT
-          value: "'https://auth.{{ k8s_domain }}/application/o/awx'"
+          value: "'https://auth.{{ k8s_domain }}/application/o/ansible-awx'"
 
         # Authentik の証明書は Let's Encrypt なので検証する。
         - setting: SOCIAL_AUTH_OIDC_VERIFY_SSL

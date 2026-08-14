@@ -36,7 +36,8 @@
         "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
         "source=${localEnv:HOME}/.codex,target=/home/vscode/.codex,type=bind,consistency=cached",
         "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json,type=bind,consistency=cached",
-        "source=${localEnv:HOME}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached"
+        "source=${localEnv:HOME}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.ansible_vault_pass,target=/home/vscode/.ansible_vault_pass,type=bind,consistency=cached"
     ],
     "containerEnv": {
         "DISABLE_AUTOUPDATER": "1",
@@ -64,7 +65,8 @@
                 "foxundermoon.shell-format",
                 "mikestead.dotenv",
                 "pkief.material-icon-theme",
-                "ms-kubernetes-tools.vscode-kubernetes-tools"
+                "ms-kubernetes-tools.vscode-kubernetes-tools",
+                "samuelcolvin.jinjahtml"
             ],
             "settings": {
                 "editor.formatOnSave": true,
@@ -87,7 +89,7 @@
                     "editor.defaultFormatter": "redhat.vscode-yaml",
                     "editor.tabSize": 2
                 },
-                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.defaultInterpreterPath": "/usr/local/py-utils/venvs/ansible-core/bin/python",
                 "terminal.integrated.defaultProfile.linux": "bash",
                 "terminal.integrated.shell.linux": "/bin/bash",
                 "workbench.iconTheme": "material-icon-theme",
@@ -96,28 +98,6 @@
                     "**/playbooks/**/*.yml": "ansible",
                     "**/roles/**/tasks/**/*.yml": "ansible",
                     "**/roles/**/handlers/**/*.yml": "ansible"
-                },
-                "material-icon-theme.folders.associations": {
-                    "roles": "components",
-                    "playbooks": "pipe",
-                    "inventory": "database",
-                    "group_vars": "constant",
-                    "host_vars": "constant",
-                    "vault": "keys",
-                    "collections": "packages",
-                    "docs": "docs",
-                    "migration": "archive",
-                    "templates": "template",
-                    "defaults": "config",
-                    "tasks": "tools",
-                    "vars": "constant",
-                    "pve": "server",
-                    "vm": "terminal",
-                    "k8s": "kubernetes"
-                },
-                "material-icon-theme.files.associations": {
-                    "ansible.cfg": "settings",
-                    "*.yaml.j2": "ansible"
                 }
             }
         }

@@ -1,0 +1,26 @@
+{
+  // Material Icon Theme の設定はワークスペーススコープに置く必要がある。
+  // 拡張が inspect() の workspaceValue / globalValue / defaultValue しか見ないため、
+  // devcontainer.json 経由(Machine スコープ)に書いても無視される。
+  "material-icon-theme.folders.associations": {
+    "roles": "components",
+    "playbooks": "pipe",
+    "inventory": "database",
+    "group_vars": "constant",
+    "host_vars": "constant",
+    "vault": "keys",
+    "collections": "packages",
+    "docs": "docs",
+    "migration": "archive",
+    "templates": "template",
+    "defaults": "config",
+    "tasks": "tools",
+    "vars": "constant",
+    "pve": "server",
+    "vm": "console",
+    "k8s": "kubernetes"
+  },
+  "material-icon-theme.files.associations": {
+    "ansible.cfg": "settings"
+  }
+}
