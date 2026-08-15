@@ -1,6 +1,9 @@
 # VMIDによるVM検索を共通化し、呼び出し元へ検索結果を返すタスク。
+# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
+# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
+# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
-- name: VMIDでVMを検索する
+- name: VMIDでVMを検索する  # noqa: args[module]
   community.proxmox.proxmox_vm_info:
     vmid: "{{ pve_vmid }}"
   register: pve_vm_info

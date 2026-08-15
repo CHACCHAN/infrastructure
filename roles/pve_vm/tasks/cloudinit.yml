@@ -1,4 +1,7 @@
 # 既存Proxmox VMのユーザー・公開鍵・IP・DNSをcloud-init宣言へ収束させる。
+# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
+# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
+# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: cloud-initの宣言値を組み立てる
   ansible.builtin.set_fact:
@@ -14,14 +17,14 @@
                    | ternary({'ipconfig1':
                                 'ip=' ~ (cluster_ip | default(''))}, {})) }}
 
-- name: cloud-initの現在設定を取得する
+- name: cloud-initの現在設定を取得する  # noqa: args[module]
   community.proxmox.proxmox_vm_info:
     vmid: "{{ vmid }}"
     # 稼働中VMの再起動待ち設定も収束済みとして比較する。
     config: pending
   register: pve_cloudinit_info
 
-- name: cloud-init設定を収束させる
+- name: cloud-init設定を収束させる  # noqa: args[module]
   community.proxmox.proxmox_kvm:
     vmid: "{{ vmid }}"
     node: "{{ node }}"

@@ -1,6 +1,9 @@
 # 構築済みVMをProxmoxテンプレートへ変換する。
+# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
+# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
+# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
-- name: VMをテンプレートへ変換する
+- name: VMをテンプレートへ変換する  # noqa: args[module]
   community.proxmox.proxmox_kvm:
     vmid: "{{ pve_template_resolved_vmid }}"
     state: template

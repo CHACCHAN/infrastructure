@@ -1,4 +1,7 @@
 # 配布元チェックサムを検証し、対象PVEノードのimport領域へCloud imageを置く。
+# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
+# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
+# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: チェックサムファイルをlocalhostで取得する
   ansible.builtin.uri:
@@ -50,7 +53,7 @@
       配布元のフォーマット変更を確認してください。
     quiet: true
 
-- name: Cloud imageを対象ノードのimport領域へ収束させる
+- name: Cloud imageを対象ノードのimport領域へ収束させる  # noqa: args[module]
   community.proxmox.proxmox_template:
     node: "{{ node }}"
     storage: "{{ pve_template_image_storage }}"

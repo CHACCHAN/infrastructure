@@ -160,6 +160,18 @@ k8s_nextcloud_values:
 
         log() { echo "[helm-hook] $*"; }
 
+        # ローカルアクセスの制限を緩和する
+        #
+        # Authentik が同じプライベートネットワーク内 (172.16.x.x) にあるため、
+        # Nextcloud の SSRF 対策 (allow_local_remote_servers 既定 false) に
+        # よって token endpoint への接続がブロックされる。
+        # discovery endpoint (GET) は通っても token endpoint (POST) は
+        # ブロックされることがあるため、明示的に許可する。
+        configure_local_access() {
+          php occ config:system:set allow_local_remote_servers --type=boolean --value=true || return 1
+          return 0
+        }
+
         # NEXTCLOUD_TRUSTED_DOMAINS を config.php に反映する。
         #
         # **イメージはこの環境変数をインストール時にしか見ない。** 一度
@@ -211,6 +223,12 @@ k8s_nextcloud_values:
         # 落ちている、といった一時的な理由で Nextcloud 全体が CrashLoopBackOff に
         # なるほうが困る。失敗してもローカル管理者では入れるので、
         # ログを見て occ を手で叩けばよい (README.md)。
+        if configure_local_access; then
+          log "allow_local_remote_servers is set."
+        else
+          log "WARNING: failed to set allow_local_remote_servers."
+        fi
+
         # **trusted_domains は先に、かつ確実に直す。** これが入っていないと
         # startupProbe が通らず Pod が Ready にならない。
         if configure_trusted_domains; then

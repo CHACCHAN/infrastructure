@@ -1,4 +1,7 @@
 # 未作成のProxmox VMを同一ノードのOSテンプレートからフルクローンする。
+# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
+# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
+# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: 未作成VMをテンプレートからクローンする
   when: pve_found_vm is none
@@ -18,7 +21,7 @@
         pve_os_version: "{{ pve_clone_os_version }}"
         node: "{{ pve_clone_node }}"
 
-    - name: クローン元テンプレートを検索する
+    - name: クローン元テンプレートを検索する  # noqa: args[module]
       community.proxmox.proxmox_vm_info:
         vmid: "{{ pve_template_resolved_vmid }}"
       register: pve_clone_template_info
@@ -34,7 +37,7 @@
         or not ((pve_clone_template_info.proxmox_vms | first).template
                 | default(false) | bool)
 
-    - name: テンプレートからVMをフルクローンする
+    - name: テンプレートからVMをフルクローンする  # noqa: args[module]
       community.proxmox.proxmox_kvm:
         clone: "{{ pve_template_resolved_name }}"
         vmid: "{{ pve_template_resolved_vmid }}"
@@ -47,7 +50,7 @@
         node: "{{ node }}"
         timeout: "{{ pve_vm_clone_timeout }}"
 
-    - name: クローン後のVMを検索する
+    - name: クローン後のVMを検索する  # noqa: args[module]
       community.proxmox.proxmox_vm_info:
         vmid: "{{ vmid }}"
       register: pve_cloned_vm_info

@@ -1,6 +1,9 @@
 # Cloud imageを起動ディスクに取り込んだテンプレート元VMを作成する。
+# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
+# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
+# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
-- name: 空のテンプレート元VMを作成する
+- name: 空のテンプレート元VMを作成する  # noqa: args[module]
   community.proxmox.proxmox_kvm:
     vmid: "{{ pve_template_resolved_vmid }}"
     name: "{{ pve_template_resolved_name }}"
@@ -19,7 +22,7 @@
       ide2: "{{ pve_template_storage }}:cloudinit"
     state: present
 
-- name: Cloud imageからscsi0を作成する
+- name: Cloud imageからscsi0を作成する  # noqa: args[module]
   community.proxmox.proxmox_disk:
     vmid: "{{ pve_template_resolved_vmid }}"
     disk: scsi0

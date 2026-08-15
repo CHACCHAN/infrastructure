@@ -3,6 +3,8 @@
 自宅ラボのインフラを **Ansible中心・宣言的** に管理するリポジトリ。
 Proxmox VEクラスタ上のVM構築から、VM内のサービスセットアップ、Kubernetesマニフェストの適用までを、ひとつの体系で扱う。
 
+対象となるインフラそのものの構成(ネットワーク図・サービス公開経路)は **[infrastructure.md](infrastructure.md)** にまとめている。
+
 ## 設計思想
 
 **「ベース → 役割ごとの最適化 → 実装」の3層**で全ドメインを統一する。
@@ -116,6 +118,7 @@ sequenceDiagram
 ```
 .
 ├── ansible.cfg          # リポジトリルート = Ansibleプロジェクトルート
+├── infrastructure.md    # ネットワーク構成とサービス公開経路の図(インフラの全体像)
 ├── inventory/           # ★宣言(単一の真実)
 │   ├── hosts.yml        #   全VM: グループ=役割、1VM=3〜5行
 │   └── group_vars/      #   all/=ベース、<役割>.yml=プロファイル
@@ -126,8 +129,7 @@ sequenceDiagram
 ├── roles/               # ドメイン別: pve* / vm* / k8s*
 ├── vault/               # Ansible Vault(全ファイル暗号化済み)
 ├── collections/         # requirements.yml(AWX互換の標準位置)
-├── docs/                # ドキュメント(migration/ に移行の設計・調査記録)
-└── .legacy/             # 旧実装のアーカイブ(削除待ち。手順は設計書§7のP2)
+└── docs/                # ドメイン別ドキュメント(pve / vm / k8s)
 ```
 
 ## 秘匿情報の扱い
@@ -140,11 +142,8 @@ sequenceDiagram
 
 | ドキュメント | 内容 |
 | --- | --- |
+| [infrastructure.md](infrastructure.md) | **インフラの全体像**: 物理NIC〜vmbrのネットワーク構成図と、サービス公開経路(Traefik / Cloudflare Tunnel / WireGuard) |
 | [docs/pve.md](docs/pve.md) | ① Proxmox操作ドメインの使い方(provision/power/destroy/template) |
 | [docs/vm.md](docs/vm.md) | ② VMセットアップドメインの使い方(サービス別playbook・k3sクラスタ構築) |
 | [docs/k8s.md](docs/k8s.md) | ③ Kubernetesドメインの使い方(deploy・アプリ追加・Secret・チャート管理) |
-| [docs/devcontainer.md](docs/devcontainer.md) | Dev Containerのセットアップ注意点 |
-| [docs/migration/phase0-investigation.md](docs/migration/phase0-investigation.md) | 移行前調査(旧SSH方式の棚卸し・モジュールマッピング) |
-| [docs/migration/phase1-design.md](docs/migration/phase1-design.md) | 設計書(3層思想・ドメイン構成・実装計画と検証記録) |
-
-> 旧方式(ノードへの直接SSH + 手動kubectl)の実装・ドキュメントは `.legacy/` にアーカイブ済み。Phase 3(新旧比較の最終確認)の完了後に削除する。進捗は設計書の実装計画表を参照。
+| [.devcontainer/README.md](.devcontainer/README.md) | Dev Containerのセットアップ注意点 |

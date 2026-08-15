@@ -1,0 +1,20 @@
+# ansible-lint 設定。VSCode の Ansible 拡張(redhat.ansible)もこのファイルを読む。
+---
+skip_list:
+  # var-naming[no-role-prefix]
+  #   ロール名は「層(pve_/vm_/k8s_)+サービス名」、変数名は層を落とした
+  #   サービス名で揃える規約を採っている(role vm_supabase -> supabase_*、
+  #   role pve_vm -> pve_*)。層は配置場所で既に判別できるため、変数名にまで
+  #   重ねると vm_supabase_install_dir のように冗長になる。
+  #   加えて svc_* は roles/vm・roles/vm_docker が「呼び出し元から受け取る
+  #   引数」として文書化している共有インターフェース
+  #   (svc_name / svc_install_dir / svc_ufw_ports / svc_env_path /
+  #    svc_min_free_gb など)。呼び出し元のロール名を冠すると共有ロール側が
+  #   受け取れなくなり、設計そのものが成立しない。
+  - var-naming[no-role-prefix]
+
+  # name[casing]
+  #   タスク名は日本語で書いており、大文字/小文字の概念が無い。
+  #   文頭に来るのは cert-manager / cloud-init / k3s / nfs / kubectl など
+  #   公式表記が小文字で固定された製品名で、大文字化は誤記になる。
+  - name[casing]

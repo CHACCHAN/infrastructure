@@ -10,7 +10,7 @@ pve_ssh_pubkey_file: ~/.ssh/id_ed25519_wg_easy.pub
 pve_ssh_prikey: ~/.ssh/id_ed25519_wg_easy
 
 # --- wg-easyの設定 ---
-wg_easy_init_host: wg.cc-chacchan.com
+wg_easy_init_host: cc-chacchan.com
 wg_easy_oauth_providers: oidc
 wg_easy_oauth_oidc_server: https://auth.cc-chacchan.com/application/o/wg-easy/
 wg_easy_oauth_oidc_name: Authentik

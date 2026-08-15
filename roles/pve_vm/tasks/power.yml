@@ -1,4 +1,7 @@
 # Proxmox VMの電源状態をstartedまたはstoppedへ冪等に収束させる。
+# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
+# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
+# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: VMの電源状態を確認する
   ansible.builtin.assert:
@@ -8,7 +11,7 @@
       pve_vm_power は started または stopped を指定してください。
 
 # 停止には猶予時間と強制停止方針が必要だが、起動時はモジュール既定値を使う。
-- name: VMの電源状態を収束させる
+- name: VMの電源状態を収束させる  # noqa: args[module]
   community.proxmox.proxmox_kvm:
     vmid: "{{ vmid }}"
     state: "{{ pve_vm_power }}"

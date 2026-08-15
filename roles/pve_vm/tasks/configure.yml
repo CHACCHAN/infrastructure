@@ -1,8 +1,11 @@
 # 既存Proxmox VMのCPU・メモリ・オプション・NICを宣言値へ収束させる。
 # cpuの現在値は「cputype=x86-64-v3」形式で返るVMと「x86-64-v3」形式のVMが混在する
 # (設定した時代のツールによる)ため、比較時にプレフィックスを剥がして正規化する。
+# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
+# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
+# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
-- name: VMの現在設定を取得する
+- name: VMの現在設定を取得する  # noqa: args[module]
   community.proxmox.proxmox_vm_info:
     vmid: "{{ vmid }}"
     # 稼働中VMの再起動待ち設定も収束済みとして比較する。
@@ -51,7 +54,7 @@
     index_var: pve_net_index
     label: "net{{ pve_net_index }}"
 
-- name: VMの基本設定を収束させる
+- name: VMの基本設定を収束させる  # noqa: args[module]
   community.proxmox.proxmox_kvm:
     vmid: "{{ vmid }}"
     node: "{{ node }}"
@@ -80,7 +83,7 @@
              | regex_replace('^cputype=', '')
     }
 
-- name: VMのNIC設定を収束させる
+- name: VMのNIC設定を収束させる  # noqa: args[module]
   community.proxmox.proxmox_kvm:
     vmid: "{{ vmid }}"
     node: "{{ node }}"

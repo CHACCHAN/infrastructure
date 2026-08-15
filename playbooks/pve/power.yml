@@ -3,6 +3,9 @@
 # 実行例: ansible-playbook playbooks/pve/power.yml -l k8s -e state=stopped
 # 注意: stopped はゲストOSへの正常シャットダウン要求。起動直後などゲストが
 # 応答できない間は失敗する。応答しないVMを強制停止するには -e pve_power_force=true
+# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
+# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
+# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: Proxmox VMの電源状態を収束させる
   hosts: "{{ target | default('lab') }}"
@@ -42,7 +45,7 @@
         pve_expected_node: "{{ node }}"
 
     # 停止には猶予時間と強制停止方針が必要だが、起動時はモジュール既定値を使う。
-    - name: VMの電源状態を収束させる
+    - name: VMの電源状態を収束させる  # noqa: args[module]
       community.proxmox.proxmox_kvm:
         vmid: "{{ vmid }}"
         state: "{{ state }}"

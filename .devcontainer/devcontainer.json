@@ -90,6 +90,7 @@
                     "editor.tabSize": 2
                 },
                 "python.defaultInterpreterPath": "/usr/local/py-utils/venvs/ansible-core/bin/python",
+                "python.terminal.activateEnvironment": false,
                 "terminal.integrated.defaultProfile.linux": "bash",
                 "terminal.integrated.shell.linux": "/bin/bash",
                 "workbench.iconTheme": "material-icon-theme",

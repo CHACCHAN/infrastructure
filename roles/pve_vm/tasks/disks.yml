@@ -1,6 +1,9 @@
 # 既存Proxmox VMのscsi0を拡張のみで扱い、宣言された追加ディスクを収束させる。
+# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
+# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
+# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
-- name: ディスクの現在設定を取得する
+- name: ディスクの現在設定を取得する  # noqa: args[module]
   community.proxmox.proxmox_vm_info:
     vmid: "{{ vmid }}"
     config: current
@@ -26,7 +29,7 @@
     pve_vm_scsi0_size_gib: >-
       {{ (pve_vm_scsi0_size_text | human_to_bytes) / 1073741824 }}
 
-- name: scsi0を宣言サイズまで拡張する
+- name: scsi0を宣言サイズまで拡張する  # noqa: args[module]
   community.proxmox.proxmox_disk:
     vmid: "{{ vmid }}"
     disk: scsi0
@@ -41,7 +44,7 @@
       宣言値{{ pve_vm_disk_size }}GiBへの縮小は安全のため行いません。
   when: pve_vm_disk_size | float < pve_vm_scsi0_size_gib | float
 
-- name: 追加ディスクを収束させる
+- name: 追加ディスクを収束させる  # noqa: args[module]
   community.proxmox.proxmox_disk:
     vmid: "{{ vmid }}"
     disk: "{{ item.bus }}{{ item.index }}"
