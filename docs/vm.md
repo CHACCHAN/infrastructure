@@ -63,6 +63,14 @@ wg_easy_version: "15.4.0-beta.1"
 - SSH接続は **provisionがcloud-initに書き込んだユーザー・鍵をそのまま使う**ため、宣言が一致していれば必ず入れる
 - 秘密情報(APIトークン等)は平文で置かず `vault/` の暗号化ファイルに置く
 
+インベントリに宣言せず、`-e` だけで1台つくることもできる(検証用の2台目など)。→ [docs/adhoc.md](adhoc.md)
+
+```sh
+ansible-playbook playbooks/vm/technitium.yml \
+  -e target=technitium-dns02 -e profile=technitium \
+  -e vmid=605 -e node=pve06 -e ip=172.16.11.31
+```
+
 ## k3sだけの特別ルール
 
 `playbooks/vm/k3s.yml` はクラスタを組むため順序が意味を持つ。

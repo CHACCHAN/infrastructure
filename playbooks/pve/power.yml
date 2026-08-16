@@ -7,6 +7,10 @@
 # Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
 # ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
+# -e profile= を指定したときだけ、インベントリ外のVMを一時ホストとして宣言する。
+- name: インベントリ外のVMを一時ホストとして宣言する
+  ansible.builtin.import_playbook: adhoc.yml
+
 - name: Proxmox VMの電源状態を収束させる
   hosts: "{{ target | default('lab') }}"
   connection: local

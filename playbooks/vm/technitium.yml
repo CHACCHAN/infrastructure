@@ -6,10 +6,11 @@
   ansible.builtin.import_playbook: ../pve/provision.yml
   vars:
     target: technitium
+    profile_expected: technitium
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: Technitium DNSをセットアップする
-  hosts: technitium
+  hosts: "{{ target | default('technitium') }}"
   gather_facts: false
   vars:
     ansible_user: "{{ pve_ssh_user }}"

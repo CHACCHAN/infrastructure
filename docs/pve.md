@@ -89,6 +89,13 @@ lab:
 | `pve_vm_power` | provision後の電源(`started`/`stopped`) | started |
 | `pve_ssh_user` / `pve_ssh_pubkey_file` | cloud-initが作るユーザーと公開鍵 | なし(未定義ならスキップ) |
 
+インベントリに宣言せず、`-e` だけで1台つくることもできる(使い捨ての検証VM向け)。→ [docs/adhoc.md](adhoc.md)
+
+```sh
+ansible-playbook playbooks/pve/provision.yml \
+  -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99
+```
+
 ## テンプレートの仕組み
 
 - **(OS, ノード)ごと**に1つ。全ストレージがノードローカルなため、VMを置くノード上にテンプレートが必要になる

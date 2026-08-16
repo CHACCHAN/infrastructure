@@ -6,10 +6,11 @@
   ansible.builtin.import_playbook: ../pve/provision.yml
   vars:
     target: supabase
+    profile_expected: supabase
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: Supabaseをセットアップする
-  hosts: supabase
+  hosts: "{{ target | default('supabase') }}"
   gather_facts: false
   vars_files:
     - ../../vault/supabase.yml

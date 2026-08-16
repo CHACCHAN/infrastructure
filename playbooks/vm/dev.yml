@@ -6,10 +6,11 @@
   ansible.builtin.import_playbook: ../pve/provision.yml
   vars:
     target: dev
+    profile_expected: dev
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: 開発環境をセットアップする
-  hosts: dev
+  hosts: "{{ target | default('dev') }}"
   gather_facts: false
   vars:
     ansible_user: "{{ pve_ssh_user }}"

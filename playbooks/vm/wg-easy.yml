@@ -6,10 +6,11 @@
   ansible.builtin.import_playbook: ../pve/provision.yml
   vars:
     target: wg_easy
+    profile_expected: wg_easy
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: wg-easyをセットアップする
-  hosts: wg_easy
+  hosts: "{{ target | default('wg_easy') }}"
   gather_facts: false
   vars_files:
     - ../../vault/wg-easy.yml

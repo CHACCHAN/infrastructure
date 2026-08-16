@@ -82,6 +82,10 @@ ansible-playbook playbooks/vm/authentik.yml
 ansible-playbook playbooks/k8s/deploy.yml --check          # 差分の有無を確認
 ansible-playbook playbooks/k8s/deploy.yml                  # 全アプリ
 ansible-playbook playbooks/k8s/deploy.yml -e app=portainer # 1アプリだけ
+
+# インベントリに書かずに1台だけ作る(検証VM。詳細は docs/adhoc.md)
+ansible-playbook playbooks/vm/dev.yml \
+  -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99
 ```
 
 ### provision が収束させる流れ
@@ -123,7 +127,7 @@ sequenceDiagram
 │   ├── hosts.yml        #   全VM: グループ=役割、1VM=3〜5行
 │   └── group_vars/      #   all/=ベース、<役割>.yml=プロファイル
 ├── playbooks/
-│   ├── pve/             # ① provision / power / destroy / template
+│   ├── pve/             # ① provision / power / destroy / template(+ adhoc=一時ホスト登録)
 │   ├── vm/              # ② サービスVMの一気通貫構築
 │   └── k8s/             # ③ deploy(全アプリ or -e app=X)
 ├── roles/               # ドメイン別: pve* / vm* / k8s*
@@ -146,4 +150,5 @@ sequenceDiagram
 | [docs/pve.md](docs/pve.md) | ① Proxmox操作ドメインの使い方(provision/power/destroy/template) |
 | [docs/vm.md](docs/vm.md) | ② VMセットアップドメインの使い方(サービス別playbook・k3sクラスタ構築) |
 | [docs/k8s.md](docs/k8s.md) | ③ Kubernetesドメインの使い方(deploy・アプリ追加・Secret・チャート管理) |
+| [docs/adhoc.md](docs/adhoc.md) | **インベントリ外のVMを `-e` だけで構築する**(検証VM・宣言前の試作。全ドメイン共通) |
 | [.devcontainer/README.md](.devcontainer/README.md) | Dev Containerのセットアップ注意点 |

@@ -2,7 +2,12 @@
 # 実行例: ansible-playbook playbooks/pve/provision.yml -l k8s
 # 実行例: ansible-playbook playbooks/pve/provision.yml -l k3s-worker03
 # 実行例: ansible-playbook playbooks/pve/provision.yml
+# インベントリに無いVMを-eだけで構築する場合は docs/adhoc.md
 ---
+# -e profile= を指定したときだけ、インベントリ外のVMを一時ホストとして宣言する。
+- name: インベントリ外のVMを一時ホストとして宣言する
+  ansible.builtin.import_playbook: adhoc.yml
+
 - name: 未作成VMに必要なProxmoxテンプレートを収束させる
   hosts: "{{ target | default('lab') }}"
   connection: local

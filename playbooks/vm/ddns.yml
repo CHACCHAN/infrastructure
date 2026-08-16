@@ -6,10 +6,11 @@
   ansible.builtin.import_playbook: ../pve/provision.yml
   vars:
     target: ddns
+    profile_expected: ddns
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: Cloudflare DDNS UIをセットアップする
-  hosts: ddns
+  hosts: "{{ target | default('ddns') }}"
   gather_facts: false
   vars_files:
     - ../../vault/cloudflare.yml

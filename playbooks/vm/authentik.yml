@@ -6,10 +6,11 @@
   ansible.builtin.import_playbook: ../pve/provision.yml
   vars:
     target: authentik
+    profile_expected: authentik
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: Authentikをセットアップする
-  hosts: authentik
+  hosts: "{{ target | default('authentik') }}"
   gather_facts: false
   vars:
     ansible_user: "{{ pve_ssh_user }}"

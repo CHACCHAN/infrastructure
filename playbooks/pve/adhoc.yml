@@ -1,0 +1,57 @@
+# インベントリに宣言していないVMを -e だけで構築するための一時ホスト登録。
+# provision.yml / power.yml が先頭でimportし、-e profile= を指定したときだけ動く
+# (未指定なら何もしないため、通常のインベントリ運用には一切影響しない)。
+# 実行例: ansible-playbook playbooks/pve/provision.yml \
+#           -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99
+# 変数の一覧と使い分けは docs/adhoc.md
+---
+- name: インベントリ外のVMを一時ホストとして宣言する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: 一時ホストを役割プロファイルへ登録する
+      when: profile is defined
+      block:
+        - name: 一時ホストの指定内容を検証する
+          ansible.builtin.assert:
+            that:
+              # 既存ホスト・グループの取り違えと、インベントリパターンの混入を防ぐ。
+              - target | default('') is match('^[A-Za-z0-9][A-Za-z0-9._-]*$')
+              - target | default('') not in groups['all']
+              - target | default('') not in groups
+              # 打ち間違えたプロファイル名で「変数が何も乗らない空グループ」を作らせない。
+              - profile in groups
+              - (vmid | default('') | string) is match('^[0-9]+$')
+              - node | default('') is match('^[A-Za-z0-9][A-Za-z0-9.-]*$')
+              - ip | default('') is match('^[0-9]+(\.[0-9]+){3}$')
+            fail_msg: >-
+              -e profile=<役割グループ> を指定したときは、target(インベントリに無い
+              新しいホスト名)・vmid・node・ip(1枚目NICのIP)をすべて -e で指定してください。
+              profileは既存の役割グループ名です(プロファイルを継承しないなら lab)。
+              例: -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99
+            quiet: true
+
+        # サービスplaybook(playbooks/vm/*.yml)は前提とする役割をprofile_expectedで渡す。
+        # VMのスペックと中身の構築がちぐはぐになる組み合わせを、実行前に止める。
+        - name: 指定プロファイルがplaybookの前提と一致することを確認する
+          ansible.builtin.assert:
+            that:
+              - profile == profile_expected
+            fail_msg: >-
+              このplaybookは役割 {{ profile_expected }} のVMを構築します。
+              -e profile={{ profile }} とは組み合わせられません。
+            quiet: true
+          when: profile_expected is defined
+
+        - name: 一時ホストを登録する
+          ansible.builtin.add_host:
+            name: "{{ target }}"
+            groups: "{{ profile }}"
+            # IPは-eではなくホスト変数として渡す。-eは全ホストへ最優先で効くため、
+            # 直接ansible_hostを指定すると他ホストのhostvars参照まで書き換えてしまう
+            # (例: group_vars/k8s.ymlのkubernetes_server_ip)。
+            ansible_host: "{{ ip }}"
+            cluster_ip: "{{ ip2 | default(omit) }}"
+          changed_when: false
