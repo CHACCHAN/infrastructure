@@ -28,6 +28,31 @@
       validate_certs: false
 
   tasks:
+    # group_vars/all が届かない実行環境(AWXの手動インベントリ等)を、API操作の前に
+    # 検出する。この4つは roles/*/defaults に既定値が無く、inventory/group_vars/all/pve.yml
+    # だけが供給源のため、未定義や空のまま進むと収束の途中で止まってしまう。
+    - name: クラスタ共通の基本変数が届いていることを確認する
+      ansible.builtin.assert:
+        that:
+          - pve_provision_missing_vars | length == 0
+        fail_msg: >-
+          {{ pve_provision_missing_vars | join(' / ') }} が未定義または空です。
+          inventory/group_vars/all/pve.yml が読み込まれていません。
+          AWXではインベントリをプロジェクトのinventory/から同期するか(docs/awx.md)、
+          不足している値を変数で指定してください。
+        quiet: true
+      vars:
+        # 未定義だけでなく空文字・nullも「不足」として名前ごと列挙する。
+        pve_provision_required_vars:
+          pve_storage: "{{ pve_storage | default('', true) }}"
+          pve_bridge: "{{ pve_bridge | default('', true) }}"
+          pve_ipv4_prefix: "{{ pve_ipv4_prefix | default('', true) }}"
+          pve_ipv4_gw: "{{ pve_ipv4_gw | default('', true) }}"
+        pve_provision_missing_vars: >-
+          {{ pve_provision_required_vars | dict2items
+             | selectattr('value', 'eq', '')
+             | map(attribute='key') | list }}
+
     - name: 対象VMを検索する
       ansible.builtin.import_role:
         name: pve

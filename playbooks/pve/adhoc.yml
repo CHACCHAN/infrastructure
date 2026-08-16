@@ -1,14 +1,19 @@
-# インベントリに宣言していないVMを -e だけで構築するための一時ホスト登録。
-# provision.yml / power.yml が先頭でimportし、-e profile= を指定したときだけ動く
-# (未指定なら何もしないため、通常のインベントリ運用には一切影響しない)。
+# インベントリに宣言していないVMを、変数の指定だけで構築するための一時ホスト登録。
+# provision.yml / power.yml / 各サービスplaybookが先頭でimportし、profile を指定した
+# ときだけ登録が動く(未指定なら検証だけ行うため、通常のインベントリ運用には影響しない)。
 # 実行例: ansible-playbook playbooks/pve/provision.yml \
 #           -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99
-# 変数の一覧と使い分けは docs/adhoc.md
+# AWXではJob Templateの変数欄・Surveyが -e と同じextra varsとして届く。
+# 変数の一覧と使い分けは docs/adhoc.md、AWXから使う場合の前提は docs/awx.md
 ---
 - name: インベントリ外のVMを一時ホストとして宣言する
   hosts: localhost
   connection: local
   gather_facts: false
+  vars_files:
+    # localhostはinventoryのall配下に入らないため、鍵の書き出し先
+    # (pve_ssh_prikey_tmpfile)を持つクラスタ共通値を明示的に読む。
+    - "{{ playbook_dir }}/../../inventory/group_vars/all/pve.yml"
 
   tasks:
     # 空のtargetは「未指定」ではなく最優先のextra varとして効くため、importで渡した
@@ -24,6 +29,17 @@
           (AWXのSurveyは未回答時に変数を送らない設定にしてください)。
         quiet: true
 
+    # グループ名の一致だけでは同名グループを持つ別インベントリと区別できず、
+    # pve_storage等の実変数はextra varsで渡されると全ホストに見えてしまう。
+    # そのため、プロジェクトのgroup_vars/all/pve.ymlだけが定義する専用マーカー
+    # (pve_project_inventory)がホストへ届いているかで判定する。
+    - name: プロジェクトのインベントリを読めているか判定する
+      ansible.builtin.set_fact:
+        pve_adhoc_project_inventory: >-
+          {{ 'lab' in groups
+             and groups['lab'] | length > 0
+             and hostvars[groups['lab'][0]].pve_project_inventory | default(false) }}
+
     - name: 一時ホストを役割プロファイルへ登録する
       # AWXのSurveyは未回答の質問を空文字で渡すことがあるため、is defined ではなく中身で判定する。
       when: profile | default('', true) | length > 0
@@ -31,31 +47,91 @@
         - name: 一時ホストの指定内容を検証する
           ansible.builtin.assert:
             that:
-              # 既存ホスト・グループの取り違えと、インベントリパターンの混入を防ぐ。
+              # 既存グループ名との取り違えと、インベントリパターンの混入を防ぐ。
               - target | default('') is match('^[A-Za-z0-9][A-Za-z0-9._-]*$')
-              - target | default('') not in groups['all']
               - target | default('') not in groups
-              # 打ち間違えたプロファイル名で「変数が何も乗らない空グループ」を作らせない。
-              - profile in groups
+              # 既存ホスト名との取り違えを防ぐ。ただしこの実行内でadhocが登録済みの
+              # ホスト(pve_adhoc_host)は許す(setup.yml→provision→password.ymlの
+              # ように1回の実行で二重importされる構成のため)。
+              - >-
+                target | default('') not in groups['all']
+                or hostvars[target].pve_adhoc_host | default(false)
               - (vmid | default('') | string) is match('^[0-9]+$')
               - node | default('') is match('^[A-Za-z0-9][A-Za-z0-9.-]*$')
-              - ip | default('') is match('^[0-9]+(\.[0-9]+){3}$')
+              - ip | default('') is match('^' ~ pve_adhoc_ipv4_pattern ~ '$')
+              - >-
+                ip2 | default('', true) | length == 0
+                or ip2 is match('^' ~ pve_adhoc_ipv4_pattern
+                                ~ '/([0-9]|[12][0-9]|3[0-2])$')
             fail_msg: >-
-              -e profile=<役割グループ> を指定したときは、target(インベントリに無い
-              新しいホスト名)・vmid・node・ip(1枚目NICのIP)をすべて -e で指定してください。
+              profile=<役割グループ> を指定したときは、target(インベントリに無い
+              新しいホスト名)・vmid・node・ip(1枚目NICのIP)をすべて変数で指定してください。
+              ip2はプレフィックス付き(例: 10.10.20.19/24)です。
               profileは既存の役割グループ名です(プロファイルを継承しないなら lab)。
               例: -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99
             quiet: true
+          vars:
+            pve_adhoc_ipv4_pattern: >-
+              ((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])
 
-        # サービスplaybook(playbooks/vm/*.yml)は前提とする役割をprofile_expectedで渡す。
+        # 起動後に気づくと復旧が面倒なIPの衝突は、宣言(インベントリ)と突き合わせて
+        # 実行前に止める。vmidはextra varとして全ホストへ最優先で効いてしまい
+        # hostvars経由では宣言値を読めないため、実機側の照合(find_vm)に任せる。
+        - name: 既存の宣言とIPが重複しないことを確認する
+          ansible.builtin.assert:
+            that:
+              - ip not in pve_adhoc_used_ips
+              - >-
+                ip2 | default('', true) | length == 0
+                or (ip2 | regex_replace('/.*$', '')) not in pve_adhoc_used_cluster_ips
+            fail_msg: >-
+              ip={{ ip }} または ip2={{ ip2 | default('(なし)', true) }} が、
+              インベントリ既存のVMのIPと重複しています。
+              inventory/hosts.yml を確認してください。
+            quiet: true
+          vars:
+            pve_adhoc_other_hosts: "{{ groups['all'] | difference([target | default('')]) }}"
+            pve_adhoc_used_ips: >-
+              {{ pve_adhoc_other_hosts | map('extract', hostvars, 'ansible_host')
+                 | select('defined') | list }}
+            pve_adhoc_used_cluster_ips: >-
+              {{ pve_adhoc_other_hosts | map('extract', hostvars, 'cluster_ip')
+                 | select('defined') | map('regex_replace', '/.*$', '') | list }}
+
+        # プロファイルの打ち間違い検出は、プロジェクトのインベントリを読めている
+        # ときだけ判定材料がある。読めない環境(AWXの手動インベントリ等)では検証せず、
+        # 実際に使う値が揃っているかをprovision.ymlの基本変数チェックで確認する。
+        - name: プロファイルが役割グループとして存在することを確認する
+          ansible.builtin.assert:
+            that:
+              - profile in groups
+            fail_msg: >-
+              profile={{ profile }} という役割グループはインベントリにありません。
+              inventory/hosts.yml のグループ名か lab を指定してください。
+            quiet: true
+          when: pve_adhoc_project_inventory
+
+        - name: プロファイルの変数が適用されないことを通知する
+          ansible.builtin.debug:
+            msg: >-
+              インベントリにプロジェクトのグループが見つからないため、
+              inventory/group_vars/ のプロファイルは適用されません
+              (roles/*/defaults の既定値と、指定した変数だけで構築されます)。
+              宣言どおりに構築するには、AWXのインベントリをプロジェクトの
+              inventory/ から同期してください(docs/awx.md)。
+          when: not pve_adhoc_project_inventory
+
+        # サービスplaybook(playbooks/vm/*)は前提とする役割をprofile_expectedで渡す。
         # VMのスペックと中身の構築がちぐはぐになる組み合わせを、実行前に止める。
+        # labは「プロファイルを継承せず値を全部渡す」指定のため、どのplaybookとも組み合わせられる。
         - name: 指定プロファイルがplaybookの前提と一致することを確認する
           ansible.builtin.assert:
             that:
-              - profile == profile_expected
+              - profile == profile_expected or profile == 'lab'
             fail_msg: >-
               このplaybookは役割 {{ profile_expected }} のVMを構築します。
-              -e profile={{ profile }} とは組み合わせられません。
+              profile={{ profile }} とは組み合わせられません
+              (プロファイルを継承せず自分で値を渡す場合は profile=lab)。
             quiet: true
           when: profile_expected is defined
 
@@ -63,10 +139,52 @@
           ansible.builtin.add_host:
             name: "{{ target }}"
             groups: "{{ profile }}"
-            # IPは-eではなくホスト変数として渡す。-eは全ホストへ最優先で効くため、
-            # 直接ansible_hostを指定すると他ホストのhostvars参照まで書き換えてしまう
-            # (例: group_vars/k8s.ymlのkubernetes_server_ip)。
+            # IPはextra varsではなくホスト変数として渡す。extra varsは全ホストへ
+            # 最優先で効くため、直接ansible_hostを指定すると他ホストのhostvars参照
+            # まで書き換えてしまう(例: group_vars/k8s.ymlのkubernetes_server_ip)。
             ansible_host: "{{ ip }}"
             # 空文字で渡された場合もcluster_ipを作らない(不正なipconfig1を防ぐ)。
             cluster_ip: "{{ ip2 | default(omit, true) }}"
+            # 手動インベントリではgroup_vars/allのpve_ssh_prikey_resolvedが届かない
+            # ため、SSHで使う鍵パスをホスト変数として直接持たせる。プロジェクトの
+            # インベントリでは設定せず、group_vars側の遅延解決に任せる(役割ごとの
+            # 鍵ファイル宣言を上書きしないため)。
+            pve_ssh_prikey_resolved: >-
+              {{ omit if pve_adhoc_project_inventory
+                 else (pve_ssh_prikey_tmpfile
+                       if pve_ssh_prikey_value | default('', true) | trim | length > 0
+                       else pve_ssh_prikey_file | default(omit, true)) }}
+            # この実行内での二重import(setup.yml等)を、既存ホストとの衝突と区別する目印。
+            pve_adhoc_host: true
           changed_when: false
+
+    # targetの指定ミス(存在しないホスト名)を「対象0台の成功」で見逃さない。
+    # targetは単一のホスト名かグループ名だけを受け付ける(パターンは-lを使う)。
+    - name: targetがインベントリに存在することを確認する
+      ansible.builtin.assert:
+        that:
+          - target in groups or target in groups['all']
+        fail_msg: >-
+          target={{ target }} はインベントリに存在しません。
+          インベントリ外のVMを作る場合は profile= もあわせて指定してください(docs/adhoc.md)。
+        quiet: true
+      when: target | default('', true) | length > 0
+
+    # 役割違いの既存ホストへ別サービスを適用する事故を止める(dev用playbookに
+    # -e target=technitium-dns 等)。手動インベントリでは役割を判定できないため行わない。
+    - name: targetがplaybookの前提の役割と一致することを確認する
+      ansible.builtin.assert:
+        that:
+          - >-
+            (target in groups and target == profile_expected)
+            or (target in groups['all']
+                and (target in groups[profile_expected] | default([])
+                     or hostvars[target].pve_adhoc_host | default(false)))
+        fail_msg: >-
+          target={{ target }} は役割 {{ profile_expected }} のホスト/グループでは
+          ありません。このplaybookは役割 {{ profile_expected }} のVMだけを対象にします。
+        quiet: true
+      when:
+        - profile_expected is defined
+        - target | default('', true) | length > 0
+        - pve_adhoc_project_inventory

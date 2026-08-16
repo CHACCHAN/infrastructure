@@ -7,6 +7,12 @@ pve_bridge: vmbr0
 pve_ipv4_prefix: 24
 pve_ipv4_gw: 172.16.11.1
 
+# playbooks/pve/adhoc.yml が「プロジェクトのインベントリを読めているか」を判定する目印。
+# この変数はここ以外で定義しない(手動インベントリや変数指定では渡さないこと)。
+# pve_storage等の実変数で判定すると、AWXの手動インベントリ運用(値をextra varsで渡す)
+# を誤ってプロジェクト由来と判定してしまうため、専用の変数を置いている。
+pve_project_inventory: true
+
 # --- SSH鍵の渡しかた ---
 # 基本は役割プロファイルでファイルパス(pve_ssh_pubkey_file / pve_ssh_prikey_file)を宣言する。
 # AWXのSurveyのように本文しか渡せない経路では、代わりに pve_ssh_pubkey_value /

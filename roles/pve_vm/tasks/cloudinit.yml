@@ -13,11 +13,11 @@
       {{ pve_ssh_pubkey_value | trim
          if pve_ssh_pubkey_value | default('') | trim | length > 0
          else (lookup('ansible.builtin.file', pve_ssh_pubkey_file | expanduser)
-               if pve_ssh_pubkey_file is defined else none) }}
+               if pve_ssh_pubkey_file | default('', true) | length > 0 else none) }}
     pve_cloudinit_ipconfig: >-
       {{ {'ipconfig0': 'ip=' ~ ansible_host ~ '/' ~ pve_ipv4_prefix
                          ~ ',gw=' ~ pve_ipv4_gw}
-         | combine((cluster_ip is defined)
+         | combine((cluster_ip | default('', true) | length > 0)
                    | ternary({'ipconfig1':
                                 'ip=' ~ (cluster_ip | default(''))}, {})) }}
 
@@ -32,8 +32,11 @@
   community.proxmox.proxmox_kvm:
     vmid: "{{ vmid }}"
     node: "{{ node }}"
-    # ユーザー・鍵が未定義のホストでは既存設定に触れない(omit)
-    ciuser: "{{ pve_ssh_user | default(omit) }}"
+    # ユーザー・鍵が未定義(または空文字)のホストでは既存設定に触れない(omit)
+    ciuser: >-
+      {{ pve_ssh_user
+         if pve_ssh_user | default('', true) | length > 0
+         else omit }}
     sshkeys: "{{ pve_cloudinit_sshkeys if pve_cloudinit_sshkeys is not none else omit }}"
     ipconfig: "{{ pve_cloudinit_ipconfig }}"
     # 未定義時はPVEホストのDNS設定を継承し、既存値を意図せず消さない。
@@ -43,7 +46,7 @@
   vars:
     pve_cloudinit_current: "{{ (pve_cloudinit_info.proxmox_vms | first).config }}"
   when: >-
-    (pve_ssh_user is defined
+    (pve_ssh_user | default('', true) | length > 0
      and pve_cloudinit_current.ciuser | default('') != pve_ssh_user)
     or (pve_cloudinit_sshkeys is not none
         and (pve_cloudinit_current.sshkeys | default('') | trim)
@@ -52,7 +55,7 @@
             != (pve_cloudinit_sshkeys | trim))
     or pve_cloudinit_current.ipconfig0 | default('')
        != pve_cloudinit_ipconfig.ipconfig0
-    or (cluster_ip is defined
+    or (cluster_ip | default('', true) | length > 0
         and pve_cloudinit_current.ipconfig1 | default('')
             != pve_cloudinit_ipconfig.ipconfig1)
     or (pve_nameserver is defined

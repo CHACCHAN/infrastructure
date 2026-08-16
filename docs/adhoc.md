@@ -32,7 +32,7 @@ flowchart LR
 | 変数 | 必須 | 意味 | 例 |
 | --- | :-: | --- | --- |
 | `target` | ✔ | 新しいホスト名。そのままPVE上のVM名になる | `tmp01` |
-| `profile` | ✔ | 継承する役割グループ。プロファイルを継承しないなら `lab` | `dev` |
+| `profile` | ✔ | 継承する役割グループ。継承せず値を全部自分で渡すなら `lab`(labはどのplaybookとも組み合わせられる) | `dev` |
 | `vmid` | ✔ | VMID | `799` |
 | `node` | ✔ | 配置するPVEノード | `pve07` |
 | `ip` | ✔ | 1枚目NICのIP(= `ansible_host`) | `172.16.11.99` |
@@ -122,10 +122,16 @@ ansible-playbook playbooks/pve/destroy.yml -e vmid=799 -e confirm=799
 | 止まる条件 | 例 |
 | --- | --- |
 | `target` が既存のホスト名・グループ名 | `-e target=yuya-dev` / `-e target=dev` |
-| `target` にインベントリパターンが混ざっている | `-e target=all:!dev` |
-| `profile` が存在しない役割グループ | `-e profile=devv` |
-| `profile` がplaybookの前提と違う | `playbooks/vm/dev/setup.yml -e profile=k8s` |
-| `vmid` / `node` / `ip` の書式ミス・指定漏れ | `-e ip=172.16.11` |
+| `target` が存在しない(profile未指定時)。打ち間違いを「対象0台の成功」にしない | `-e target=yuya-devv` |
+| `target` にインベントリパターンが混ざっている(単一のホスト名/グループ名のみ) | `-e target=all:!dev` |
+| `target` がplaybookの前提と違う役割の既存ホスト ※ | `dev/password.yml -e target=technitium-dns` |
+| `profile` が存在しない役割グループ ※ | `-e profile=devv` |
+| `profile` がplaybookの前提と違う(`lab` は除く) | `playbooks/vm/dev/setup.yml -e profile=k8s` |
+| `vmid` / `node` / `ip` / `ip2` の書式ミス・指定漏れ(IPはオクテット範囲も見る) | `-e ip=999.9.9.9` |
+| `ip` / `ip2` がインベントリ既存VMのIPと重複 | `-e ip=172.16.11.21` |
 | `target` が空文字(AWXのSurvey未回答など) | `-e target=` ※対象が意図せず広がるため |
+| クラスタ共通の基本変数が届いていない(provision実行時) | AWXの手動インベントリ等。不足分を列挙して停止 |
 
-VMIDと実機の突き合わせは、この後 `roles/pve` の検索が行う(宣言と違う名前・ノードのVMを掴んだら停止する)。
+※ グループを参照する検査は、プロジェクトのインベントリを読めているときだけ判定できる。読めていない実行環境(AWXの手動インベントリ等)では、プロファイルが適用されない旨を表示したうえで、実際に使う値が揃っているかをprovisionの基本変数チェックが確認する。
+
+VMIDの重複はインベントリでは判定できない(extra varsが全ホストへ効くため)。実機との突き合わせを `roles/pve` の検索が行い、宣言と違う名前・ノードのVMを掴んだら停止する。

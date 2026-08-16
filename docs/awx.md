@@ -2,13 +2,41 @@
 
 このリポジトリは**手元(Dev Container・リポジトリルートで実行)を基準**に作ってある。AWXは実行環境が違うため、次を満たさないと「手元では動くのにAWXだけ落ちる」ことになる。
 
-## 1. インベントリはプロジェクト由来にする
+なお、AWXのJob Templateの**変数欄とSurveyは、どちらも `-e`(extra vars)と同じ**扱いで届く。手元の `-e` で動く指定は、そのままAWXの変数欄に書けば同じに動く。
 
-AWXは**自前で生成したインベントリ**をplaybookへ渡す。そのため、Job Templateに紐づくInventoryを **Sources → Sourced from a Project**(このリポジトリの `inventory/`)にしてSyncしないと、`inventory/group_vars/` の3層(`all/` とロールプロファイル)がまったく届かない。
+## 1. インベントリはプロジェクト由来にする(推奨)
 
-- 症状: `pve_ssh_user is undefined`、あるいはCPU/メモリ/NICが役割プロファイルではなく `roles/*/defaults` の値になる
+AWXは**自前で生成したインベントリ**をplaybookへ渡す。Job Templateに紐づくInventoryを **Sources → Sourced from a Project**(このリポジトリの `inventory/`)にしてSyncすると、`inventory/group_vars/` の3層(`all/` とロールプロファイル)がそのまま届き、手元と完全に同じ宣言で動く。
+
 - 確認: AWXの Inventory → Hosts → 任意のホストの Variables に `pve_vm_cores` などが入っているか
 - k3sの**初回**構築は宣言順(`order: inventory` + `serial: 1`)に依存する。AWX生成インベントリの並びがコントロールプレーン先頭でない場合、ワーカーがトークン取得に失敗する(現在のホスト名はどう並べても `k3s-master01` が先頭になるため顕在化しない)
+
+**同期しない場合**(手動インベントリのまま使う場合)は、group_vars が一切届かないため、必要な値をすべてJob Templateの変数欄で渡す。playbookは黙って壊れずに次で知らせる:
+
+- adhoc登録時に「プロファイルは適用されません」と表示する(役割プロファイルの継承が効かないため、実質 `profile: lab` と同じになる)
+- provisionの最初に、group_vars/all 由来の基本変数(`pve_storage` / `pve_bridge` / `pve_ipv4_prefix` / `pve_ipv4_gw`)の不足を**列挙して停止**する
+
+手動インベントリの制約: SSHを伴うplaybookは、**adhocで作ったVM(`target`/`profile` 指定)なら鍵本文でそのまま動く**が、手動インベントリに元から書いてあるホストへは鍵パスの自動解決が効かない(そのホストの変数に `pve_ssh_prikey_resolved` を持たせるか、プロジェクト同期に切り替える)。
+
+手動インベントリでインベントリ外VMを1台つくる変数欄の例:
+
+```yaml
+target: test
+profile: lab
+vmid: 901
+node: pve09
+ip: 172.16.11.77
+
+# group_vars/all/pve.yml の代わりに自分で渡す
+pve_storage: local-lvm
+pve_bridge: vmbr0
+pve_ipv4_prefix: 24
+pve_ipv4_gw: 172.16.11.1
+
+# 上書きしたいVM設定と、SSHするなら鍵(Surveyで渡すなら不要)
+pve_vm_cores: 2
+pve_ssh_user: dev
+```
 
 ## 2. Limit(絞り込み)を使わない
 
@@ -20,7 +48,7 @@ AWXは**自前で生成したインベントリ**をplaybookへ渡す。その�
 
 実行環境のHOMEには `~/.ssh/id_ed25519_*` が無いため、`pve_ssh_pubkey_file` / `pve_ssh_prikey_file` は解決できない。Surveyの**テキストエリア**で `pve_ssh_pubkey_value` / `pve_ssh_prikey_value` に鍵本文を渡す。→ [docs/vm.md](vm.md#鍵をファイルではなく本文で渡すawxのsurveyなど)
 
-パスフレーズ付きの秘密鍵は非対話で解錠できないため使えない。
+パスフレーズ付きの秘密鍵は非対話で解錠できないため使えない。秘密鍵と `pve_ssh_password` は必ず**暗号化したSurvey質問**で渡す(Job Templateの変数欄は画面から見えるため)。
 
 ## 4. Surveyは「未回答なら変数を送らない」設定にする
 
