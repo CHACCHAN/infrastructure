@@ -1,5 +1,5 @@
 # ログインはPAM経由のLinux通常ログインパスワード。
-# そのパスワードはcloud-initで設定される想定のため、ここでは一切設定しない。
+# パスワードはcloud-initで設定するため(playbooks/vm/dev/password.yml)、ここでは扱わない。
 ---
 - name: Cockpitをインストールする
   ansible.builtin.apt:

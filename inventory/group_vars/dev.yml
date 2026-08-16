@@ -7,6 +7,6 @@ pve_vm_disk_size: 256
 
 # SSHユーザーはcloud-init管理(ciuser=dev)だが、公開鍵は利用者個人のもののため
 # ここでは宣言しない(未定義ならcloud-initの鍵設定に触れない)。
-# playbooks/vm/dev.yml でVM内セットアップを行うときは、自分の鍵を指定する:
-#   ansible-playbook playbooks/vm/dev.yml -l yuya-dev -e pve_ssh_prikey_file=~/.ssh/<自分の鍵>
+# playbooks/vm/dev/setup.yml でVM内セットアップを行うときは、自分の鍵を指定する:
+#   ansible-playbook playbooks/vm/dev/setup.yml -l yuya-dev -e pve_ssh_prikey_file=~/.ssh/<自分の鍵>
 pve_ssh_user: dev

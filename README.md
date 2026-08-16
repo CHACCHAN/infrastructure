@@ -84,7 +84,7 @@ ansible-playbook playbooks/k8s/deploy.yml                  # 全アプリ
 ansible-playbook playbooks/k8s/deploy.yml -e app=portainer # 1アプリだけ
 
 # インベントリに書かずに1台だけ作る(検証VM。詳細は docs/adhoc.md)
-ansible-playbook playbooks/vm/dev.yml \
+ansible-playbook playbooks/vm/dev/setup.yml \
   -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99
 ```
 
@@ -128,7 +128,7 @@ sequenceDiagram
 │   └── group_vars/      #   all/=ベース、<役割>.yml=プロファイル
 ├── playbooks/
 │   ├── pve/             # ① provision / power / destroy / template(+ adhoc=一時ホスト登録)
-│   ├── vm/              # ② サービスVMの一気通貫構築
+│   ├── vm/              # ② サービスVMの一気通貫構築(dev/ は setup / password に分割)
 │   └── k8s/             # ③ deploy(全アプリ or -e app=X)
 ├── roles/               # ドメイン別: pve* / vm* / k8s*
 ├── vault/               # Ansible Vault(全ファイル暗号化済み)

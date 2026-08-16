@@ -124,7 +124,7 @@ ansible-playbook playbooks/pve/destroy.yml -e vmid=799 -e confirm=799
 | `target` が既存のホスト名・グループ名 | `-e target=yuya-dev` / `-e target=dev` |
 | `target` にインベントリパターンが混ざっている | `-e target=all:!dev` |
 | `profile` が存在しない役割グループ | `-e profile=devv` |
-| `profile` がplaybookの前提と違う | `playbooks/vm/dev.yml -e profile=k8s` |
+| `profile` がplaybookの前提と違う | `playbooks/vm/dev/setup.yml -e profile=k8s` |
 | `vmid` / `node` / `ip` の書式ミス・指定漏れ | `-e ip=172.16.11` |
 
 VMIDと実機の突き合わせは、この後 `roles/pve` の検索が行う(宣言と違う名前・ノードのVMを掴んだら停止する)。

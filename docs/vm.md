@@ -31,13 +31,20 @@ ansible-playbook playbooks/vm/authentik.yml
 ansible-playbook playbooks/vm/k3s.yml        # k8sグループ全台を順にクラスタ化
 
 # 1台だけに絞る(グループ内の特定ホスト)
-ansible-playbook playbooks/vm/dev.yml -l yuya-dev
+ansible-playbook playbooks/vm/dev/setup.yml -l yuya-dev
 
 # 仕上げの再起動を抑止する(稼働中サービスの設定だけ直したいとき)
 ansible-playbook playbooks/vm/wg-easy.yml -e vm_reboot_after_setup=false
 ```
 
-playbookは8本: `authentik` `ddns` `dev` `k3s` `pbs` `supabase` `technitium` `wg-easy`
+対象は8サービス。開発VMだけ動詞が2つあるため、`playbooks/pve/` と同じ考えかたでディレクトリに分けている。
+
+| ファイル | 役割 |
+| --- | --- |
+| `authentik.yml` `ddns.yml` `k3s.yml` `pbs.yml` `supabase.yml` `technitium.yml` `wg-easy.yml` | 1サービス=1ファイル |
+| [`dev/setup.yml`](../playbooks/vm/dev/setup.yml) | 開発VMを一通り構築(パスワード設定も含む) |
+| [`dev/password.yml`](../playbooks/vm/dev/password.yml) | 開発VMのログインパスワードだけ更新 |
+| [`ssh_key.yml`](../playbooks/vm/ssh_key.yml) | 各playbookが先頭でimportする前処理(鍵を本文で受け取ったとき用) |
 
 ## サービスの宣言のしかた
 
@@ -92,6 +99,26 @@ ansible-playbook playbooks/vm/technitium.yml \
   -e vmid=605 -e node=pve06 -e ip=172.16.11.31
 ```
 
+## 開発VMのログインパスワード(Cockpit・xrdp)
+
+AnsibleのSSHは公開鍵で入るためパスワードを使わないが、**CockpitとxrdpはPAM認証**なのでLinuxのログインパスワードが要る。これはcloud-initの `cipassword` で設定する。
+
+```sh
+# 一通り構築しながら設定する
+ansible-playbook playbooks/vm/dev/setup.yml -e pve_ssh_password=<パスワード>
+
+# 既存VMのパスワードだけ変える
+ansible-playbook playbooks/vm/dev/password.yml -l yuya-dev -e pve_ssh_password=<パスワード>
+```
+
+- `-e pve_ssh_password=` を渡したときだけ動く。渡さなければ [password.yml](../playbooks/vm/dev/password.yml) は丸ごとスキップされるため、通常の再実行は `changed=0` のまま
+- 12文字以上・空白なしを実行前に検証する。値はログにも `--diff` にも出ない
+- **反映にはVMの電源再投入が要る**。cloud-initのドライブはPVEがVMの起動時に作り直すため、ゲスト内からの `reboot` では古い内容のままになる。playbookが停止→起動まで行う(ゲストが応答しないときは `-e pve_power_force=true`)
+- 電源再投入でcloud-initはインスタンスIDの変化を検出し、初回相当の処理をやり直す。**SSHホスト鍵も作り直される**(このリポジトリは `StrictHostKeyChecking=no` のため影響しないが、手元のsshクライアントは警告を出す)
+- 最後に `passwd --status` で「PAMで使える状態(`P`)」になったことを確認する
+- PVEは `cipassword` を伏字で返し現在値と比較できないため、渡したら必ず書き込む(「渡した=変えたい」が指定の意味)
+- 他サービスのVMには入れていない。必要になったら同じ形で足す
+
 ## k3sだけの特別ルール
 
 `playbooks/vm/k3s.yml` はクラスタを組むため順序が意味を持つ。
@@ -128,3 +155,4 @@ sequenceDiagram
 | `Permission denied (publickey)` | `pve_ssh_user` / `pve_ssh_pubkey_file` と実VMのcloud-init設定がずれている。`playbooks/pve/provision.yml` を流して収束させてから再実行 |
 | セットアップ途中で `No route to host` | ゲストのネットワーク断か再起動中。少し待って同じplaybookを再実行(冪等なので途中からやり直せる) |
 | k3sワーカーが参加に失敗 | コントロールプレーン(グループ先頭)が未構築のまま後続だけ実行した。グループ全体で `playbooks/vm/k3s.yml` を再実行 |
+| Cockpit / xrdp にログインできない | PAM用のログインパスワードが未設定。`playbooks/vm/dev/password.yml -l <ホスト> -e pve_ssh_password=<パスワード>` で設定する(SSHは公開鍵なので影響が出ない) |

@@ -1,18 +1,25 @@
 # 開発VMを宣言から一気通貫で構築するPlaybook。
-# 実行例: ansible-playbook playbooks/vm/dev.yml
+# 実行例: ansible-playbook playbooks/vm/dev/setup.yml
+# 実行例: ansible-playbook playbooks/vm/dev/setup.yml -l yuya-dev
+# パスワード(Cockpit・xrdp用)も同時に設定する場合:
+#   ansible-playbook playbooks/vm/dev/setup.yml -e pve_ssh_password=<パスワード>
 ---
 # 0. AWXのSurveyなど、鍵を本文で受け取った場合に一時ファイルへ書き出す
 - name: 接続用の秘密鍵を用意する
-  ansible.builtin.import_playbook: ssh_key.yml
+  ansible.builtin.import_playbook: ../ssh_key.yml
 
 # 1. Proxmox側: テンプレート→クローン→設定→cloud-init→起動まで収束
 - name: VMを収束させる
-  ansible.builtin.import_playbook: ../pve/provision.yml
+  ansible.builtin.import_playbook: ../../pve/provision.yml
   vars:
     target: dev
     profile_expected: dev
 
-# 2. VM内部: SSHでサービスをセットアップ
+# 2. ログインパスワード(Cockpit・xrdpのPAM認証用。-e pve_ssh_password= 指定時のみ動く)
+- name: ログインパスワードを設定する
+  ansible.builtin.import_playbook: password.yml
+
+# 3. VM内部: SSHでサービスをセットアップ
 - name: 開発環境をセットアップする
   hosts: "{{ target | default('dev') }}"
   gather_facts: false
