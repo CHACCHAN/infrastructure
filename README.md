@@ -148,7 +148,7 @@ sequenceDiagram
 | --- | --- |
 | [infrastructure.md](infrastructure.md) | **インフラの全体像**: 物理NIC〜vmbrのネットワーク構成図と、サービス公開経路(Traefik / Cloudflare Tunnel / WireGuard) |
 | [docs/pve.md](docs/pve.md) | ① Proxmox操作ドメインの使い方(provision/power/destroy/template) |
-| [docs/vm.md](docs/vm.md) | ② VMセットアップドメインの使い方(サービス別playbook・k3sクラスタ構築) |
+| [docs/vm.md](docs/vm.md) | ② VMセットアップドメインの使い方(サービス別playbook・k3sクラスタ構築・AWXから鍵を本文で渡す) |
 | [docs/k8s.md](docs/k8s.md) | ③ Kubernetesドメインの使い方(deploy・アプリ追加・Secret・チャート管理) |
 | [docs/adhoc.md](docs/adhoc.md) | **インベントリ外のVMを `-e` だけで構築する**(検証VM・宣言前の試作。全ドメイン共通) |
 | [.devcontainer/README.md](.devcontainer/README.md) | Dev Containerのセットアップ注意点 |

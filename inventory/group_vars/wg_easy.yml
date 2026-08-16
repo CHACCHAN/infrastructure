@@ -7,7 +7,7 @@ pve_vm_memory: 512
 pve_vm_disk_size: 8
 pve_ssh_user: wg
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_wg_easy.pub
-pve_ssh_prikey: ~/.ssh/id_ed25519_wg_easy
+pve_ssh_prikey_file: ~/.ssh/id_ed25519_wg_easy
 
 # --- wg-easyの設定 ---
 wg_easy_init_host: cc-chacchan.com

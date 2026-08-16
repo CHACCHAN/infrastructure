@@ -53,7 +53,7 @@ pve_vm_disk_size: 8
 # --- ② SSH接続(cloud-initが作るユーザーと鍵) ---
 pve_ssh_user: wg
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_wg_easy.pub
-pve_ssh_prikey: ~/.ssh/id_ed25519_wg_easy
+pve_ssh_prikey_file: ~/.ssh/id_ed25519_wg_easy
 
 # --- ③ サービス設定(vm_<service>ロールが使う) ---
 wg_easy_init_host: wg.example.com
@@ -62,6 +62,27 @@ wg_easy_version: "15.4.0-beta.1"
 
 - SSH接続は **provisionがcloud-initに書き込んだユーザー・鍵をそのまま使う**ため、宣言が一致していれば必ず入れる
 - 秘密情報(APIトークン等)は平文で置かず `vault/` の暗号化ファイルに置く
+
+### 鍵をファイルではなく本文で渡す(AWXのSurveyなど)
+
+AWXのSurveyはファイル入力に対応していない。鍵をパスで置けない実行環境では、**鍵の本文をそのまま入れる変数**を代わりに使う。
+
+| ファイルで渡す(既定) | 本文で渡す | 中身 |
+| --- | --- | --- |
+| `pve_ssh_pubkey_file` | `pve_ssh_pubkey_value` | cloud-initがVMに登録する公開鍵 |
+| `pve_ssh_prikey_file` | `pve_ssh_prikey_value` | AnsibleがVMへSSHする秘密鍵 |
+
+**本文が入っていればファイル指定より優先される**ため、`group_vars/<役割>.yml` の宣言は書き換えなくてよい。AWXではSurveyの質問を「テキストエリア」で作り、変数名を `pve_ssh_pubkey_value` / `pve_ssh_prikey_value` にする(秘密鍵の質問は**暗号化を有効にする**)。
+
+秘密鍵はSSHがファイルしか受け付けないため、[playbooks/vm/ssh_key.yml](../playbooks/vm/ssh_key.yml) が各playbookの先頭で `~/.ansible/pve_ssh_keys/<鍵のハッシュ>` へ0600で書き出し、接続にはそれを指す `pve_ssh_prikey_resolved` を使う。本文を渡さなければこのプレイは何もしない。
+
+```sh
+# コマンドラインから渡すときはJSONで。-e key=value は複数行が1行目で切れる
+ansible-playbook playbooks/vm/wg-easy.yml -e @keys.json
+```
+
+- 書き出した秘密鍵は実行後も残る。AWXは実行環境コンテナごと破棄されるが、手元で試したときは `~/.ansible/pve_ssh_keys/` を消す
+- AWXの **Machine Credential** はこのリポジトリではそのままでは効かない。playbookが `ansible_user` / `ansible_ssh_private_key_file` をplay変数で指定しており、Credentialが渡すコマンドラインオプションより優先されるため
 
 インベントリに宣言せず、`-e` だけで1台つくることもできる(検証用の2台目など)。→ [docs/adhoc.md](adhoc.md)
 

@@ -17,4 +17,4 @@ pve_vm_disks:
     iothread: 1
 pve_ssh_user: pbs
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_pbs.pub
-pve_ssh_prikey: ~/.ssh/id_ed25519_pbs
+pve_ssh_prikey_file: ~/.ssh/id_ed25519_pbs

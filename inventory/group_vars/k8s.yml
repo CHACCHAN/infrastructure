@@ -10,7 +10,7 @@ pve_vm_nets:
   - bridge: vmbr3
 pve_ssh_user: k3s
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_k3s.pub
-pve_ssh_prikey: ~/.ssh/id_ed25519_k3s
+pve_ssh_prikey_file: ~/.ssh/id_ed25519_k3s
 
 # --- k3sの設定 ---
 # 明示されたserverを優先し、移行途中の旧inventoryだけ先頭ホストへフォールバックする。

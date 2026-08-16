@@ -7,4 +7,4 @@ pve_vm_memory: 4096
 pve_vm_disk_size: 16
 pve_ssh_user: authentik
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_authentik.pub
-pve_ssh_prikey: ~/.ssh/id_ed25519_authentik
+pve_ssh_prikey_file: ~/.ssh/id_ed25519_authentik

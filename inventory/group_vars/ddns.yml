@@ -7,7 +7,7 @@ pve_vm_memory: 512
 pve_vm_disk_size: 8
 pve_ssh_user: ddns
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_cloudflare_ddns_ui.pub
-pve_ssh_prikey: ~/.ssh/id_ed25519_cloudflare_ddns_ui
+pve_ssh_prikey_file: ~/.ssh/id_ed25519_cloudflare_ddns_ui
 
 # --- Cloudflare DDNS UIの設定 ---
 # WireGuardの接続先(wg_easy_init_host)がこのapexなので、WAN IPの変動に追従させる。

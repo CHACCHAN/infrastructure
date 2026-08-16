@@ -7,6 +7,20 @@ pve_bridge: vmbr0
 pve_ipv4_prefix: 24
 pve_ipv4_gw: 172.16.11.1
 
+# --- SSH鍵の渡しかた ---
+# 基本は役割プロファイルでファイルパス(pve_ssh_pubkey_file / pve_ssh_prikey_file)を宣言する。
+# AWXのSurveyのように本文しか渡せない経路では、代わりに pve_ssh_pubkey_value /
+# pve_ssh_prikey_value へ鍵本文をそのまま入れる(本文があればファイルより優先される)。
+# 秘密鍵はSSHがファイルしか受け付けないため、playbooks/vm/ssh_key.yml が実行時に
+# 0600の一時ファイルへ書き出す。鍵の内容から名前を決めるため他の実行と衝突しない。
+pve_ssh_prikey_tmpfile: >-
+  {{ lookup('ansible.builtin.env', 'HOME') }}/.ansible/pve_ssh_keys/{{
+    pve_ssh_prikey_value | default('') | trim | hash('sha1') }}
+pve_ssh_prikey_resolved: >-
+  {{ pve_ssh_prikey_tmpfile
+     if pve_ssh_prikey_value | default('') | trim | length > 0
+     else pve_ssh_prikey_file }}
+
 # 全役割で同一だったVM設定をベースに集約する。
 pve_vm_bios: seabios
 pve_vm_machine: q35

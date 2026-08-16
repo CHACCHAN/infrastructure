@@ -5,11 +5,15 @@
 ---
 - name: cloud-initの宣言値を組み立てる
   ansible.builtin.set_fact:
-    # 鍵ファイル未定義のホスト(役割プロファイルを持たない検証VM等)では
+    # 鍵は本文(pve_ssh_pubkey_value)を優先し、無ければファイルから読む
+    # (AWXのSurveyなどファイルを置けない経路のため。詳細は docs/vm.md)。
+    # どちらも未定義のホスト(役割プロファイルを持たない検証VM等)では
     # ユーザー・鍵の設定をスキップするため none にする
     pve_cloudinit_sshkeys: >-
-      {{ lookup('ansible.builtin.file', pve_ssh_pubkey_file | expanduser)
-         if pve_ssh_pubkey_file is defined else none }}
+      {{ pve_ssh_pubkey_value | trim
+         if pve_ssh_pubkey_value | default('') | trim | length > 0
+         else (lookup('ansible.builtin.file', pve_ssh_pubkey_file | expanduser)
+               if pve_ssh_pubkey_file is defined else none) }}
     pve_cloudinit_ipconfig: >-
       {{ {'ipconfig0': 'ip=' ~ ansible_host ~ '/' ~ pve_ipv4_prefix
                          ~ ',gw=' ~ pve_ipv4_gw}

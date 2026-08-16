@@ -1,0 +1,30 @@
+# 本文で渡された接続用の秘密鍵を、一時ファイルへ書き出すPlaybook。
+# playbooks/vm/*.yml が先頭でimportし、-e pve_ssh_prikey_value= を指定したときだけ動く
+# (未指定なら何もしないため、ファイルパス(pve_ssh_prikey_file)での通常運用には影響しない)。
+# SSHは秘密鍵を「ファイル」でしか受け取れないため、AWXのSurveyのように本文しか
+# 渡せない経路ではここで実体化する。公開鍵は本文のままcloud-initへ渡せるため扱わない。
+# 書き出し先は group_vars/all/pve.yml の pve_ssh_prikey_tmpfile。詳細は docs/vm.md
+---
+- name: 本文で渡された秘密鍵を一時ファイルへ書き出す
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: 秘密鍵の本文を一時ファイルへ書き出す
+      when: pve_ssh_prikey_value | default('') | trim | length > 0
+      block:
+        - name: 一時鍵の置き場を用意する
+          ansible.builtin.file:
+            path: "{{ pve_ssh_prikey_tmpfile | dirname }}"
+            state: directory
+            mode: "0700"
+
+        - name: 秘密鍵を本人だけが読める権限で書き出す
+          ansible.builtin.copy:
+            # 末尾に改行が無い鍵をsshが拒否するため、trimして必ず1つ付ける。
+            content: "{{ pve_ssh_prikey_value | trim }}\n"
+            dest: "{{ pve_ssh_prikey_tmpfile }}"
+            mode: "0600"
+          # 鍵本文が差分・ログに出ないようにする(失敗しても詳細は出ない)。
+          no_log: true

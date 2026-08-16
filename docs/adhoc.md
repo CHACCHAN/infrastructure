@@ -110,7 +110,8 @@ ansible-playbook playbooks/pve/destroy.yml -e vmid=799 -e confirm=799
 - 一時ホストはその実行かぎり。**作ったVMは宣言に残らない**ため、以降 `provision.yml`(lab全体)の収束対象には入らない。使い続けるならインベントリへ移す
 - IPは `-e ip=` / `-e ip2=` で渡す。`-e ansible_host=` や `-e cluster_ip=` を直接指定すると全ホストに効いてしまう
 - `profile=lab`(継承なし)でSSHまで進む場合は、cloud-initが作るユーザーと鍵を自分で渡す:
-  `-e pve_ssh_user=<ユーザー名> -e pve_ssh_pubkey_file=~/.ssh/<公開鍵> -e pve_ssh_prikey=~/.ssh/<秘密鍵>`
+  `-e pve_ssh_user=<ユーザー名> -e pve_ssh_pubkey_file=~/.ssh/<公開鍵> -e pve_ssh_prikey_file=~/.ssh/<秘密鍵>`
+  (AWXのSurveyなどパスを置けない環境では鍵の本文で渡せる → [docs/vm.md](vm.md#鍵をファイルではなく本文で渡すawxのsurveyなど))
 - `profile=lab` のデフォルトゲートウェイは `group_vars/all/pve.yml` の `172.16.11.1`。別セグメント(vmbr2など)に置くなら `-e pve_ipv4_gw=` と `-e '{"pve_vm_nets":[{"bridge":"vmbr2"}]}'` も指定する
 - `--list-hosts` では対象を確認できない(ホストの登録は実行時に行われるため)
 

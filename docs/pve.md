@@ -87,7 +87,7 @@ lab:
 | `pve_vm_disks` | 追加ディスク(PBSのバックアップ用等) | なし |
 | `pve_os` / `pve_os_version` | クローン元テンプレートのOS | debian / 13 |
 | `pve_vm_power` | provision後の電源(`started`/`stopped`) | started |
-| `pve_ssh_user` / `pve_ssh_pubkey_file` | cloud-initが作るユーザーと公開鍵 | なし(未定義ならスキップ) |
+| `pve_ssh_user` / `pve_ssh_pubkey_file` | cloud-initが作るユーザーと公開鍵(本文で渡すなら `pve_ssh_pubkey_value` → [docs/vm.md](vm.md#鍵をファイルではなく本文で渡すawxのsurveyなど)) | なし(未定義ならスキップ) |
 
 インベントリに宣言せず、`-e` だけで1台つくることもできる(使い捨ての検証VM向け)。→ [docs/adhoc.md](adhoc.md)
 
