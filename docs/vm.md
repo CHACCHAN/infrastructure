@@ -74,7 +74,7 @@ WAN IPの変動をCloudflareのAレコードへ追従させる cloudflare-ddns-u
 
 開発VMを一式構築する: Cockpit(:9090)+Navigator/Machines/Docker Manager、Docker、kubectl/helm、VSCode Serverの定期掃除。`-e vm_gui_required=true` でXFCEデスクトップ+xrdp(:3389)+ブラウザも入る。
 
-`-e pve_ssh_password=` を渡すと、下のpassword.ymlを内包しているためログインパスワードも同時に設定される。
+`-e pve_ssh_password=` を渡すと、下のpassword.ymlを内包しているためログインパスワードも同時に設定される。**内包位置はVM内部の構築の後**(最終ステップ)。password.ymlはPVE側からVMを停止するが、VM設定が `pve_vm_agent: 1` のため停止要求はQEMUゲストエージェント経由で出る。エージェントを入れるのは `roles/vm` なので、それより前に置くと新規VMの初回構築でだけ停止がタイムアウトする。
 
 ### dev/password.yml
 
@@ -87,7 +87,8 @@ ansible-playbook playbooks/vm/dev/password.yml -e target=yuya-dev -e pve_ssh_pas
 - `pve_ssh_password` を渡したときだけ動く(未指定なら全スキップで `changed=0`)。8文字以上・空白なし。値はログにも `--diff` にも出ない
 - 渡しかたに注意: **AWXでは暗号化したSurvey(Password型)で渡す**(Job Templateの変数欄は画面から見えるため)。手元の `-e` はシェル履歴に残るので、使い捨てでないパスワードは履歴に残らない方法で渡す
 - **対象は1台まで**。1つのパスワードを複数VMへ配る事故と、広い指定で全VMを電源再投入する事故を防ぐため、2台以上が対象だと実行前に止まる
-- **反映にはVMの電源再投入が要る**。cloud-initのドライブはPVEがVMの起動時に作り直すため、ゲスト内の `reboot` では反映されない。playbookが停止→起動まで行う(応答しないゲストは `-e pve_power_force=true`)
+- **反映にはVMの電源再投入が要る**。cloud-initのドライブはPVEがVMの起動時に作り直すため、ゲスト内の `reboot` では反映されない。playbookが停止→起動まで行う
+- **単体実行の前提: 対象VMにQEMUゲストエージェントが入っていること**。停止要求はエージェント経由で出るため、まだ中身を構築していない新規VMへ単体実行すると正常シャットダウンが応答せず、`guest-ping failed - got timeout` でタイムアウトする。先に `dev/setup.yml` を流すか、`-e pve_power_force=true`(猶予時間の経過後に強制停止)を付ける
 - 電源再投入でcloud-initは初回相当の処理をやり直すため、**SSHホスト鍵も作り直される**(このリポジトリは検証しない設計のため影響なし。手元のsshクライアントは警告を出す)
 - 最後にSSHで `passwd --status` が `P`(PAMで使える状態)になったことを確認する。値そのものは照合できないため、出力の最終変更日が本日かで見る。SSH鍵が無い実行では確認をスキップし、Cockpitでの確認方法を案内する
 - 冪等性の例外(渡したら必ず書き込む)である理由は [docs/pve.md](pve.md#冪等性の設計)
@@ -195,4 +196,5 @@ ansible-playbook playbooks/vm/wg-easy.yml -e @keys.json
 | セットアップ途中で `No route to host` | ゲストのネットワーク断か再起動中。少し待って同じplaybookを再実行(冪等なので途中からやり直せる) |
 | k3sワーカーが参加に失敗 | コントロールプレーン(グループ先頭)が未構築のまま後続だけ実行した。グループ全体で `playbooks/vm/k3s.yml` を再実行 |
 | Cockpit / xrdp にログインできない | PAM用のログインパスワードが未設定。`playbooks/vm/dev/password.yml -e target=<ホスト> -e pve_ssh_password=<パスワード>` で設定する(SSHは公開鍵なので影響が出ない) |
+| `VMを停止する` で `QEMU Guest Agent is not running ... guest-ping failed` | VM設定は `pve_vm_agent: 1` だがゲスト側にエージェントが未導入。`roles/vm` を通していない新規VMで起きる。`dev/setup.yml` を先に流す(構築の後にパスワードを設定する順序になっている)か、`-e pve_power_force=true` を付ける |
 | 構築は成功したのに最後の疎通確認だけ失敗 | 確認は実行元(AWXなら実行Pod)から行われる。実行元→VMのLAN側IPへの経路・firewallを確認([docs/awx.md](awx.md)) |
