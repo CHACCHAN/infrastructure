@@ -112,7 +112,7 @@ ansible-playbook playbooks/vm/dev/password.yml -l yuya-dev -e pve_ssh_password=<
 ```
 
 - `-e pve_ssh_password=` を渡したときだけ動く。渡さなければ [password.yml](../playbooks/vm/dev/password.yml) は丸ごとスキップされるため、通常の再実行は `changed=0` のまま
-- 12文字以上・空白なしを実行前に検証する。値はログにも `--diff` にも出ない
+- 8文字以上・空白なしを実行前に検証する。値はログにも `--diff` にも出ない
 - **反映にはVMの電源再投入が要る**。cloud-initのドライブはPVEがVMの起動時に作り直すため、ゲスト内からの `reboot` では古い内容のままになる。playbookが停止→起動まで行う(ゲストが応答しないときは `-e pve_power_force=true`)
 - 電源再投入でcloud-initはインスタンスIDの変化を検出し、初回相当の処理をやり直す。**SSHホスト鍵も作り直される**(このリポジトリは `StrictHostKeyChecking=no` のため影響しないが、手元のsshクライアントは警告を出す)
 - 最後に `passwd --status` で「PAMで使える状態(`P`)」になったことを確認する
