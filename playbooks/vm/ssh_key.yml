@@ -9,6 +9,10 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  vars_files:
+    # localhostはinventoryのall配下に入らない実行環境(AWX等)があるため、
+    # 書き出し先(pve_ssh_prikey_tmpfile)を持つクラスタ共通値を明示的に読む。
+    - "{{ playbook_dir }}/../../inventory/group_vars/all/pve.yml"
 
   tasks:
     - name: 秘密鍵の本文を一時ファイルへ書き出す

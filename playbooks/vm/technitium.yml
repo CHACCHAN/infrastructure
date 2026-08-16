@@ -14,7 +14,7 @@
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: Technitium DNSをセットアップする
-  hosts: "{{ target | default('technitium') }}"
+  hosts: "{{ target | default('technitium', true) }}"
   gather_facts: false
   vars:
     ansible_user: "{{ pve_ssh_user }}"

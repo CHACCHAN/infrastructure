@@ -12,7 +12,7 @@
   ansible.builtin.import_playbook: adhoc.yml
 
 - name: Proxmox VMの電源状態を収束させる
-  hosts: "{{ target | default('lab') }}"
+  hosts: "{{ target | default('lab', true) }}"
   connection: local
   gather_facts: false
   vars:

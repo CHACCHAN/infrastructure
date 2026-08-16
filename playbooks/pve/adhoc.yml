@@ -11,8 +11,22 @@
   gather_facts: false
 
   tasks:
+    # 空のtargetは「未指定」ではなく最優先のextra varとして効くため、importで渡した
+    # 役割(例: dev)を上書きして既定のlab全体へ広がってしまう。AWXのSurveyが
+    # 未回答を空文字で送る設定だと起きうるので、黙って広げず明示的に止める。
+    - name: targetが空文字でないことを確認する
+      ansible.builtin.assert:
+        that:
+          - target is not defined or (target | default('', true) | length > 0)
+        fail_msg: >-
+          -e target= が空文字です。対象が意図せず広がるため実行を中止しました。
+          ホスト名かグループ名を指定するか、指定そのものを外してください
+          (AWXのSurveyは未回答時に変数を送らない設定にしてください)。
+        quiet: true
+
     - name: 一時ホストを役割プロファイルへ登録する
-      when: profile is defined
+      # AWXのSurveyは未回答の質問を空文字で渡すことがあるため、is defined ではなく中身で判定する。
+      when: profile | default('', true) | length > 0
       block:
         - name: 一時ホストの指定内容を検証する
           ansible.builtin.assert:
@@ -53,5 +67,6 @@
             # 直接ansible_hostを指定すると他ホストのhostvars参照まで書き換えてしまう
             # (例: group_vars/k8s.ymlのkubernetes_server_ip)。
             ansible_host: "{{ ip }}"
-            cluster_ip: "{{ ip2 | default(omit) }}"
+            # 空文字で渡された場合もcluster_ipを作らない(不正なipconfig1を防ぐ)。
+            cluster_ip: "{{ ip2 | default(omit, true) }}"
           changed_when: false

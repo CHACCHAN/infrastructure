@@ -14,7 +14,7 @@ pve_ipv4_gw: 172.16.11.1
 # 秘密鍵はSSHがファイルしか受け付けないため、playbooks/vm/ssh_key.yml が実行時に
 # 0600の一時ファイルへ書き出す。鍵の内容から名前を決めるため他の実行と衝突しない。
 pve_ssh_prikey_tmpfile: >-
-  {{ lookup('ansible.builtin.env', 'HOME') }}/.ansible/pve_ssh_keys/{{
+  {{ lookup('ansible.builtin.env', 'HOME') | default('/tmp', true) }}/.ansible/pve_ssh_keys/{{
     pve_ssh_prikey_value | default('') | trim | hash('sha1') }}
 pve_ssh_prikey_resolved: >-
   {{ pve_ssh_prikey_tmpfile

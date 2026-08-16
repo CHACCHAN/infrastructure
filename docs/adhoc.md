@@ -126,5 +126,6 @@ ansible-playbook playbooks/pve/destroy.yml -e vmid=799 -e confirm=799
 | `profile` が存在しない役割グループ | `-e profile=devv` |
 | `profile` がplaybookの前提と違う | `playbooks/vm/dev/setup.yml -e profile=k8s` |
 | `vmid` / `node` / `ip` の書式ミス・指定漏れ | `-e ip=172.16.11` |
+| `target` が空文字(AWXのSurvey未回答など) | `-e target=` ※対象が意図せず広がるため |
 
 VMIDと実機の突き合わせは、この後 `roles/pve` の検索が行う(宣言と違う名前・ノードのVMを掴んだら停止する)。

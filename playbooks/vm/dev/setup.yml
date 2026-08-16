@@ -21,7 +21,7 @@
 
 # 3. VM内部: SSHでサービスをセットアップ
 - name: 開発環境をセットアップする
-  hosts: "{{ target | default('dev') }}"
+  hosts: "{{ target | default('dev', true) }}"
   gather_facts: false
   vars:
     ansible_user: "{{ pve_ssh_user }}"

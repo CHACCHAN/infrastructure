@@ -151,4 +151,5 @@ sequenceDiagram
 | [docs/vm.md](docs/vm.md) | ② VMセットアップドメインの使い方(サービス別playbook・k3sクラスタ構築・AWXから鍵を本文で渡す) |
 | [docs/k8s.md](docs/k8s.md) | ③ Kubernetesドメインの使い方(deploy・アプリ追加・Secret・チャート管理) |
 | [docs/adhoc.md](docs/adhoc.md) | **インベントリ外のVMを `-e` だけで構築する**(検証VM・宣言前の試作。全ドメイン共通) |
+| [docs/awx.md](docs/awx.md) | **AWXから実行するときの前提**(インベントリ・Limit・鍵・Survey・実行環境。全ドメイン共通) |
 | [.devcontainer/README.md](.devcontainer/README.md) | Dev Containerのセットアップ注意点 |

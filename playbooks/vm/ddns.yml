@@ -14,7 +14,7 @@
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: Cloudflare DDNS UIをセットアップする
-  hosts: "{{ target | default('ddns') }}"
+  hosts: "{{ target | default('ddns', true) }}"
   gather_facts: false
   vars_files:
     - ../../vault/cloudflare.yml

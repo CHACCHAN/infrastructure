@@ -14,7 +14,7 @@
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: wg-easyをセットアップする
-  hosts: "{{ target | default('wg_easy') }}"
+  hosts: "{{ target | default('wg_easy', true) }}"
   gather_facts: false
   vars_files:
     - ../../vault/wg-easy.yml

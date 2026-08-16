@@ -14,7 +14,7 @@
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: Supabaseをセットアップする
-  hosts: "{{ target | default('supabase') }}"
+  hosts: "{{ target | default('supabase', true) }}"
   gather_facts: false
   vars_files:
     - ../../vault/supabase.yml

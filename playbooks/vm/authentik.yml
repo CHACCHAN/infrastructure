@@ -14,7 +14,7 @@
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: Authentikをセットアップする
-  hosts: "{{ target | default('authentik') }}"
+  hosts: "{{ target | default('authentik', true) }}"
   gather_facts: false
   vars:
     ansible_user: "{{ pve_ssh_user }}"

@@ -9,7 +9,7 @@
   ansible.builtin.import_playbook: adhoc.yml
 
 - name: 未作成VMに必要なProxmoxテンプレートを収束させる
-  hosts: "{{ target | default('lab') }}"
+  hosts: "{{ target | default('lab', true) }}"
   connection: local
   gather_facts: false
   # 同一(OS,ノード)テンプレートを複数ホストが同時作成する競合を防ぐ。
@@ -52,7 +52,7 @@
       when: pve_found_vm is none
 
 - name: Proxmox VMを宣言どおりに収束させる
-  hosts: "{{ target | default('lab') }}"
+  hosts: "{{ target | default('lab', true) }}"
   connection: local
   gather_facts: false
   vars:

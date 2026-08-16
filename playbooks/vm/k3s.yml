@@ -14,7 +14,7 @@
 
 # 2. VM内部: SSHでコントロールプレーンから順にセットアップ
 - name: k3sをセットアップする
-  hosts: "{{ target | default('k8s') }}"
+  hosts: "{{ target | default('k8s', true) }}"
   gather_facts: false
   # ワーカーは先行するコントロールプレーンから参加トークンを取得する。
   # inventory/hosts.ymlの記載順を維持し、必ず1台ずつ処理する。

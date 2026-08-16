@@ -72,7 +72,7 @@ wg_easy_version: "15.4.0-beta.1"
 
 ### 鍵をファイルではなく本文で渡す(AWXのSurveyなど)
 
-AWXのSurveyはファイル入力に対応していない。鍵をパスで置けない実行環境では、**鍵の本文をそのまま入れる変数**を代わりに使う。
+AWXのSurveyはファイル入力に対応していない。鍵をパスで置けない実行環境では、**鍵の本文をそのまま入れる変数**を代わりに使う。AWXで動かすときの前提はほかにもある → [docs/awx.md](awx.md)
 
 | ファイルで渡す(既定) | 本文で渡す | 中身 |
 | --- | --- | --- |
@@ -104,18 +104,19 @@ ansible-playbook playbooks/vm/technitium.yml \
 AnsibleのSSHは公開鍵で入るためパスワードを使わないが、**CockpitとxrdpはPAM認証**なのでLinuxのログインパスワードが要る。これはcloud-initの `cipassword` で設定する。
 
 ```sh
-# 一通り構築しながら設定する
-ansible-playbook playbooks/vm/dev/setup.yml -e pve_ssh_password=<パスワード>
+# 一通り構築しながら設定する(パスワードを渡すときは1台に絞る)
+ansible-playbook playbooks/vm/dev/setup.yml -e target=yuya-dev -e pve_ssh_password=<パスワード>
 
 # 既存VMのパスワードだけ変える
-ansible-playbook playbooks/vm/dev/password.yml -l yuya-dev -e pve_ssh_password=<パスワード>
+ansible-playbook playbooks/vm/dev/password.yml -e target=yuya-dev -e pve_ssh_password=<パスワード>
 ```
 
 - `-e pve_ssh_password=` を渡したときだけ動く。渡さなければ [password.yml](../playbooks/vm/dev/password.yml) は丸ごとスキップされるため、通常の再実行は `changed=0` のまま
 - 8文字以上・空白なしを実行前に検証する。値はログにも `--diff` にも出ない
+- **対象は1台まで**。1つのパスワードを複数VMへ配る事故と、広い指定(`-e target=dev` など)で全VMを電源再投入する事故を防ぐため、2台以上が対象だと実行前に止まる。絞り込みは `-l` ではなく **`-e target=<ホスト名>`**(`-l` は先頭のlocalhostプレイまで除外してしまう)
 - **反映にはVMの電源再投入が要る**。cloud-initのドライブはPVEがVMの起動時に作り直すため、ゲスト内からの `reboot` では古い内容のままになる。playbookが停止→起動まで行う(ゲストが応答しないときは `-e pve_power_force=true`)
 - 電源再投入でcloud-initはインスタンスIDの変化を検出し、初回相当の処理をやり直す。**SSHホスト鍵も作り直される**(このリポジトリは `StrictHostKeyChecking=no` のため影響しないが、手元のsshクライアントは警告を出す)
-- 最後に `passwd --status` で「PAMで使える状態(`P`)」になったことを確認する
+- 最後に `passwd --status` で「PAMで使える状態(`P`)」になったことを確認する。値そのものは照合できないため、渡した値が入ったかは出力に含まれる最終変更日(本日になっていること)で見る
 - PVEは `cipassword` を伏字で返し現在値と比較できないため、渡したら必ず書き込む(「渡した=変えたい」が指定の意味)
 - 他サービスのVMには入れていない。必要になったら同じ形で足す
 
@@ -155,4 +156,4 @@ sequenceDiagram
 | `Permission denied (publickey)` | `pve_ssh_user` / `pve_ssh_pubkey_file` と実VMのcloud-init設定がずれている。`playbooks/pve/provision.yml` を流して収束させてから再実行 |
 | セットアップ途中で `No route to host` | ゲストのネットワーク断か再起動中。少し待って同じplaybookを再実行(冪等なので途中からやり直せる) |
 | k3sワーカーが参加に失敗 | コントロールプレーン(グループ先頭)が未構築のまま後続だけ実行した。グループ全体で `playbooks/vm/k3s.yml` を再実行 |
-| Cockpit / xrdp にログインできない | PAM用のログインパスワードが未設定。`playbooks/vm/dev/password.yml -l <ホスト> -e pve_ssh_password=<パスワード>` で設定する(SSHは公開鍵なので影響が出ない) |
+| Cockpit / xrdp にログインできない | PAM用のログインパスワードが未設定。`playbooks/vm/dev/password.yml -e target=<ホスト> -e pve_ssh_password=<パスワード>` で設定する(SSHは公開鍵なので影響が出ない) |

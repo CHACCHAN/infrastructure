@@ -14,7 +14,7 @@
 
 # 2. VM内部: SSHでサービスをセットアップ
 - name: Proxmox Backup Serverをセットアップする
-  hosts: "{{ target | default('pbs') }}"
+  hosts: "{{ target | default('pbs', true) }}"
   gather_facts: false
   vars:
     ansible_user: "{{ pve_ssh_user }}"
