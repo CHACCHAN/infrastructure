@@ -68,14 +68,36 @@ AWXは未回答の質問を**空文字**で渡すことがある。空文字は�
 
 ## 5. 実行環境(EE)に入れておくもの
 
-`collections/requirements.yml` のコレクションはAWXがProject同期時に入れるが、**Pythonパッケージと実行ファイルはEEイメージ側に必要**。
+コレクションはAWXがProject同期時に `collections/requirements.yml` から入れるが、**Pythonパッケージと実行ファイルはEEイメージ側に必要**。
 
 | ドメイン | 必要なもの |
 | --- | --- |
 | ① pve | `proxmoxer` / `requests` |
 | ③ k8s | `kubernetes` / `helm` バイナリ |
 
+これらを含むカスタムEEを `ee/` で定義している。コレクション定義の実体は `ee/requirements.yml` で、
+`collections/requirements.yml` はそこへのシンボリックリンク(AWXの標準パスを保つため)。
+つまりEEイメージとProject同期は常に同じ版レンジを見る。
+
+```bash
+ansible-builder build --tag awx-ee-lab:latest --container-runtime docker \
+  -f ee/execution-environment.yml
+```
+
 `playbooks/pve/*` と `playbooks/k8s/deploy.yml` は `ansible_python_interpreter` をAnsible本体のPythonへ固定しているため、そのPythonから import できる必要がある。
+
+### EEのansible-coreは手元より古い
+
+`quay.io/ansible/awx-ee` のansible-coreは手元のDev Containerより古い(`community.proxmox` 2.x が `>=2.17` を要求するため、実質2.17か2.18)。**2.19より前は、テンプレートの結果を `{` `[` `True` `False` で始まるものしかPythonオブジェクトへ戻さない。**
+
+つまり `"{{ ... | default(none) }}"` は**文字列 `"None"`** になり、`is none` が成立しない。「未作成なら作る」といった判定が全部反転するため、**このリポジトリでは `none` をセンチネルに使わない**:
+
+| 用途 | 使うセンチネル | 判定 |
+| --- | --- | --- |
+| VMの検索結果(dict) | `default({})` | `\| length == 0` |
+| 任意指定の値(文字列・数値) | `default('')` | 真偽値(`not x`) |
+
+実例は [roles/pve/tasks/find_vm.yml](../roles/pve/tasks/find_vm.yml) の冒頭コメント。手元(2.19以降)では `none` でも動いてしまい**AWXでだけ落ちる**ので、新しいロールを書くときも上表に合わせること。
 
 ## 6. ③k8sドメインはkubeconfigが要る
 

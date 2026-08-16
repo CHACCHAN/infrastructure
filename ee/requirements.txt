@@ -1,0 +1,6 @@
+# EE内にインストールするPythonパッケージ。
+# 各コレクションのモジュールが import する実体側の依存。
+proxmoxer>=2.3 # community.proxmox のProxmox VE API クライアント
+requests # proxmoxer のHTTPSバックエンド
+kubernetes # kubernetes.core の公式Pythonクライアント
+docker # community.docker の Docker SDK for Python

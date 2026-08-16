@@ -8,14 +8,19 @@
     vmid: "{{ pve_vmid }}"
   register: pve_vm_info
 
+# 「未作成」の目印にnoneを使わないこと。ansible-core 2.19より前のテンプレート処理は
+# レンダリング結果のうち { [ True False しかPythonオブジェクトへ戻さないため、
+# `| default(none)` は文字列 "None" のまま残る(AWXの既定EE quay.io/ansible/awx-ee が
+# 該当)。文字列は `is none` を満たさないので未作成の判定がすべて反転し、
+# 下の照合assertが「実体: name=(不明)」で暴発する。空辞書ならどの版でもdictになる。
 - name: VMの検索結果を設定する
   ansible.builtin.set_fact:
-    pve_found_vm: "{{ pve_vm_info.proxmox_vms | first | default(none) }}"
+    pve_found_vm: "{{ pve_vm_info.proxmox_vms | first | default({}) }}"
 
 - name: 必須のVMが存在することを確認する
   ansible.builtin.assert:
     that:
-      - not (pve_require_vm | default(true) | bool) or pve_found_vm is not none
+      - not (pve_require_vm | default(true) | bool) or pve_found_vm | length > 0
     fail_msg: >-
       VMID {{ pve_vmid }} が見つかりません。
       inventory/hosts.yml の宣言と実機を確認してください。
@@ -42,5 +47,5 @@
       inventoryのvmid・pve_vm_name・nodeを確認してください。
     quiet: true
   when:
-    - pve_found_vm is not none
+    - pve_found_vm | length > 0
     - pve_expected_name is defined or pve_expected_node is defined

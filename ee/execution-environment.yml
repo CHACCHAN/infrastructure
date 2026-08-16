@@ -1,0 +1,30 @@
+# AWX カスタム実行環境(Execution Environment)の定義
+#
+# 標準EE(quay.io/ansible/awx-ee)には Proxmox / k3s / Docker 操作に必要な
+# コレクションとPythonライブラリが含まれないため、それらを追加する。
+#
+# ビルド:
+#   ansible-builder build --tag awx-ee-lab:latest --container-runtime docker \
+#     -f ee/execution-environment.yml
+#
+# 依存はファイル分割している(galaxy / python / system)。
+# 依存ファイルのパスはこの定義ファイルのあるディレクトリからの相対で解決され、
+# ビルド時に固定名でビルドコンテキストへコピーされる(ee/の外を指しても問題ない)。
+---
+version: 3
+
+images:
+  base_image:
+    name: quay.io/ansible/awx-ee:latest
+
+dependencies:
+  galaxy: requirements.yml # Ansible Galaxy コレクション(定義の実体はこちら)
+  python: requirements.txt # Python パッケージ(各モジュールのSDK)
+  system: bindep.txt # OSパッケージ(ビルド時のコンパイルに必要)
+
+  # awx-ee:latest は ansible-core を Python 3.12 (/usr/bin/python3.12) に載せているが、
+  # ベースのCentOS Stream 9では /usr/bin/python3 が 3.9 のまま。
+  # ansible-builder の既定(/usr/bin/python3)だとansibleを検出できずビルドが落ちるので、
+  # 3.12を明示する(`ansible --version` の python version と一致させること)。
+  python_interpreter:
+    python_path: "/usr/bin/python3.12"

@@ -132,7 +132,8 @@ sequenceDiagram
 │   └── k8s/             # ③ deploy(全アプリ or -e app=X)
 ├── roles/               # ドメイン別: pve* / vm* / k8s*
 ├── vault/               # Ansible Vault(全ファイル暗号化済み)
-├── collections/         # requirements.yml(AWX互換の標準位置)
+├── collections/         # requirements.yml → ee/ へのsymlink(AWX互換の標準位置)
+├── ee/                  # AWXカスタム実行環境(ansible-builder)。コレクション定義の実体
 └── docs/                # ドメイン別ドキュメント(pve / vm / k8s)
 ```
 

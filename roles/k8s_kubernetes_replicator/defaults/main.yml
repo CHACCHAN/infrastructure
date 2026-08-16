@@ -1,0 +1,47 @@
+# 上流チャートの固定バージョンと、ghcr.io資格情報を全Namespaceへ配る設定。
+---
+k8s_kubernetes_replicator_helm_version: "2.12.4"
+
+# --- 複製元(単一の真実)---
+# ここに置いたSecret/ServiceAccountだけが宣言で、他Namespaceのものは複製物。
+# 複製物をkubectlで直接編集しても次の同期で上書きされる。
+k8s_kubernetes_replicator_source_namespace: platform
+
+# 複製先Namespaceの正規表現(カンマ区切り)。".*" で全Namespace。
+# 複製元Namespace自身は対象外(コントローラ側で除外される)。
+k8s_kubernetes_replicator_target_namespaces: ".*"
+
+# --- ghcr.ioのpull資格情報 ---
+k8s_kubernetes_replicator_registry_server: ghcr.io
+# GitHubのユーザー名。PAT(vaultのk8s_kubernetes_replicator.github_token)と対で使う。
+k8s_kubernetes_replicator_registry_username: CHACCHAN
+# この名前で全Namespaceに複製される。変えるとimagePullSecrets参照も変わる。
+k8s_kubernetes_replicator_secret_name: ghcr-pull-secret
+
+# 各Namespaceの`default` ServiceAccountにimagePullSecretsを注入するか。
+# trueなら、Pod側に何も書かなくてもghcr.ioのイメージを引ける。
+# 独自ServiceAccountで動くPod(cert-manager等の上流チャート)は対象外なので、
+# それらがghcr.ioを使う場合はPod specにimagePullSecretsを明示する。
+#
+# **注意**: コントローラは複製先ServiceAccountのlabelsも複製元の内容で
+# 上書きする(imagePullSecretsと同時)。既定のdefault SAにlabelは付かないため
+# 実害はないが、他コントローラがdefault SAにlabelを付ける構成では要検討。
+k8s_kubernetes_replicator_inject_default_sa: true
+
+k8s_kubernetes_replicator_values:
+  # 使う機能だけ有効にする。無効にした種別はClusterRoleの権限からも外れる
+  # (roles/rolebindingsへのcluster-wideな書き込み権限を持たせない)。
+  replicationEnabled:
+    secrets: true
+    serviceAccounts: true
+    configMaps: false
+    roles: false
+    roleBindings: false
+
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

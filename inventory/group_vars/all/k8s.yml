@@ -8,6 +8,9 @@ k8s_api_server: https://10.10.20.11:6443
 
 k8s_apps:
   - namespaces
+  # ghcr.ioのpull資格情報を全Namespaceへ配る。ghcr.io由来のイメージを使う
+  # アプリより前に置くこと(後段のPodがImagePullBackOffにならないように)
+  - kubernetes_replicator
   - cert_manager
   - certificates
   - nfs_provisioner

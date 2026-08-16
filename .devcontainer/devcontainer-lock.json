@@ -25,6 +25,11 @@
       "resolved": "ghcr.io/devcontainers-extra/features/npm-packages@sha256:0851cc312204f4044f22230986134026409565f9e632d8ab2b8c639e81cedd7c",
       "integrity": "sha256:0851cc312204f4044f22230986134026409565f9e632d8ab2b8c639e81cedd7c"
     },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "version": "1.10.0",
+      "resolved": "ghcr.io/devcontainers/features/docker-outside-of-docker@sha256:c2c2cf829505ead8e4892c88c31b6594ae94a2bbb209e16e1fac456c1a3a624e",
+      "integrity": "sha256:c2c2cf829505ead8e4892c88c31b6594ae94a2bbb209e16e1fac456c1a3a624e"
+    },
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
       "version": "1.3.1",
       "resolved": "ghcr.io/devcontainers/features/kubectl-helm-minikube@sha256:bbe8adf6b37fff8c67412ab0a4579f4c2f30bbaba1d9a5cebd9e38bade54025b",

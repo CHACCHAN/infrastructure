@@ -8,10 +8,11 @@
     vmid: "{{ pve_template_resolved_vmid }}"
   register: pve_template_vm_info
 
+# 未作成の目印は空辞書(理由は roles/pve/tasks/find_vm.yml の冒頭コメント)。
 - name: 既存VMと完成状態を記録する
   ansible.builtin.set_fact:
     pve_template_existing_vm: >-
-      {{ pve_template_vm_info.proxmox_vms | first | default(none) }}
+      {{ pve_template_vm_info.proxmox_vms | first | default({}) }}
     pve_template_complete: >-
       {{ (pve_template_vm_info.proxmox_vms | first | default({})).template
          | default(false) | bool }}
@@ -22,5 +23,5 @@
       VMID {{ pve_template_resolved_vmid }} は既に存在しますがテンプレートではありません。
       中断された構築か別VMの可能性があるため、PVE上で状態を手動確認してください。
   when:
-    - pve_template_existing_vm is not none
+    - pve_template_existing_vm | length > 0
     - not pve_template_complete

@@ -1,0 +1,128 @@
+# ghcr.ioの資格情報を1箇所で宣言し、複製コントローラで全Namespaceへ配る。
+#
+# 他のk8s_*ロールと違い、Secretを**最後**に収束させる。このロールのSecretを
+# 読むのはコントローラ自身であり、起動直後のコントローラはinformerのキャッシュが
+# 温まる前に複製元を見つけると、既存の`default` ServiceAccountを「存在しない」と
+# 判断してcreateし、AlreadyExistsで失敗する(次のresyncまで最大30分未反映になる)。
+# Deploymentのready後に複製元を置けばこの競合は起きない。
+---
+- name: 必須Secret変数が定義されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - vars[item] is defined
+    fail_msg: >-
+      {{ item }} が未定義です。
+      ansible-vault edit vault/k8s_secrets.yml で実値を設定してください。
+    quiet: true
+  loop:
+    - k8s_kubernetes_replicator
+
+- name: ghcr.ioのトークンが空でないことを確認する
+  ansible.builtin.assert:
+    that:
+      - k8s_kubernetes_replicator.github_token | default('') | length > 0
+    fail_msg: >-
+      k8s_kubernetes_replicator.github_token が空です。
+      read:packages を持つGitHub PATを設定してください。
+    quiet: true
+
+- name: kubernetes-replicator Helmチャートを描画して適用する
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: helm
+  vars:
+    k8s_helm_release: kubernetes-replicator
+    k8s_helm_chart: kubernetes-replicator
+    k8s_helm_repo_url: https://helm.mittwald.de
+    k8s_helm_version: "{{ k8s_kubernetes_replicator_helm_version }}"
+    k8s_helm_namespace: "{{ k8s_kubernetes_replicator_source_namespace }}"
+    k8s_helm_values: "{{ k8s_kubernetes_replicator_values }}"
+    k8s_helm_no_hooks: true
+    k8s_helm_include_crds: false
+    k8s_helm_inject_namespace: false
+
+# readinessProbeのinitialDelaySecondsが60秒あるため、初回導入時はここで待つ。
+- name: kubernetes-replicator Deploymentのrolloutを待つ
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: kubernetes-replicator
+    namespace: "{{ k8s_kubernetes_replicator_source_namespace }}"
+  register: k8s_kubernetes_replicator_rollout
+  until: >-
+    k8s_kubernetes_replicator_rollout.resources | length > 0
+    and (k8s_kubernetes_replicator_rollout.resources[0].status.readyReplicas | default(0) | int)
+        >= (k8s_kubernetes_replicator_rollout.resources[0].spec.replicas | default(1) | int)
+  retries: 60
+  delay: 5
+  when: not ansible_check_mode
+
+- name: ghcr.io pull Secret(複製元)を描画する
+  ansible.builtin.set_fact:
+    k8s_kubernetes_replicator_secret_definition: "{{ lookup('ansible.builtin.template', 'registry-secret.yaml.j2') }}"
+  no_log: true
+
+- name: ghcr.io pull Secret(複製元)をServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_kubernetes_replicator_secret_definition }}"
+    k8s_apply_no_log: true
+
+# imagePullSecretsの注入元。Podに何も書かずghcr.ioを引けるようにする。
+- name: default ServiceAccount(複製元)を描画する
+  ansible.builtin.set_fact:
+    k8s_kubernetes_replicator_sa_definition: "{{ lookup('ansible.builtin.template', 'default-serviceaccount.yaml.j2') }}"
+  when: k8s_kubernetes_replicator_inject_default_sa | bool
+
+- name: default ServiceAccount(複製元)をServer-Side Applyする
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: apply
+  vars:
+    k8s_definition: "{{ k8s_kubernetes_replicator_sa_definition }}"
+  when: k8s_kubernetes_replicator_inject_default_sa | bool
+
+# 複製は非同期なので、収束したことを確かめてからロールを終える。
+# 未収束のまま成功扱いにすると、後続アプリがImagePullBackOffになる。
+- name: pull Secretが全Namespaceへ複製されるまで待つ
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+  register: k8s_kubernetes_replicator_namespaces
+  when: not ansible_check_mode
+
+- name: 複製済みpull Secretを数える
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    field_selectors:
+      - "metadata.name={{ k8s_kubernetes_replicator_secret_name }}"
+  register: k8s_kubernetes_replicator_secret_state
+  until: >-
+    k8s_kubernetes_replicator_secret_state.resources | length
+    >= k8s_kubernetes_replicator_namespaces.resources | length
+  retries: 24
+  delay: 5
+  when: not ansible_check_mode
+
+# imagePullSecretsを持たないdefault ServiceAccountが残っていないことを確認する。
+- name: default ServiceAccountへの注入が全Namespaceで完了するまで待つ
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ServiceAccount
+    field_selectors:
+      - metadata.name=default
+  register: k8s_kubernetes_replicator_sa_state
+  until: >-
+    k8s_kubernetes_replicator_sa_state.resources
+    | map(attribute='imagePullSecrets', default=[])
+    | map('map', attribute='name') | map('list')
+    | reject('contains', k8s_kubernetes_replicator_secret_name)
+    | list | length == 0
+  retries: 24
+  delay: 5
+  when:
+    - not ansible_check_mode
+    - k8s_kubernetes_replicator_inject_default_sa | bool

@@ -74,7 +74,8 @@
         pve_os_version: >-
           {{ hostvars[inventory_hostname].pve_os_version | default('13') | string }}
         node: "{{ hostvars[inventory_hostname].node }}"
-      when: pve_found_vm is none
+      # 未作成の目印は空辞書(理由は roles/pve/tasks/find_vm.yml の冒頭コメント)。
+      when: pve_found_vm | length == 0
 
 - name: Proxmox VMを宣言どおりに収束させる
   hosts: "{{ target | default('lab', true) }}"

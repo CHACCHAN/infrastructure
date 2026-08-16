@@ -6,8 +6,9 @@
       - pve_os is defined and pve_os in ['debian', 'ubuntu', 'rocky', 'almalinux']
       - pve_os_version is defined
       - node is defined and node is match('^pve(?:0[1-9]|10)$')
-      - pve_template_vmid is none or pve_template_vmid | string is match('^[1-9][0-9]+$')
-      - pve_template_name is none or pve_template_name | length > 0
+      # 未指定はnull(defaults)と空文字(playbooks/pve/template.yml)の両方があるため、
+      # 真偽値で「指定あり」を判定する。名前は空でないことが判定自体で保証される。
+      - not pve_template_vmid or pve_template_vmid | string is match('^[1-9][0-9]+$')
     fail_msg: >-
       pve_os、pve_os_version、node(pve01〜pve10)を確認してください。
       pve_template_vmidとpve_template_nameはテスト時だけ明示できます。
@@ -37,10 +38,10 @@
     # VMIDは算術加算ではなく、設計書どおり9 + XX + NNを連結する。
     pve_template_resolved_vmid: >-
       {{ (pve_template_vmid
-          if pve_template_vmid is not none
+          if pve_template_vmid
           else '9' ~ pve_template_catalog.catalog_index ~ node[-2:]) | int }}
     pve_template_resolved_name: >-
       {{ pve_template_name
-         if pve_template_name is not none
+         if pve_template_name
          else pve_os ~ (pve_os_version | string | regex_replace('[^0-9A-Za-z]', ''))
               ~ '-template-' ~ node }}

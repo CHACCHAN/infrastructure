@@ -8,12 +8,16 @@
     # 鍵は本文(pve_ssh_pubkey_value)を優先し、無ければファイルから読む
     # (AWXのSurveyなどファイルを置けない経路のため。詳細は docs/vm.md)。
     # どちらも未定義のホスト(役割プロファイルを持たない検証VM等)では
-    # ユーザー・鍵の設定をスキップするため none にする
+    # ユーザー・鍵の設定をスキップするため空文字にする。
+    # noneを使うと、ansible-core 2.19より前では文字列 "None" になり
+    # (理由は roles/pve/tasks/find_vm.yml の冒頭コメント)、鍵として
+    # そのままcloud-initへ書き込まれてしまう。公開鍵は空にならないため
+    # 「空文字=未指定」で取り違えは起きない。
     pve_cloudinit_sshkeys: >-
       {{ pve_ssh_pubkey_value | trim
          if pve_ssh_pubkey_value | default('') | trim | length > 0
          else (lookup('ansible.builtin.file', pve_ssh_pubkey_file | expanduser)
-               if pve_ssh_pubkey_file | default('', true) | length > 0 else none) }}
+               if pve_ssh_pubkey_file | default('', true) | length > 0 else '') }}
     pve_cloudinit_ipconfig: >-
       {{ {'ipconfig0': 'ip=' ~ ansible_host ~ '/' ~ pve_ipv4_prefix
                          ~ ',gw=' ~ pve_ipv4_gw}
@@ -37,7 +41,7 @@
       {{ pve_ssh_user
          if pve_ssh_user | default('', true) | length > 0
          else omit }}
-    sshkeys: "{{ pve_cloudinit_sshkeys if pve_cloudinit_sshkeys is not none else omit }}"
+    sshkeys: "{{ pve_cloudinit_sshkeys if pve_cloudinit_sshkeys | length > 0 else omit }}"
     ipconfig: "{{ pve_cloudinit_ipconfig }}"
     # 未定義時はPVEホストのDNS設定を継承し、既存値を意図せず消さない。
     nameservers: "{{ [pve_nameserver] if pve_nameserver is defined else omit }}"
@@ -48,7 +52,7 @@
   when: >-
     (pve_ssh_user | default('', true) | length > 0
      and pve_cloudinit_current.ciuser | default('') != pve_ssh_user)
-    or (pve_cloudinit_sshkeys is not none
+    or (pve_cloudinit_sshkeys | length > 0
         and (pve_cloudinit_current.sshkeys | default('') | trim)
             != (pve_cloudinit_sshkeys | trim)
         and (pve_cloudinit_current.sshkeys | default('') | urldecode | trim)

@@ -4,7 +4,8 @@
 # ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: 未作成VMをテンプレートからクローンする
-  when: pve_found_vm is none
+  # 未作成の目印は空辞書(理由は roles/pve/tasks/find_vm.yml の冒頭コメント)。
+  when: pve_found_vm | length == 0
   block:
     - name: クローン元のOSとノードを選択する
       ansible.builtin.set_fact:
@@ -57,4 +58,4 @@
 
     - name: 後続処理へクローン後の現在値を渡す
       ansible.builtin.set_fact:
-        pve_found_vm: "{{ pve_cloned_vm_info.proxmox_vms | first | default(none) }}"
+        pve_found_vm: "{{ pve_cloned_vm_info.proxmox_vms | first | default({}) }}"

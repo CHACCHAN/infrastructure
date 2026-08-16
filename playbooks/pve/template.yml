@@ -40,5 +40,8 @@
         pve_os: "{{ os }}"
         pve_os_version: "{{ version | string }}"
         node: "{{ target_node }}"
-        pve_template_vmid: "{{ vmid | default(none) }}"
-        pve_template_name: "{{ name | default(none) }}"
+        # 未指定は空文字で渡す。noneを渡すと、ansible-core 2.19より前では
+        # 文字列 "None" になり「指定あり」と誤判定される
+        # (理由は roles/pve/tasks/find_vm.yml の冒頭コメント)。
+        pve_template_vmid: "{{ vmid | default('') }}"
+        pve_template_name: "{{ name | default('') }}"

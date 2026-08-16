@@ -1,18 +1,1 @@
-# 必要なAnsibleコレクション(使用する全コレクションを検証済みバージョンで明示する)
-# インストール: ansible-galaxy collection install -r collections/requirements.yml
-# (ansibleメタパッケージ同梱版でも動くが、AWX実行環境などスタンドアロン環境向けに固定する)
-#
-# Python依存(コントローラ側): proxmoxer, requests, kubernetes
-# (Dev Containerでは .devcontainer/devcontainer.json のansible featureが注入する)
----
-collections:
-  - name: community.proxmox # ①pveドメイン全般(proxmox_kvm / proxmox_vm_info 等)
-    version: ">=2.0.0,<3.0.0"
-  - name: kubernetes.core # ③k8sドメイン(k8s / k8s_info / helm_template)
-    version: ">=6.5.0,<7.0.0"
-  - name: community.docker # roles/vm_docker の docker_compose_v2
-    version: ">=5.2.0,<6.0.0"
-  - name: community.general # 各vmロールの補助モジュール
-    version: ">=13.0.0,<14.0.0"
-  - name: ansible.posix # mount 等
-    version: ">=2.0.0,<3.0.0"
+../ee/requirements.yml

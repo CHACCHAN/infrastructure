@@ -14,7 +14,7 @@ flowchart TB
     subgraph 型["役割ごとの型"]
         E["外部経路型 k8s_external<br>宣言リスト→64リソース量産"]
         S["自前アプリ型<br>k8s_guacamole / k8s_cloudflared<br>k8s_certificates / k8s_namespaces"]
-        H["Helm型(リリースなし)<br>k8s_portainer k8s_awx k8s_homarr<br>k8s_pgadmin k8s_nextcloud k8s_postgresql<br>k8s_cert_manager k8s_nfs_provisioner"]
+        H["Helm型(リリースなし)<br>k8s_portainer k8s_awx k8s_homarr<br>k8s_pgadmin k8s_nextcloud k8s_postgresql<br>k8s_cert_manager k8s_nfs_provisioner<br>k8s_kubernetes_replicator"]
     end
     B["roles/k8s(ベース)<br>apply: SSA(field_manager=kubectl)<br>helm: チャートpin描画→SSA"]
     宣言 --> D --> E & S & H --> B --> C["k3sクラスタ"]
@@ -29,6 +29,7 @@ flowchart TB
 | 永続ストレージ | TrueNAS NFS(StorageClass `truenas-nfs`)。既定の`local-path`は永続用途に使わない |
 | 外部公開 | Cloudflare Tunnel(`auth`/`api`)。他はLAN内のみ |
 | 共有DB | PostgreSQL(StatefulSet)。homarr/awx/pgadmin/nextcloud/guacamoleが共用 |
+| プライベートレジストリ | ghcr.io。pull用Secretをkubernetes-replicatorが全Namespaceへ複製 |
 
 ## コマンド
 
@@ -80,14 +81,37 @@ ansible-playbook playbooks/k8s/deploy.yml -e force=true    # フィールド所�
 | runix/pgadmin4 | 1.66.0 | --no-hooks |
 | groundhog2k/postgres | 1.6.7 | ns注入必須。customScriptsでDB作成 |
 | nextcloud/nextcloud | 9.2.5 | ns注入必須。OIDC設定はbefore-startingフック |
+| mittwald/kubernetes-replicator | 2.12.4 | ns注入禁止。Secret/ServiceAccountの複製だけ有効化(ClusterRoleの権限もそこまで) |
 
 バージョン更新は defaults の1行を書き換えて `deploy.yml -e app=X --check` → 差分を確認してから適用。
 
 ## Secretの扱い
 
 - 実値は `vault/k8s_secrets.yml`(ansible-vault暗号化)の `k8s_secret_<Secret名スネークケース>` 変数。各アプリロールが**先頭で** `no_log` 付き適用する(--check --diffでも中身は出ない)
+- 例外: `k8s_kubernetes_replicator.github_token` はSecretの中身をそのまま持つのではなく、生の資格情報(GitHub PAT)。ロール側で `.dockerconfigjson` を組み立てるため命名規則から外れる
 - `k8s_backup_*` 変数(awx-admin-password / awx-secret-key / redhat-operators-pull-secret)は**バックアップ専用**。オペレータが生成・管理するためdeployは触らないが、失うと復元不能なので暗号化保管している
 - 編集は `ansible-vault edit vault/k8s_secrets.yml`。PostgreSQLパスワードは5アプリのDB接続情報に埋め込まれているため、変える場合は全対応キーを揃えて更新する
+
+## プライベートレジストリ(ghcr.io)
+
+`roles/k8s_kubernetes_replicator` が、ghcr.ioのpull資格情報を**全Namespaceへ自動で配る**。Namespaceを増やしても、Podに `imagePullSecrets` を書いても回らなくてよい。
+
+```mermaid
+flowchart LR
+    V["vault<br>k8s_kubernetes_replicator.github_token"] --> S["platform/ghcr-pull-secret<br>(複製元)"]
+    V --> A["platform/default SA<br>imagePullSecrets(複製元)"]
+    S -- "replicate-to: .*" --> S2["全Namespaceのghcr-pull-secret"]
+    A -- "replicate-to: .*" --> A2["全Namespaceのdefault SA"]
+    A2 --> P["Podに自動で<br>imagePullSecretsが付く"]
+    S2 --> P
+```
+
+- **複製元は `platform` の2つだけ**。他Namespaceのものはコントローラが作る複製物で、`kubectl` で直接直しても次の同期で上書きされる
+- Pod側の対応は**不要**。`default` ServiceAccountで動くPodには、ServiceAccount admissionが `imagePullSecrets` を注入する(`kubectl run x --image=... --dry-run=server -o yaml` で確認できる)
+- **独自ServiceAccountで動くPodは対象外**。上流Helmチャート由来のPod(cert-manager等)がghcr.ioを使う場合は、Pod specかそのServiceAccountに `imagePullSecrets` を明示する
+- 対象範囲は `k8s_kubernetes_replicator_target_namespaces`(既定 `.*` = 全Namespace)。`default` SAへの注入をやめるなら `k8s_kubernetes_replicator_inject_default_sa: false`
+- トークンを差し替えるときは `ansible-vault edit vault/k8s_secrets.yml` → `deploy.yml -e app=kubernetes_replicator`。複製元の更新が全Namespaceへ伝播する
+- **このロールだけSecretを最後に適用する**。起動直後のコントローラはinformerのキャッシュが温まる前に複製元を見つけると、既存の `default` ServiceAccount を「無い」と誤認してcreateし `AlreadyExists` で失敗する(次のresync=30分まで未反映)。Deploymentのready後に複製元を置くことで回避している
 
 ## 冪等性と所有権の設計
 
@@ -105,6 +129,7 @@ ansible-playbook playbooks/k8s/deploy.yml -e force=true    # フィールド所�
 | AWXのPodが起動しない(oidc.py) | Secret `awx-oidc` 未適用。`deploy.yml -e app=awx` はSecretを先に適用するので通常は起きない |
 | 適用したのに毎回changedになる | 対象フィールドを他のコントローラが書き戻している。`kubectl get <res> -o json --show-managed-fields` で所有者を確認 |
 | 新しいNamespaceでTLSが効かない | ワイルドカードSecretはNamespace単位。`k8s_certificates` にそのNamespace用のCertificateを追加する |
+| ghcr.ioのイメージが `ImagePullBackOff` | ①Podが独自ServiceAccountで動いていないか(`kubectl get pod X -o jsonpath='{.spec.serviceAccountName}'`)。`default` 以外なら `imagePullSecrets` を明示する ②`kubectl -n platform logs deploy/kubernetes-replicator` で複製エラーを確認 ③PATの `read:packages` スコープ切れ |
 
 ## 再構築(クラスタ全損時)
 

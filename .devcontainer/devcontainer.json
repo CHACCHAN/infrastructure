@@ -4,6 +4,9 @@
     "updateRemoteUserUID": true,
     "image": "mcr.microsoft.com/devcontainers/base:trixie",
     "features": {
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+            "moby": false
+        },
         "ghcr.io/devcontainers/features/python:1": {
             "version": "3.12"
         },
@@ -11,7 +14,7 @@
             "packages": "openssh-client,rsync,sshpass,jq,less,vim,locales,bubblewrap"
         },
         "ghcr.io/devcontainers-extra/features/ansible:2": {
-            "injections": "proxmoxer requests kubernetes ansible-lint"
+            "injections": "proxmoxer requests kubernetes ansible-lint ansible-builder"
         },
         "ghcr.io/devcontainers/features/node:1": {},
         "ghcr.io/anthropics/devcontainer-features/claude-code:latest": {},
@@ -27,6 +30,9 @@
         "ghcr.io/dhoeric/features/k9s:1": {},
         "ghcr.io/thediveo/devcontainer-features/lazygit:0": {},
         "ghcr.io/schlich/devcontainer-features/helmfile:1": {}
+    },
+    "remoteEnv": {
+        "PATH": "/usr/local/py-utils/venvs/ansible-core/bin:${containerEnv:PATH}"
     },
     "workspaceFolder": "/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder},target=/${localWorkspaceFolderBasename},type=bind,consistency=cached",
