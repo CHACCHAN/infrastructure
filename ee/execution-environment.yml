@@ -4,7 +4,7 @@
 # コレクションとPythonライブラリが含まれないため、それらを追加する。
 #
 # ビルド:
-#   ansible-builder build --tag awx-ee-lab:latest --container-runtime docker \
+#   ansible-builder build --tag ghcr.io/chacchan/awx-ee-custom:latest --container-runtime docker \
 #     -f ee/execution-environment.yml
 #
 # 依存はファイル分割している(galaxy / python / system)。

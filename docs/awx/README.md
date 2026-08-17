@@ -29,11 +29,12 @@ ansible-playbook playbooks/awx/configure.yml \
 コレクションはAWXがProject同期時に `collections/requirements.yml`(実体は `ee/requirements.yml` へのシンボリックリンク)から入れるが、**Pythonパッケージと実行ファイルはEEイメージ側に必要**(①pve: `proxmoxer`/`requests`、③k8s: `kubernetes`/`helm`)。
 
 ```sh
-ansible-builder build --tag awx-ee-lab:latest --container-runtime docker \
+ansible-builder build --tag ghcr.io/chacchan/awx-ee-custom:latest --container-runtime docker \
   -f ee/execution-environment.yml
-# AWX Podから到達できるレジストリへpushし、awx/execution_environment.yml の
-# awx_ee_image をそのURLへ更新して configure.yml を再実行する
+docker push ghcr.io/chacchan/awx-ee-custom:latest
 ```
+
+イメージは ghcr.io(プライベート)にある。クラスタ内のPodは kubernetes-replicator が全Namespaceへ配る `ghcr-pull-secret`([docs/k8s/](../k8s/README.md#プライベートレジストリghcrio))でpullできるため、AWX側にレジストリ用Credentialの追加は不要。EE定義(`ee/requirements.yml` 等)を変えたときは、ビルド→push→AWXのJob再実行だけでよい(イメージ名は変えない)。
 
 ## AWXから実行するときの前提(読み物)
 

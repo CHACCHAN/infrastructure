@@ -1,12 +1,13 @@
 # AWXのExecution Environment(カスタムEE)登録定義。
 # イメージ自体のビルドは ee/execution-environment.yml を参照:
-#   ansible-builder build --tag awx-ee-lab:latest --container-runtime docker \
-#     -f ee/execution-environment.yml
-# ビルド後、AWXのPodから到達できるレジストリへpushし、そのURLをここへ書く。
+#   ansible-builder build --tag ghcr.io/chacchan/awx-ee-custom:latest \
+#     --container-runtime docker -f ee/execution-environment.yml
+# ビルド後は ghcr.io へpushする(下のawx_ee_imageが参照する実体)。
+# プライベートイメージだが、クラスタ内のPodはkubernetes-replicatorが配る
+# ghcr-pull-secret(docs/k8s/README.md)でpullできるため、AWX側に
+# レジストリ用Credentialの追加は不要。
 ---
-awx_ee_name: awx-ee-lab
+awx_ee_name: awx-ee-custom
 awx_ee_description: proxmoxer/kubernetes/docker SDKを含むカスタムEE(ee/で定義)
-# 例: registry.example.com/awx-ee-lab:latest
-# 未pushの間はプレースホルダのまま。-e awx_ee_image=... で上書きできる。
-awx_ee_image: awx-ee-lab:latest
+awx_ee_image: ghcr.io/chacchan/awx-ee-custom:latest
 awx_ee_pull: missing
