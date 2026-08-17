@@ -26,15 +26,50 @@
     # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
     ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
     # 明示役割を優先し、移行途中の旧inventoryだけ「先頭=server」へフォールバックする。
+    # k8sグループが無い実行(手動インベントリ等)ではフォールバック材料が無いため、
+    # -e k3s_role= の明示を前提にする(下のpre-flight検証で不足を知らせる)。
     kubernetes_node_role: >-
       {{ k3s_role
-         | default('server' if inventory_hostname == groups['k8s'][0] else 'agent') }}
+         | default('server' if ('k8s' in groups and groups['k8s'] | length > 0
+                                and inventory_hostname == groups['k8s'][0])
+                   else 'agent') }}
     # トークン取得用SSHは管理ネットワーク、k3s APIは占有ネットワークを使う。
     kubernetes_node_ip: "{{ cluster_ip | regex_replace('/.*$', '') }}"
     kubernetes_server_ssh_user: "{{ hostvars[kubernetes_server_inventory_host].pve_ssh_user }}"
     kubernetes_server_ssh_prikey: >-
       {{ hostvars[kubernetes_server_inventory_host].pve_ssh_prikey_resolved }}
   pre_tasks:
+    # kubernetes_server_* は inventory/group_vars/k8s.yml が groups/hostvars から
+    # 導出する。k8sグループが届かない実行では解決できないが、同じ変数名を
+    # -e/Survey で渡せば extra vars が優先され、未解決のhostvars参照は評価
+    # されない(実行方式で実装を分岐させないための前提)。どちらも無い場合は
+    # 接続段階の難解なundefinedエラーになる前に、不足する名前を列挙して止める。
+    - name: コントロールプレーン接続情報が解決できることを確認する
+      ansible.builtin.assert:
+        that:
+          - kubernetes_node_role in ['server', 'agent']
+          - kubernetes_preflight_missing_vars | length == 0
+        fail_msg: >-
+          {{ inventory_hostname }}:
+          {{ kubernetes_preflight_missing_vars | join(' / ') }} が解決できません。
+          インベントリ実行では inventory/hosts.yml のk8sグループと
+          inventory/group_vars/k8s.yml を確認してください。インベントリの
+          k8sグループが無い実行では -e k3s_role=server|agent に加えて
+          -e kubernetes_server_ip=(コントロールプレーンの管理IP)
+          -e kubernetes_server_ssh_user= -e kubernetes_server_ssh_prikey=(鍵パス)
+          を指定し、クラスタ網は -e ip2=<CIDR> で渡します(docs/awx.md)。
+        quiet: true
+      vars:
+        kubernetes_preflight_required_vars:
+          kubernetes_server_ip: "{{ kubernetes_server_ip | default('', true) }}"
+          kubernetes_server_ssh_user: "{{ kubernetes_server_ssh_user | default('', true) }}"
+          kubernetes_server_ssh_prikey: "{{ kubernetes_server_ssh_prikey | default('', true) }}"
+          cluster_ip: "{{ cluster_ip | default('', true) }}"
+        kubernetes_preflight_missing_vars: >-
+          {{ kubernetes_preflight_required_vars | dict2items
+             | selectattr('value', 'eq', '')
+             | map(attribute='key') | list }}
+
     - name: SSH接続を待つ
       ansible.builtin.wait_for_connection:
         timeout: "{{ vm_ssh_wait_timeout | default(600) }}"
