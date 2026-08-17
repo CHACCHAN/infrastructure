@@ -101,6 +101,88 @@ awx_survey_common:
     required: false
     min: 8
     max: 4096
+  # --- ハードウェア設定(すべて任意。未回答なら宣言値/既定値) -------------
+  # 対応する既定値は roles/pve_vm/defaults/main.yml と group_vars/all/pve.yml。
+  - question_name: 1枚目NICのブリッジ(pve_bridge)
+    question_description: >-
+      例 vmbr0 / vmbr1。対象ノードに存在するブリッジ名。
+      NICを複数持たせる場合は変数欄で pve_vm_nets を渡す(docs/pve/README.md)
+    variable: pve_bridge
+    type: text
+    required: false
+  - question_name: BIOS(pve_vm_bios)
+    variable: pve_vm_bios
+    type: multiplechoice
+    choices:
+      - seabios
+      - ovmf
+    required: false
+  - question_name: マシンタイプ(pve_vm_machine)
+    variable: pve_vm_machine
+    type: multiplechoice
+    choices:
+      - q35
+      - pc
+    required: false
+  - question_name: ディスプレイ(pve_vm_vga)
+    variable: pve_vm_vga
+    type: multiplechoice
+    choices:
+      - std
+      - serial0
+      - qxl
+      - virtio
+    required: false
+  - question_name: CPUタイプ(pve_vm_cpu_type)
+    question_description: 例 x86-64-v2-AES / x86-64-v3 / host(ホストCPU直通)
+    variable: pve_vm_cpu_type
+    type: text
+    required: false
+  - question_name: SSDエミュレーション(pve_vm_disk_ssd)
+    question_description: ブートディスクをSSDとしてゲストへ見せるか(1=有効 / 0=無効)
+    variable: pve_vm_disk_ssd
+    type: multiplechoice
+    choices:
+      - "1"
+      - "0"
+    required: false
+  - question_name: IO Thread(pve_vm_disk_iothread)
+    variable: pve_vm_disk_iothread
+    type: multiplechoice
+    choices:
+      - "1"
+      - "0"
+    required: false
+  - question_name: Discard/TRIM(pve_vm_disk_discard)
+    variable: pve_vm_disk_discard
+    type: multiplechoice
+    choices:
+      - "on"
+      - ignore
+    required: false
+  - question_name: ホスト起動時の自動起動(pve_vm_onboot)
+    variable: pve_vm_onboot
+    type: multiplechoice
+    choices:
+      - "1"
+      - "0"
+    required: false
+  - question_name: QEMUゲストエージェント(pve_vm_agent)
+    question_description: >-
+      0にすると正常シャットダウン(power.yml)やパスワード反映が効かなくなるため通常は1
+    variable: pve_vm_agent
+    type: multiplechoice
+    choices:
+      - "1"
+      - "0"
+    required: false
+  - question_name: 収束後の電源状態(pve_vm_power)
+    variable: pve_vm_power
+    type: multiplechoice
+    choices:
+      - started
+      - stopped
+    required: false
 
 # --- Job Template一覧 ---
 # use_common_survey: 上の共通Surveyを使う(VM構築系)

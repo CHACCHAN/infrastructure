@@ -118,6 +118,26 @@ pve_vm_disks:
     discard: "on"
 ```
 
+### ハードウェア設定(すべて変数)
+
+BIOSやSSDエミュレーションなどのハードウェア相当の設定もすべて同じ3層+`-e`/Surveyで選べる。既定値の正は [roles/pve_vm/defaults/main.yml](../../roles/pve_vm/defaults/main.yml) と [inventory/group_vars/all/pve.yml](../../inventory/group_vars/all/pve.yml)。
+
+| 変数 | 既定値 | 選べる値(代表) |
+| --- | --- | --- |
+| `pve_bridge` | `vmbr0` | 1枚目NICのブリッジ(vmbr0 / vmbr1 / …) |
+| `pve_vm_bios` | `seabios` | `seabios` / `ovmf`(UEFI) |
+| `pve_vm_machine` | `q35` | `q35` / `pc`(i440fx) |
+| `pve_vm_vga` | `std` | `std` / `serial0` / `qxl` / `virtio` |
+| `pve_vm_cpu_type` | `x86-64-v2-AES` | `x86-64-v3` / `host` 等 |
+| `pve_vm_disk_ssd` | `1` | SSDエミュレーション(1=有効 / 0=無効) |
+| `pve_vm_disk_iothread` | `1` | IO Thread(1 / 0) |
+| `pve_vm_disk_discard` | `on` | Discard/TRIM(`on` / `ignore`) |
+| `pve_vm_onboot` | `1` | ホスト起動時の自動起動(1 / 0) |
+| `pve_vm_agent` | `1` | QEMUゲストエージェント(0にすると正常シャットダウンやパスワード反映が効かなくなる) |
+| `pve_vm_power` | `started` | 収束後の電源状態(`started` / `stopped`) |
+
+AWXでは共通Surveyの「ハードウェア設定」質問群から選択できる(未回答なら宣言値)。
+
 ### AWXでの渡しかた
 
 `pve_storage` のようなスカラー値はSurveyに質問がある。`pve_vm_nets` / `pve_vm_disks` のような**リストはSurveyでは渡せない**(AWX Surveyの仕様)ため、Job Templateの**「変数」欄にYAMLで書く**(全JTで変数欄は有効化済み)。手元の `-e` ではJSONで渡す:

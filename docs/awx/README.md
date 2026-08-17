@@ -66,7 +66,7 @@ Inventory `lab` は **Sources → Sourced from a Project**(このリポジトリ
 
 ### 3. 鍵はファイルではなく本文で渡す
 
-実行環境のHOMEには鍵ファイルが無いため、`pve_ssh_pubkey_value` / `pve_ssh_prikey_value` に**本文**を渡す(Survey定義済み。秘密鍵は暗号化質問)。パスフレーズ付きの秘密鍵は非対話で解錠できないため使えない。仕組みは [docs/vm/ssh_key.md](../vm/ssh_key.md)。
+実行環境のHOMEには鍵ファイルが無いため、`pve_ssh_pubkey_value` / `pve_ssh_prikey_value` に**本文**を渡す(Survey定義済み。秘密鍵は暗号化質問)。パスフレーズ付きの秘密鍵は非対話で解錠できないため使えない。暗号化質問(Password型)の入力欄は1行のため貼り付けで鍵の改行が失われるが、**ssh_key.ymlがPEM構造を自動復元する**のでそのまま貼り付けてよい。仕組みは [docs/vm/ssh_key.md](../vm/ssh_key.md)。
 
 ### 4. Surveyの未回答は「変数を送らない」
 

@@ -76,6 +76,7 @@ ansible-playbook playbooks/pve/provision.yml \
 | `cluster_ip` | str | なし | 2枚目NICのCIDR(直接実行では `-e ip2=`) |
 | `pve_ssh_user` | str | プロファイル | cloud-initが作るユーザー(未定義ならユーザー/鍵設定をスキップ) |
 | `pve_ssh_pubkey_value` / `pve_ssh_pubkey_file` | str | なし / プロファイル | 公開鍵の本文/パス(本文が優先) |
+| ハードウェア系(`pve_bridge` / `pve_vm_bios` / `pve_vm_machine` / `pve_vm_vga` / `pve_vm_cpu_type` / `pve_vm_disk_ssd` / `pve_vm_disk_iothread` / `pve_vm_disk_discard` / `pve_vm_onboot` / `pve_vm_agent`) | | 宣言値 | BIOS・SSDエミュレーション等([一覧と選べる値](README.md#ハードウェア設定すべて変数)) |
 
 全既定値の正は [roles/pve_vm/defaults/main.yml](../../roles/pve_vm/defaults/main.yml) と [roles/pve_template/defaults/main.yml](../../roles/pve_template/defaults/main.yml)。
 
@@ -87,7 +88,7 @@ ansible-playbook playbooks/pve/provision.yml \
 
 Job Template **`pve-provision`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml)、適用: `ansible-playbook playbooks/awx/configure.yml`)。
 
-- Surveyは共通セット(target / profile / vmid / node / ip / ip2 / pve_storage / SSHユーザー / 鍵2種 / cores / memory / disk_size)。**全問任意**: インベントリ実行なら未回答のまま起動、インベントリ外VMを作るときだけ回答する
+- Surveyは共通セット(target / profile / vmid / node / ip / ip2 / pve_storage / SSHユーザー / 鍵2種 / cores / memory / disk_size + ハードウェア設定群)。**全問任意**: インベントリ実行なら未回答のまま起動、変えたい項目だけ回答する
 - `profile` は選択式(選択肢はインベントリの役割グループから自動生成)
 - リスト変数(`pve_vm_nets` / `pve_vm_disks`)はSurveyでは渡せないため、Job Templateの**変数欄**にYAMLで書く
 - 鍵はファイルパスではなく**本文**で渡す(`pve_ssh_pubkey_value` / `pve_ssh_prikey_value`)
