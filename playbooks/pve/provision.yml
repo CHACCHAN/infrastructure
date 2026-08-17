@@ -53,6 +53,30 @@
              | selectattr('value', 'eq', '')
              | map(attribute='key') | list }}
 
+    # ホスト固有の3つはVM検索・クローン先・cloud-initの必須入力で、roles/*/defaults に
+    # 既定値が無い(nodeへ既定を与えると10ノード環境で意図しないノードへ配置されるため
+    # あえて与えない)。未定義のままProxmox APIへ進むと途中で難解なエラーになるので、
+    # クラスタ共通値と同じ様式で実行前に列挙して止める。
+    - name: ホスト固有の必須変数が届いていることを確認する
+      ansible.builtin.assert:
+        that:
+          - pve_provision_missing_host_vars | length == 0
+        fail_msg: >-
+          {{ inventory_hostname }}: {{ pve_provision_missing_host_vars | join(' / ') }}
+          が未定義または空です。インベントリ実行では inventory/hosts.yml の
+          ホスト定義を確認してください。インベントリ外のVMを変数だけで構築する場合は
+          -e profile= とあわせて -e vmid= -e node= -e ip= を指定します(docs/adhoc.md)。
+        quiet: true
+      vars:
+        pve_provision_required_host_vars:
+          vmid: "{{ vmid | default('', true) }}"
+          node: "{{ node | default('', true) }}"
+          ansible_host: "{{ ansible_host | default('', true) }}"
+        pve_provision_missing_host_vars: >-
+          {{ pve_provision_required_host_vars | dict2items
+             | selectattr('value', 'eq', '')
+             | map(attribute='key') | list }}
+
     - name: 対象VMを検索する
       ansible.builtin.import_role:
         name: pve
