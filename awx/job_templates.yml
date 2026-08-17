@@ -1,0 +1,274 @@
+# AWXのJob TemplateとSurveyの定義(単一の真実)。
+# playbooks/awx/configure.yml が読み込み、awx.awx.job_template へ渡す。
+#
+# Survey設計の原則(docs/awx.md の運用ルールをコード化):
+# - 任意項目は required: false かつ default を持たせない
+#   (AWXは未回答の任意質問を「変数を送らない」扱いにする。空文字の既定値を
+#    持たせると default() で救えない空文字が届いてしまう)
+# - 秘密鍵・パスワードは type: password(暗号化され、画面にも残らない)
+# - 絞り込みは Limit ではなく target 変数で行う(localhost前処理プレイの保護)
+---
+# --- 共通Survey: VM構築系(provision.ymlをimportする全playbook)が使う ---
+# インベントリ実行では全問未回答でよい(宣言どおりに動く)。
+# インベントリ外のVMを作るときだけ target/profile/vmid/node/ip を回答する。
+awx_survey_common:
+  - question_name: 対象(target)
+    question_description: >-
+      ホスト名かグループ名。未回答なら既定グループ全体。
+      インベントリ外のVMを作るときは新しいホスト名を指定(Limitは使わない)
+    variable: target
+    type: text
+    required: false
+  - question_name: 役割プロファイル(profile)
+    question_description: >-
+      インベントリ外のVMを作るときの役割グループ名(継承しないなら lab)。
+      インベントリ実行では未回答のまま
+    variable: profile
+    type: text
+    required: false
+  - question_name: VM ID(vmid)
+    question_description: インベントリ外のVMを作るときのProxmox VMID(例 799)
+    variable: vmid
+    type: integer
+    required: false
+    min: 100
+    max: 999999999
+  - question_name: Proxmoxノード(node)
+    question_description: インベントリ外のVMを作るときの配置先(例 pve07)
+    variable: node
+    type: text
+    required: false
+  - question_name: 1枚目NICのIP(ip)
+    question_description: インベントリ外のVMを作るときのIPv4(例 172.16.11.99)
+    variable: ip
+    type: text
+    required: false
+  - question_name: クラスタ網CIDR(ip2)
+    question_description: 2枚目NICを使う役割のみ(例 10.10.20.19/24)
+    variable: ip2
+    type: text
+    required: false
+  - question_name: SSHユーザー(pve_ssh_user)
+    question_description: プロファイルを継承しない構築(profile=lab)でSSHするとき
+    variable: pve_ssh_user
+    type: text
+    required: false
+  - question_name: SSH公開鍵の本文(pve_ssh_pubkey_value)
+    question_description: cloud-initへ入れる公開鍵。ファイルパスではなく本文を貼る
+    variable: pve_ssh_pubkey_value
+    type: textarea
+    required: false
+  - question_name: SSH秘密鍵の本文(pve_ssh_prikey_value)
+    question_description: >-
+      接続用秘密鍵の本文。パスフレーズ付きの鍵は使えない
+    variable: pve_ssh_prikey_value
+    type: password
+    required: false
+  - question_name: CPUコア数(pve_vm_cores)
+    variable: pve_vm_cores
+    type: integer
+    required: false
+    min: 1
+    max: 128
+  - question_name: メモリMiB(pve_vm_memory)
+    variable: pve_vm_memory
+    type: integer
+    required: false
+    min: 512
+    max: 262144
+  - question_name: ディスクGiB(pve_vm_disk_size)
+    question_description: 現在値より小さくはできない(縮小は無視される)
+    variable: pve_vm_disk_size
+    type: integer
+    required: false
+    min: 8
+    max: 4096
+
+# --- Job Template一覧 ---
+# use_common_survey: 上の共通Surveyを使う(VM構築系)
+# survey_extra: そのJT固有の質問(共通の後ろに並ぶ)
+# extra_credentials: Vault以外に追加で紐づけるCredential名
+awx_job_templates:
+  # ① Proxmox操作ドメイン
+  - name: pve-provision
+    description: テンプレート準備→クローン→設定→cloud-init→起動まで冪等収束
+    playbook: playbooks/pve/provision.yml
+    use_common_survey: true
+
+  - name: pve-power
+    description: VMの電源状態を started/stopped へ冪等収束
+    playbook: playbooks/pve/power.yml
+    survey_extra:
+      - question_name: 対象(target)
+        question_description: ホスト名かグループ名。誤操作防止のため必須
+        variable: target
+        type: text
+        required: true
+      - question_name: 電源状態(state)
+        variable: state
+        type: multiplechoice
+        choices:
+          - started
+          - stopped
+        required: true
+      - question_name: 強制停止(pve_power_force)
+        question_description: ゲストが応答しないVMを止めるときだけ true
+        variable: pve_power_force
+        type: multiplechoice
+        choices:
+          - "true"
+          - "false"
+        required: false
+      - question_name: タイムアウト秒(pve_power_timeout)
+        variable: pve_power_timeout
+        type: integer
+        required: false
+        min: 30
+        max: 3600
+
+  - name: pve-destroy
+    description: 停止中のVM/テンプレートを削除(vmidの二重入力で誤削除防止)
+    playbook: playbooks/pve/destroy.yml
+    survey_extra:
+      - question_name: 削除するVM ID(vmid)
+        variable: vmid
+        type: integer
+        required: true
+        min: 100
+        max: 999999999
+      - question_name: 確認のためVM IDを再入力(confirm)
+        question_description: vmidと同じ値。一致しないと実行されない
+        variable: confirm
+        type: integer
+        required: true
+        min: 100
+        max: 999999999
+
+  - name: pve-template
+    description: (OS, ノード)単位のcloud-imageテンプレートを単体構築
+    playbook: playbooks/pve/template.yml
+    survey_extra:
+      - question_name: OS(os)
+        question_description: 対応カタログは docs/pve.md(例 debian)
+        variable: os
+        type: text
+        required: true
+      - question_name: バージョン(version)
+        question_description: 例 13
+        variable: version
+        type: text
+        required: true
+      - question_name: 構築先ノード(target_node)
+        question_description: 例 pve01
+        variable: target_node
+        type: text
+        required: true
+
+  # ② VMセットアップドメイン(すべてprovisionをimportするため共通Surveyを使う)
+  - name: vm-authentik
+    description: SSO認証基盤(Authentik)を一気通貫構築
+    playbook: playbooks/vm/authentik.yml
+    use_common_survey: true
+
+  - name: vm-ddns
+    description: Cloudflare DDNS UIを一気通貫構築
+    playbook: playbooks/vm/ddns.yml
+    use_common_survey: true
+
+  - name: vm-k3s
+    description: k3sクラスタを一気通貫構築(コントロールプレーンから順に)
+    playbook: playbooks/vm/k3s.yml
+    use_common_survey: true
+    survey_extra:
+      - question_name: k3sの役割(k3s_role)
+        question_description: インベントリのk8sグループが無い実行では必須
+        variable: k3s_role
+        type: multiplechoice
+        choices:
+          - server
+          - agent
+        required: false
+      - question_name: コントロールプレーンの管理IP(kubernetes_server_ip)
+        question_description: agent追加でインベントリのk8sグループが無いとき
+        variable: kubernetes_server_ip
+        type: text
+        required: false
+      - question_name: コントロールプレーンのSSHユーザー(kubernetes_server_ssh_user)
+        variable: kubernetes_server_ssh_user
+        type: text
+        required: false
+      - question_name: コントロールプレーンのSSH秘密鍵本文(kubernetes_server_ssh_prikey)
+        question_description: 通常は接続鍵と同じものを渡す
+        variable: kubernetes_server_ssh_prikey
+        type: password
+        required: false
+
+  - name: vm-pbs
+    description: Proxmox Backup Serverを一気通貫構築
+    playbook: playbooks/vm/pbs.yml
+    use_common_survey: true
+
+  - name: vm-supabase
+    description: Supabase(セルフホスト)を一気通貫構築
+    playbook: playbooks/vm/supabase.yml
+    use_common_survey: true
+
+  - name: vm-technitium
+    description: Technitium DNS(内部DNS)を一気通貫構築
+    playbook: playbooks/vm/technitium.yml
+    use_common_survey: true
+
+  - name: vm-wg-easy
+    description: wg-easy(WireGuard VPN)を一気通貫構築
+    playbook: playbooks/vm/wg-easy.yml
+    use_common_survey: true
+
+  - name: vm-dev-setup
+    description: 検証・開発VMを一気通貫構築
+    playbook: playbooks/vm/dev/setup.yml
+    use_common_survey: true
+    survey_extra:
+      - question_name: ログインパスワード(pve_ssh_password)
+        question_description: 設定するときだけ回答(対象1台のみ・8文字以上)
+        variable: pve_ssh_password
+        type: password
+        required: false
+
+  - name: vm-dev-password
+    description: 既存VMのログインパスワードのみ変更
+    playbook: playbooks/vm/dev/password.yml
+    survey_extra:
+      - question_name: 対象ホスト(target)
+        question_description: 事故防止のため対象1台のみ
+        variable: target
+        type: text
+        required: true
+      - question_name: 新しいパスワード(pve_ssh_password)
+        question_description: 8文字以上・空白不可
+        variable: pve_ssh_password
+        type: password
+        required: true
+
+  # ③ Kubernetesドメイン
+  - name: k8s-deploy
+    description: k8sアプリ群を宣言どおりに収束(app指定で単一アプリのみ)
+    playbook: playbooks/k8s/deploy.yml
+    extra_credentials:
+      - infrastructure kubeconfig
+    survey_extra:
+      - question_name: 対象アプリ(app)
+        question_description: 未回答なら登録簿(k8s_apps)の順に全アプリを適用
+        variable: app
+        type: multiplechoice
+        # choicesは inventory/group_vars/all/k8s.yml の k8s_apps から
+        # configure.yml 実行時に解決される(選択肢の二重管理を避ける)
+        choices: "{{ k8s_apps }}"
+        required: false
+      - question_name: 所有権の強制移行(force)
+        question_description: Server-Side Applyの所有権衝突の初回移行のみ true
+        variable: force
+        type: multiplechoice
+        choices:
+          - "true"
+          - "false"
+        required: false

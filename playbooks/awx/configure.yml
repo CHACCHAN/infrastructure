@@ -1,0 +1,191 @@
+# AWX本体の設定(Project / Inventory / Credential / EE / Job Template+Survey)を
+# コードから冪等に収束させるPlaybook。定義の実体は awx/*.yml(単一の真実)。
+#
+# 実行例: ansible-playbook playbooks/awx/configure.yml
+# 事前準備:
+#   1. ansible-vault edit vault/awx_api.yml でAWXのURLとOAuthトークンを設定
+#   2. 初回はVault credentialの実値が必要(既定でANSIBLE_VAULT_PASSWORD_FILEの
+#      中身を使うため、DevContainerではそのまま動く)
+#   3. k8s-deploy用のkubeconfigは初回に
+#      -e awx_kubeconfig_content="$(cat ~/.kube/config)" で渡す
+#      (2回目以降は未指定なら登録済みの値を変更しない)
+#   4. プライベートリポジトリの場合は
+#      -e awx_scm_username=<GitHubユーザー> -e awx_scm_token=<PAT>
+#
+# 倣ったプラクティス: redhat-cop/controller_configuration の
+# 「接続情報のmodule_defaults一元化」と「定義YAML(awx/)の分離」。
+# 実装は依存を増やさず awx.awx コレクションのモジュールを直接使う。
+---
+- name: AWXの構成をコードから収束させる
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    # Vault credentialへ登録する復号パスワード。
+    # 既定はDevContainerが持つANSIBLE_VAULT_PASSWORD_FILEの中身。
+    # -e awx_vault_password= でも渡せる(空なら credential 作成をスキップ)。
+    awx_vault_password: >-
+      {{ lookup('ansible.builtin.file',
+                lookup('ansible.builtin.env', 'ANSIBLE_VAULT_PASSWORD_FILE'))
+         if lookup('ansible.builtin.env', 'ANSIBLE_VAULT_PASSWORD_FILE') | length > 0
+         else '' }}
+    awx_kubeconfig_content: ""
+    awx_scm_username: ""
+    awx_scm_token: ""
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/awx_api.yml"
+    - "{{ playbook_dir }}/../../awx/project.yml"
+    - "{{ playbook_dir }}/../../awx/inventory.yml"
+    - "{{ playbook_dir }}/../../awx/credentials.yml"
+    - "{{ playbook_dir }}/../../awx/execution_environment.yml"
+    - "{{ playbook_dir }}/../../awx/job_templates.yml"
+    # k8s-deployのSurvey選択肢(k8s_apps)をインベントリの宣言から解決する
+    - "{{ playbook_dir }}/../../inventory/group_vars/all/k8s.yml"
+  module_defaults:
+    group/awx.awx.controller:
+      controller_host: "{{ vault_awx_host }}"
+      controller_oauthtoken: "{{ vault_awx_oauthtoken }}"
+      validate_certs: "{{ awx_validate_certs | default(true) }}"
+
+  tasks:
+    - name: AWXの接続トークンが設定されていることを確認する
+      ansible.builtin.assert:
+        that:
+          - vault_awx_oauthtoken | default('') | length > 0
+          - vault_awx_oauthtoken != 'CHANGE_ME'
+        fail_msg: >-
+          vault/awx_api.yml のトークンが未設定です。
+          ansible-vault edit vault/awx_api.yml で設定してください
+          (発行手順は同ファイル冒頭のコメント)。
+        quiet: true
+
+    # --- Credential(Job Templateより先に作る。JTが名前で参照するため) ---
+    - name: SCM認証情報を収束させる(プライベートリポジトリのときだけ)
+      awx.awx.credential:
+        name: "{{ awx_project_scm_credential_name }}"
+        organization: "{{ awx_organization }}"
+        credential_type: Source Control
+        inputs:
+          username: "{{ awx_scm_username }}"
+          password: "{{ awx_scm_token }}"
+        state: present
+      when: awx_scm_username | length > 0
+      no_log: true
+
+    - name: Vault復号パスワードのCredentialを収束させる
+      awx.awx.credential:
+        name: "{{ awx_credential_vault_name }}"
+        description: "{{ awx_credential_vault_description }}"
+        organization: "{{ awx_organization }}"
+        credential_type: Vault
+        inputs:
+          vault_password: "{{ awx_vault_password }}"
+        state: present
+      when: awx_vault_password | length > 0
+      no_log: true
+
+    - name: kubeconfig用のCredential Typeを収束させる
+      awx.awx.credential_type:
+        name: "{{ awx_credential_type_kubeconfig_name }}"
+        description: kubeconfigをファイルとして注入しK8S_AUTH_KUBECONFIGで参照させる
+        kind: cloud
+        inputs:
+          fields:
+            - id: kubeconfig_data
+              type: string
+              label: kubeconfigの内容
+              secret: true
+              multiline: true
+          required:
+            - kubeconfig_data
+        injectors:
+          file:
+            template.kubeconfig_data: "{{ '{{ kubeconfig_data }}' }}"
+          env:
+            K8S_AUTH_KUBECONFIG: "{{ '{{ tower.filename.kubeconfig_data }}' }}"
+        state: present
+
+    - name: kubeconfigのCredentialを収束させる(内容を渡したときだけ)
+      awx.awx.credential:
+        name: "{{ awx_credential_kubeconfig_name }}"
+        description: "{{ awx_credential_kubeconfig_description }}"
+        organization: "{{ awx_organization }}"
+        credential_type: "{{ awx_credential_type_kubeconfig_name }}"
+        inputs:
+          kubeconfig_data: "{{ awx_kubeconfig_content }}"
+        state: present
+      when: awx_kubeconfig_content | length > 0
+      no_log: true
+
+    # --- Project / Inventory / EE ---
+    - name: Projectを収束させる
+      awx.awx.project:
+        name: "{{ awx_project_name }}"
+        description: "{{ awx_project_description }}"
+        organization: "{{ awx_organization }}"
+        scm_type: git
+        scm_url: "{{ awx_project_scm_url }}"
+        scm_branch: "{{ awx_project_scm_branch }}"
+        scm_update_on_launch: "{{ awx_project_scm_update_on_launch }}"
+        credential: >-
+          {{ awx_project_scm_credential_name
+             if awx_scm_username | length > 0 else omit }}
+        state: present
+
+    - name: Inventoryを収束させる
+      awx.awx.inventory:
+        name: "{{ awx_inventory_name }}"
+        description: "{{ awx_inventory_description }}"
+        organization: "{{ awx_organization }}"
+        state: present
+
+    - name: InventoryのSource(Project由来)を収束させる
+      awx.awx.inventory_source:
+        name: "{{ awx_inventory_source_name }}"
+        inventory: "{{ awx_inventory_name }}"
+        organization: "{{ awx_organization }}"
+        source: scm
+        source_project: "{{ awx_project_name }}"
+        source_path: "{{ awx_inventory_source_path }}"
+        overwrite: "{{ awx_inventory_source_overwrite }}"
+        update_on_launch: "{{ awx_inventory_source_update_on_launch }}"
+        state: present
+
+    - name: Execution Environmentを収束させる
+      awx.awx.execution_environment:
+        name: "{{ awx_ee_name }}"
+        description: "{{ awx_ee_description }}"
+        image: "{{ awx_ee_image }}"
+        pull: "{{ awx_ee_pull }}"
+        state: present
+
+    # --- Job Template(+Survey) ---
+    - name: Job TemplateとSurveyを収束させる
+      awx.awx.job_template:
+        name: "{{ item.name }}"
+        description: "{{ item.description }}"
+        organization: "{{ awx_organization }}"
+        project: "{{ awx_project_name }}"
+        inventory: "{{ awx_inventory_name }}"
+        playbook: "{{ item.playbook }}"
+        execution_environment: "{{ awx_ee_name }}"
+        credentials: >-
+          {{ [awx_credential_vault_name] + (item.extra_credentials | default([])) }}
+        # 変数欄からの上書きは許可し、Limitは使わせない(docs/awx.md §2)
+        ask_variables_on_launch: true
+        ask_limit_on_launch: false
+        survey_enabled: "{{ awx_jt_survey_spec | length > 0 }}"
+        survey_spec: >-
+          {{ {'name': item.name,
+              'description': item.description,
+              'spec': awx_jt_survey_spec}
+             if awx_jt_survey_spec | length > 0 else omit }}
+        state: present
+      loop: "{{ awx_job_templates }}"
+      loop_control:
+        label: "{{ item.name }}"
+      vars:
+        awx_jt_survey_spec: >-
+          {{ (awx_survey_common if item.use_common_survey | default(false) else [])
+             + (item.survey_extra | default([])) }}
