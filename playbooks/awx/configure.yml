@@ -195,6 +195,14 @@
       loop_control:
         label: "{{ item.name }}"
       vars:
-        awx_jt_survey_spec: >-
+        awx_jt_survey_spec_raw: >-
           {{ (awx_survey_common if item.use_common_survey | default(false) else [])
              + (item.survey_extra | default([])) }}
+        # AWXのWeb UIは選択式質問の編集画面で default キーの存在を前提に
+        # .split() する(無い質問を開くとTypeErrorで画面が壊れる)ため、
+        # default未定義の質問へ空文字を補う。空文字defaultでも「未回答の
+        # 任意質問は変数を送らない」挙動は変わらないことを実機確認済み。
+        # zipで {'default': ''} を各質問の前へ置き、combineで質問側を優先する。
+        awx_jt_survey_spec: >-
+          {{ ([{'default': ''}] * (awx_jt_survey_spec_raw | length))
+             | zip(awx_jt_survey_spec_raw) | map('ansible.builtin.combine') | list }}
