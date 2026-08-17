@@ -17,7 +17,41 @@
   tasks:
     - name: 秘密鍵の本文を一時ファイルへ書き出す
       when: pve_ssh_prikey_value | default('') | trim | length > 0
+      vars:
+        pve_ssh_prikey_raw: "{{ pve_ssh_prikey_value | trim }}"
+        # AWXのSurvey(Password型)は1行入力欄のため、貼り付けた鍵の改行が
+        # 失われて届くことがある(そのまま書き出すとsshが invalid format で拒否)。
+        # ヘッダ/フッタとbase64本体を取り出してPEM構造へ復元する。
+        # 改行が保たれている鍵は無変換で通るため、通常経路には影響しない。
+        pve_ssh_prikey_header: "{{ pve_ssh_prikey_raw | regex_search('-----BEGIN [A-Z0-9 ]+ KEY-----') }}"
+        pve_ssh_prikey_footer: "{{ pve_ssh_prikey_raw | regex_search('-----END [A-Z0-9 ]+ KEY-----') }}"
+        pve_ssh_prikey_body: >-
+          {{ pve_ssh_prikey_raw
+             | regex_replace('-----BEGIN [A-Z0-9 ]+ KEY-----', '')
+             | regex_replace('-----END [A-Z0-9 ]+ KEY-----', '')
+             | regex_replace('\s+', '') }}
+        # Jinja式の中の '\n' リテラルは改行にならない(バックスラッシュ+nの
+        # 2文字になる)ため、改行はYAMLの二重引用符で定義した変数を使う。
+        pve_ssh_prikey_newline: "\n"
+        pve_ssh_prikey_content: >-
+          {{ pve_ssh_prikey_raw
+             if pve_ssh_prikey_raw.splitlines() | length >= 3
+             else (pve_ssh_prikey_header ~ pve_ssh_prikey_newline
+                   ~ (pve_ssh_prikey_body | list | batch(70) | map('join')
+                      | join(pve_ssh_prikey_newline))
+                   ~ pve_ssh_prikey_newline ~ pve_ssh_prikey_footer) }}
       block:
+        - name: 秘密鍵の本文が鍵の形式であることを確認する
+          ansible.builtin.assert:
+            that:
+              - pve_ssh_prikey_raw is search('-----BEGIN [A-Z0-9 ]+ KEY-----')
+              - pve_ssh_prikey_raw is search('-----END [A-Z0-9 ]+ KEY-----')
+            fail_msg: >-
+              pve_ssh_prikey_value が鍵の形式ではありません。
+              -----BEGIN ...----- から -----END ...----- までの全体を貼り付けてください
+              (パスフレーズ付きの鍵は使えません)。
+            quiet: true
+
         - name: 一時鍵の置き場を用意する
           ansible.builtin.file:
             path: "{{ pve_ssh_prikey_tmpfile | dirname }}"
@@ -26,8 +60,8 @@
 
         - name: 秘密鍵を本人だけが読める権限で書き出す
           ansible.builtin.copy:
-            # 末尾に改行が無い鍵をsshが拒否するため、trimして必ず1つ付ける。
-            content: "{{ pve_ssh_prikey_value | trim }}\n"
+            # 末尾に改行が無い鍵をsshが拒否するため、必ず1つ付ける。
+            content: "{{ pve_ssh_prikey_content }}\n"
             dest: "{{ pve_ssh_prikey_tmpfile }}"
             mode: "0600"
           # 鍵本文が差分・ログに出ないようにする(失敗しても詳細は出ない)。
