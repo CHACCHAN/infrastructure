@@ -38,7 +38,21 @@ provision.yml / power.yml / 各サービスplaybookが先頭でimportする部�
 | `ip` | ✔ | 1枚目NICのIP(= `ansible_host`) | `172.16.11.99` |
 | `ip2` | | 2枚目NICのIP(= `cluster_ip`)。プレフィックス付き。NIC2枚の役割のみ | `10.10.20.19/24` |
 
-**これ以外は普段どおりの変数名でよい**。上書きしたい値を `-e pve_vm_memory=4096` のように足すだけで、優先順位はAnsible標準のまま(`-e` が最優先)。指定できる変数の一覧は各playbookのページと `roles/*/defaults/main.yml` が正。
+**これ以外は普段どおりの変数名でよい**。上書きしたい値を `-e pve_vm_memory=4096` や `-e pve_storage=ssd02` のように足すだけで、優先順位はAnsible標準のまま(`-e` が最優先)。指定できる変数の一覧は各playbookのページと `roles/*/defaults/main.yml` が正。ストレージ・NIC・追加ディスクを任意個指定する書式は [README.md](README.md#ストレージnicディスクの宣言何個でも)。
+
+### profile名の調べかた
+
+profileの実体は**インベントリの役割グループ**(= `inventory/group_vars/<名前>.yml` を持つグループ)。次のどちらでも一覧できる:
+
+```sh
+# グループ階層ごと見る(labの子グループ=プロファイル)
+ansible-inventory --graph lab
+
+# プロファイル定義ファイルの一覧から見る(all/ は共通値なので除く)
+ls inventory/group_vars/ | grep -v '^all'
+```
+
+グループを追加すれば、そのままprofileとして使える(AWXのSurvey選択肢は `playbooks/awx/configure.yml` の再実行で追従する)。どの役割グループとも違う構成を試すときは `profile=lab`(何も継承せず、必要な値を全部 `-e` で渡す)。
 
 > IPだけ `-e ansible_host=` ではなく `-e ip=` を使う。`-e` は**全ホストへ最優先で効く**ため、`ansible_host` を直接渡すと `hostvars[別ホスト].ansible_host` を参照している箇所(`group_vars/k8s.yml` の `kubernetes_server_ip` など)まで書き換わってしまう。adhoc.ymlが `ip` を新ホストのホスト変数として登録することで、他ホストを汚さずに済ませている。
 
@@ -56,6 +70,14 @@ ansible-playbook playbooks/pve/provision.yml \
   -e target=tmp02 -e profile=lab -e vmid=798 -e node=pve06 -e ip=172.16.11.98 \
   -e pve_vm_cores=4 -e pve_vm_memory=4096 -e pve_vm_disk_size=40 \
   -e pve_os=ubuntu -e pve_os_version=24.04
+
+# ストレージを変えて、NICと追加ディスクを複数持たせる
+# (pve_vm_nets / pve_vm_disks はリストのためJSONで渡す)
+ansible-playbook playbooks/pve/provision.yml \
+  -e target=tmp03 -e profile=lab -e vmid=797 -e node=pve05 -e ip=172.16.11.97 \
+  -e pve_storage=local-lvm \
+  -e '{"pve_vm_nets":[{"bridge":"vmbr0"},{"bridge":"vmbr2"}]}' \
+  -e '{"pve_vm_disks":[{"bus":"scsi","index":1,"storage":"ssd02","size":100,"ssd":true,"iothread":true,"discard":"on"}]}'
 ```
 
 ### ② サービスまで一気通貫

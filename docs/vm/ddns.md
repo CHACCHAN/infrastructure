@@ -28,7 +28,7 @@ ansible-playbook playbooks/vm/ddns.yml \
 
 ## AWXでの実行
 
-Job Template **`vm-ddns`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通12問。vault値はVault credentialで復号される。
+Job Template **`vm-ddns`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通セット。vault値はVault credentialで復号される。
 
 ## つまずきやすいポイント
 

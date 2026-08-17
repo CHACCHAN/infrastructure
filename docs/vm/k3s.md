@@ -50,9 +50,9 @@ ansible-playbook playbooks/vm/k3s.yml \
 
 ## AWXでの実行
 
-Job Template **`vm-k3s`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通12問+k3s固有4問(`k3s_role` / `kubernetes_server_ip` / `kubernetes_server_ssh_user` / `kubernetes_server_ssh_prikey`)。
+Job Template **`vm-k3s`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通セット+k3s固有の質問(`k3s_role` / `kubernetes_server_ip` / `kubernetes_server_ssh_user` / `kubernetes_server_ssh_prikey`)。
 
-- インベントリをProjectから同期していれば、固有4問は未回答でよい(宣言から自動解決)
+- インベントリをProjectから同期していれば、固有の質問は未回答でよい(宣言から自動解決)
 - **初回のクラスタ構築は宣言順に依存する**。AWX生成インベントリの並びがコントロールプレーン先頭でない場合、ワーカーがトークン取得に失敗する(現在のホスト名は `k3s-master01` がどう並べても先頭になるため顕在化しない)
 
 ## つまずきやすいポイント

@@ -11,6 +11,11 @@
 # --- 共通Survey: VM構築系(provision.ymlをimportする全playbook)が使う ---
 # インベントリ実行では全問未回答でよい(宣言どおりに動く)。
 # インベントリ外のVMを作るときだけ target/profile/vmid/node/ip を回答する。
+#
+# Surveyはスカラー値のみ受け付ける。リスト・辞書の変数
+# (pve_vm_nets=NIC任意個 / pve_vm_disks=追加ディスク任意個)は
+# Job Templateの「変数」欄(ask_variables_on_launch)へYAMLで渡す。
+# 書式は docs/pve/README.md の「ストレージ・NIC・ディスクの宣言」を参照。
 awx_survey_common:
   - question_name: 対象(target)
     question_description: >-
@@ -24,6 +29,19 @@ awx_survey_common:
       インベントリ外のVMを作るときの役割グループ名(継承しないなら lab)。
       インベントリ実行では未回答のまま
     variable: profile
+    type: multiplechoice
+    # 選択肢はインベントリの役割グループから実行時に生成される(configure.yml
+    # 実行時点のスナップショット)。グループを増やしたら configure.yml を再実行
+    # して選択肢を更新する。
+    choices: >-
+      {{ (groups.keys() | reject('in', ['all', 'ungrouped', 'lab'])
+          | list | sort) + ['lab'] }}
+    required: false
+  - question_name: ブートディスクのストレージ(pve_storage)
+    question_description: >-
+      未回答なら宣言値(group_vars。既定はssd01、役割によりssd02/local-lvm等)。
+      対象ノードに存在するストレージ名を指定する
+    variable: pve_storage
     type: text
     required: false
   - question_name: VM ID(vmid)

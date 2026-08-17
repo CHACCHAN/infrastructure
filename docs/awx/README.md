@@ -40,6 +40,20 @@ docker push ghcr.io/chacchan/awx-ee-custom:latest
 
 AWXのJob Templateの**変数欄とSurveyは、どちらも `-e`(extra vars)と同じ**扱いで届く。手元の `-e` で動く指定は、そのままAWXでも同じに動く。以下の前提の多くは**Survey定義に機械化済み**だが、仕組みを知っておくとトラブル時に迷わない。
 
+使い分け: **スカラー値はSurvey、リスト・辞書は変数欄**。AWXのSurveyは文字列・数値しか受けられないため、NIC・追加ディスクのように任意個を宣言するリスト変数は、起動時の変数欄にYAMLで書く(全Job Templateで変数欄は有効):
+
+```yaml
+# 変数欄の記入例(NIC2枚+追加ディスク1本+ストレージ変更)
+pve_storage: ssd02
+pve_vm_nets:
+  - bridge: vmbr0
+  - bridge: vmbr2
+pve_vm_disks:
+  - {bus: scsi, index: 1, storage: local-lvm, size: 100, ssd: true, iothread: true, discard: "on"}
+```
+
+書式の詳細は [docs/pve/README.md](../pve/README.md#ストレージnicディスクの宣言何個でも)。
+
 ### 1. インベントリはプロジェクト由来にする
 
 Inventory `lab` は **Sources → Sourced from a Project**(このリポジトリの `inventory/`)として定義されている(configure.ymlが設定)。Syncすると `inventory/group_vars/` の3層がそのまま届き、**手元と完全に同じ宣言で動く**。

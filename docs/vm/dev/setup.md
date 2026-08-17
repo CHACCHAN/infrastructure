@@ -27,7 +27,7 @@ ansible-playbook playbooks/vm/dev/setup.yml \
 
 ## AWXでの実行
 
-Job Template **`vm-dev-setup`**(定義: [awx/job_templates.yml](../../../awx/job_templates.yml))。Surveyは共通12問+`pve_ssh_password`(暗号化・任意)。
+Job Template **`vm-dev-setup`**(定義: [awx/job_templates.yml](../../../awx/job_templates.yml))。Surveyは共通セット+`pve_ssh_password`(暗号化・任意)。
 
 ## つまずきやすいポイント
 

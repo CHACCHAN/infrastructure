@@ -29,7 +29,7 @@ ansible-playbook playbooks/vm/authentik.yml \
 
 ## AWXでの実行
 
-Job Template **`vm-authentik`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通12問(インベントリ実行なら全問未回答でよい)。サービス固有値を変えるときは変数欄で渡す。
+Job Template **`vm-authentik`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通セット(インベントリ実行なら全問未回答でよい)。サービス固有値を変えるときは変数欄で渡す。
 
 ## つまずきやすいポイント
 

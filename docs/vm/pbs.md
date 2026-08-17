@@ -27,7 +27,7 @@ ansible-playbook playbooks/vm/pbs.yml
 
 ## AWXでの実行
 
-Job Template **`vm-pbs`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通12問。
+Job Template **`vm-pbs`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通セット。
 
 ## つまずきやすいポイント
 

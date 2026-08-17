@@ -53,8 +53,8 @@ ansible-playbook playbooks/pve/provision.yml \
 
 | 変数 | 型 | 既定値 | 説明 |
 | --- | --- | --- | --- |
-| `pve_storage` | str | `ssd01` | VM/テンプレート用ストレージ |
-| `pve_bridge` | str | `vmbr0` | 1枚目NICのブリッジ |
+| `pve_storage` | str | `ssd01`(宣言値) | ブートディスクのストレージ。**固定ではない**: 役割・個体・`-e`/Surveyで `ssd02` / `local-lvm` 等へ上書きできる(実例: authentik=local-lvm、supabase=ssd02) |
+| `pve_bridge` | str | `vmbr0` | 1枚目NICのブリッジ(NIC構成ごと変えるなら `pve_vm_nets`) |
 | `pve_ipv4_prefix` | int | `24` | IPv4プレフィックス長 |
 | `pve_ipv4_gw` | str | `172.16.11.1` | デフォルトゲートウェイ |
 
@@ -71,6 +71,8 @@ ansible-playbook playbooks/pve/provision.yml \
 | `pve_vm_memory` | int | `2048` | メモリ(MiB) |
 | `pve_vm_disk_size` | int | `20` | ディスク(GiB)。拡張のみ |
 | `pve_vm_power` | str | `started` | 収束後の電源状態 |
+| `pve_vm_nets` | list | `[{bridge: vmbr0}]` | NICのリスト(**任意の枚数**。並び順=net0,net1,…)。AWXでは変数欄にYAMLで渡す([書式](README.md#ストレージnicディスクの宣言何個でも)) |
+| `pve_vm_disks` | list | `[]` | 追加ディスクのリスト(**任意の本数・ディスクごとにstorage指定可**)。同上 |
 | `cluster_ip` | str | なし | 2枚目NICのCIDR(直接実行では `-e ip2=`) |
 | `pve_ssh_user` | str | プロファイル | cloud-initが作るユーザー(未定義ならユーザー/鍵設定をスキップ) |
 | `pve_ssh_pubkey_value` / `pve_ssh_pubkey_file` | str | なし / プロファイル | 公開鍵の本文/パス(本文が優先) |
@@ -85,7 +87,9 @@ ansible-playbook playbooks/pve/provision.yml \
 
 Job Template **`pve-provision`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml)、適用: `ansible-playbook playbooks/awx/configure.yml`)。
 
-- Surveyは共通12問(target/profile/vmid/node/ip/ip2/SSHユーザー/鍵2種/cores/memory/disk_size)。**全問任意**: インベントリ実行なら未回答のまま起動、インベントリ外VMを作るときだけ回答する
+- Surveyは共通セット(target / profile / vmid / node / ip / ip2 / pve_storage / SSHユーザー / 鍵2種 / cores / memory / disk_size)。**全問任意**: インベントリ実行なら未回答のまま起動、インベントリ外VMを作るときだけ回答する
+- `profile` は選択式(選択肢はインベントリの役割グループから自動生成)
+- リスト変数(`pve_vm_nets` / `pve_vm_disks`)はSurveyでは渡せないため、Job Templateの**変数欄**にYAMLで書く
 - 鍵はファイルパスではなく**本文**で渡す(`pve_ssh_pubkey_value` / `pve_ssh_prikey_value`)
 - Limitは使わない(絞り込みは `target`)
 

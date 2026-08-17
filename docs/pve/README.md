@@ -77,6 +77,58 @@ lab:
 
 変数は「ベース(defaults + group_vars/all)→ 役割プロファイル(group_vars/<役割>.yml)→ 個体(hosts.yml)」の3層で解決される。どんな変数があるかは各defaultsを見る(ここに書き写すと二重管理になるため)。
 
+## ストレージ・NIC・ディスクの宣言(何個でも)
+
+ストレージ名やNIC構成は**固定ではない**。すべて変数で、3層のどこでも(および `-e` / AWXでも)上書きできる。
+
+### ブートディスクのストレージ(pve_storage)
+
+`group_vars/all/pve.yml` の既定は `ssd01` だが、役割・個体ごとに自由に変えられる(実例: authentik=`local-lvm`、supabase=`ssd02`)。対象ノードに存在するストレージ名を指定する。
+
+```yaml
+# 役割ごと(group_vars/<役割>.yml)         # 個体ごと(hosts.yml)         # 実行時
+pve_storage: ssd02                          pve_storage: local-lvm        -e pve_storage=ssd02
+```
+
+### NIC(pve_vm_nets)— 任意の枚数
+
+リストの並び順どおりに `net0, net1, ...` として収束する(既定は `[{bridge: vmbr0}]` の1枚)。
+
+```yaml
+pve_vm_nets:
+  - bridge: vmbr0     # net0
+  - bridge: vmbr2     # net1
+  - bridge: vmbr3     # net2(何枚でも)
+```
+
+**cloud-initが自動設定するIPは最初の2枚だけ**: net0=`ansible_host`(直接実行では `-e ip=`)、net1=`cluster_ip`(同 `-e ip2=`)。3枚目以降はNICとして接続されるが、IPはゲストOS内で設定する(この制約は cloud-init 連携の仕様として意図的)。
+
+### 追加ディスク(pve_vm_disks)— 任意の本数・ディスクごとにストレージ指定可
+
+ブートディスク(scsi0)とは別に、任意の本数を宣言できる。**ディスクごとに別のストレージを指せる**(実例: pbsのバックアップ用HDD)。
+
+```yaml
+pve_vm_disks:
+  - bus: scsi        # scsi1 になる
+    index: 1
+    storage: hdd01   # このディスクだけ別ストレージ
+    size: 500
+    ssd: false
+    iothread: true
+    discard: "on"
+```
+
+### AWXでの渡しかた
+
+`pve_storage` のようなスカラー値はSurveyに質問がある。`pve_vm_nets` / `pve_vm_disks` のような**リストはSurveyでは渡せない**(AWX Surveyの仕様)ため、Job Templateの**「変数」欄にYAMLで書く**(全JTで変数欄は有効化済み)。手元の `-e` ではJSONで渡す:
+
+```sh
+ansible-playbook playbooks/pve/provision.yml -e target=tmp02 -e profile=lab \
+  -e vmid=798 -e node=pve06 -e ip=172.16.11.98 -e pve_storage=ssd02 \
+  -e '{"pve_vm_nets":[{"bridge":"vmbr0"},{"bridge":"vmbr2"}]}' \
+  -e '{"pve_vm_disks":[{"bus":"scsi","index":1,"storage":"local-lvm","size":100,"ssd":true,"iothread":true,"discard":"on"}]}'
+```
+
 ## テンプレートの仕組み
 
 - **(OS, ノード)ごと**に1つ。全ストレージがノードローカルなため、VMを置くノード上にテンプレートが必要になる

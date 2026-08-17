@@ -29,7 +29,7 @@ ansible-playbook playbooks/vm/technitium.yml \
 
 ## AWXでの実行
 
-Job Template **`vm-technitium`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通12問。
+Job Template **`vm-technitium`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通セット。
 
 ## つまずきやすいポイント
 
