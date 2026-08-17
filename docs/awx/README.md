@@ -111,6 +111,12 @@ AWXへのログインはAuthentikの**SAML**連携(旧OIDCから移行済み)。
 | 機密のsettings断片 `saml.py`(SP証明書・秘密鍵・Authentik側IdP定義) | vault の `k8s_secret_awx_saml` → Secret `awx-saml`(roles/k8s_awxが適用)→ AWX Operator の `extra_settings_files` が読み込む |
 | Authentik側のSAMLプロバイダ定義 | Authentik UI(このリポジトリの管理外) |
 
+`extra_settings` に設定を足すときの注意(実際に踏んだ落とし穴):
+
+- 値は**Pythonリテラル**として設定ファイルへ書かれる。真偽値は `true` ではなく `True`(間違えるとAWX Podが起動しない)
+- 値は**必ず1行**で書く。改行が入るとOperatorのreconcile(Apply Resources)が失敗し、CRが `Failure=True` のまま設定が反映されなくなる(YAMLの `>-` は深いインデント行の改行を保持するため見た目の整形に使えない)
+- 反映確認は `kubectl -n platform exec deploy/awx-task -c awx-task -- awx-manage print_settings <設定名>`
+
 SP証明書を更新するとき(期限切れ・鍵ローテーション):
 
 ```sh

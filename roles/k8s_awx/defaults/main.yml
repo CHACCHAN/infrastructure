@@ -63,6 +63,12 @@ k8s_awx_values:
         - setting: SOCIAL_AUTH_SAML_SUPPORT_CONTACT
           value: "{'givenName': 'CHACCHAN', 'emailAddress': 'chacchan.info@gmail.com'}"
 
+        # 値はPythonリテラルとして評価されるため、真偽値は true ではなく True。
+        # また、値に改行が入るとOperatorのリソース適用(reconcile)が壊れるため
+        # 必ず1行で書く(>-は深いインデント行の改行を保持してしまう)。
+        - setting: SOCIAL_AUTH_SAML_TEAM_ATTR
+          value: "{'saml_attr': 'member-of', 'remove': True, 'team_org_map': [{'team': 'Administrator', 'organization': 'Default', 'team_alias': 'Administrator'}]}"
+
       extra_settings_files:
         secrets:
           - name: awx-saml
