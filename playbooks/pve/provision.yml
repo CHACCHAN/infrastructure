@@ -94,6 +94,9 @@
         apply:
           throttle: 1
       vars:
+        # hostvars[inventory_hostname] は「タスクvarsの同名定義が自分自身を参照する
+        # 再帰」を避けつつホスト解決値を読むためのイディオム。extra vars(-e/Survey)も
+        # hostvars経由で見えるため、直接実行でも同じ変数名で上書きできる。
         pve_os: "{{ hostvars[inventory_hostname].pve_os | default('debian') }}"
         pve_os_version: >-
           {{ hostvars[inventory_hostname].pve_os_version | default('13') | string }}
