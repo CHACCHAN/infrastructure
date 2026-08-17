@@ -10,8 +10,9 @@
     # Kubernetesライブラリを持つAnsible自身のPythonをモジュールにも使う。
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   vars_files:
-    - ../../inventory/group_vars/all/k8s.yml
-    - ../../vault/k8s_secrets.yml
+    # 解決基準を明示するためリポジトリ全体で {{ playbook_dir }} 形式に統一している。
+    - "{{ playbook_dir }}/../../inventory/group_vars/all/k8s.yml"
+    - "{{ playbook_dir }}/../../vault/k8s_secrets.yml"
 
   tasks:
     # 誤ったkubeconfig/contextのまま別クラスタへ適用する事故を防ぐ(レビューSAF-03)。

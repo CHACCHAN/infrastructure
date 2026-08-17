@@ -17,7 +17,7 @@
   hosts: "{{ target | default('ddns', true) }}"
   gather_facts: false
   vars_files:
-    - ../../vault/cloudflare.yml
+    - "{{ playbook_dir }}/../../vault/cloudflare.yml"
   vars:
     ansible_user: "{{ pve_ssh_user }}"
     ansible_ssh_private_key_file: "{{ pve_ssh_prikey_resolved }}"

@@ -17,7 +17,7 @@
   hosts: "{{ target | default('wg_easy', true) }}"
   gather_facts: false
   vars_files:
-    - ../../vault/wg-easy.yml
+    - "{{ playbook_dir }}/../../vault/wg-easy.yml"
   vars:
     ansible_user: "{{ pve_ssh_user }}"
     ansible_ssh_private_key_file: "{{ pve_ssh_prikey_resolved }}"
