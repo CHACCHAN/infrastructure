@@ -48,47 +48,25 @@ k8s_awx_values:
         - setting: CSRF_TRUSTED_ORIGINS
           value: "['https://ansible.{{ k8s_domain }}']"
 
-        # --- OIDC (Authentik) ---------------------------------------------
-        #
-        # AWX は "Generic OIDC" として 4 つの設定しか持たない。
-        #   SOCIAL_AUTH_OIDC_KEY           クライアント ID   -> Secret 側
-        #   SOCIAL_AUTH_OIDC_SECRET        クライアント秘密  -> Secret 側
-        #   SOCIAL_AUTH_OIDC_OIDC_ENDPOINT プロバイダの URL  -> ここ
-        #   SOCIAL_AUTH_OIDC_VERIFY_SSL    証明書を検証するか -> ここ
-        #
-        # 秘密でない 2 つだけここに置き、資格情報は
-        # 下の extra_settings_files (Secret awx-oidc) から読ませる。
-        #
-        # **末尾のスラッシュを付けないこと。** social-core が
-        #   f"{OIDC_ENDPOINT}/.well-known/openid-configuration"
-        # と連結するので、付けると // になって discovery に失敗する。
-        # (Homarr は逆に末尾スラッシュが要る。実装が違うので揃わない)
-        - setting: SOCIAL_AUTH_OIDC_OIDC_ENDPOINT
-          value: "'https://auth.{{ k8s_domain }}/application/o/ansible-awx'"
+        # --- SAML (Authentik) ---------------------------------------------
+        - setting: SOCIAL_AUTH_SAML_SP_ENTITY_ID
+          value: "'https://ansible.{{ k8s_domain }}'"
 
-        # Authentik の証明書は Let's Encrypt なので検証する。
-        - setting: SOCIAL_AUTH_OIDC_VERIFY_SSL
-          value: "True"
+        - setting: SOCIAL_AUTH_SAML_ORG_INFO
+          value: "{'en-US': {'name': 'authentik', 'url': 'https://auth.{{ k8s_domain }}', 'displayname': 'authentik'}}"
 
-      # OIDC のクライアント資格情報。
-      #
-      # extra_settings は ConfigMap になって平文で見えてしまうので、
-      # 秘密にしたい設定はこちらで Secret から渡す。Operator は
-      # Secret の中身を /etc/tower/conf.d/<key> にマウントし、
-      # AWX が settings.py の後に読む (= こちらが勝つ)。
-      #
-      # key は必ず .py で終わること。中身は Python の設定ファイル:
-      #   SOCIAL_AUTH_OIDC_KEY = '...'
-      #   SOCIAL_AUTH_OIDC_SECRET = '...'
-      #
-      # 実体は vault/ansible-awx.yaml (git 追跡外)。
-      #
-      # **Secret が無いと Pod が起動しない** (マウントできないため)。
-      # あとから作れば kubelet が拾って起動する。
+        # SAMLバックエンド(python-social-auth)はSPメタデータ用の連絡先を
+        # 必須とする。表示用メタデータで機密ではない。
+        - setting: SOCIAL_AUTH_SAML_TECHNICAL_CONTACT
+          value: "{'givenName': 'CHACCHAN', 'emailAddress': 'chacchan.info@gmail.com'}"
+
+        - setting: SOCIAL_AUTH_SAML_SUPPORT_CONTACT
+          value: "{'givenName': 'CHACCHAN', 'emailAddress': 'chacchan.info@gmail.com'}"
+
       extra_settings_files:
         secrets:
-          - name: awx-oidc
-            key: oidc.py
+          - name: awx-saml
+            key: saml.py
 
       # DB は platform namespace 共用の PostgreSQL を使う。
       # (platform/apps/postgresql/。接続先は postgresql.platform.svc:5432)

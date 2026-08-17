@@ -116,7 +116,7 @@ flowchart LR
 | --- | --- |
 | `expected numeric, got string`(defaultMode等) | チャートがYAML 1.2の8進表記(`0o755`)を出力し、AnsibleのPyYAMLが文字列扱いする既知問題。`roles/k8s/tasks/helm.yml` の正規化リストに値を追加 |
 | postgresqlの適用でPodが再起動した | customScripts等の変更はchecksumアノテーション経由でロールアウトを誘発する仕様。依存アプリは自動再接続する |
-| AWXのPodが起動しない(oidc.py) | Secret `awx-oidc` 未適用。`deploy.yml -e app=awx` はSecretを先に適用するので通常は起きない |
+| AWXのPodが起動しない(saml.py) | Secret `awx-saml` 未適用。`deploy.yml -e app=awx` はSecretを先に適用するので通常は起きない |
 | 適用したのに毎回changedになる | 対象フィールドを他のコントローラが書き戻している。`kubectl get <res> -o json --show-managed-fields` で所有者を確認 |
 | 新しいNamespaceでTLSが効かない | ワイルドカードSecretはNamespace単位。`k8s_certificates` にそのNamespace用のCertificateを追加する |
 | ghcr.ioのイメージが `ImagePullBackOff` | ①Podが独自ServiceAccountで動いていないか(`kubectl get pod X -o jsonpath='{.spec.serviceAccountName}'`)。`default` 以外なら `imagePullSecrets` を明示する ②`kubectl -n platform logs deploy/kubernetes-replicator` で複製エラーを確認 ③PATの `read:packages` スコープ切れ |

@@ -8,3 +8,5 @@ __pycache__/
 .env
 # ansible-builder が生成するビルドコンテキスト(ee/ から毎回再生成される)
 context/
+# SAML SP証明書・秘密鍵(実体はvault/k8s_secrets.ymlのk8s_secret_awx_samlへ格納済み)
+*.pem

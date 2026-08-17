@@ -12,7 +12,7 @@
     quiet: true
   loop:
     - k8s_secret_awx_postgres_configuration
-    - k8s_secret_awx_oidc
+    - k8s_secret_awx_saml
 
 - name: awx-postgres-configuration Secretを描画する
   ansible.builtin.set_fact:
@@ -31,21 +31,24 @@
     k8s_definition: "{{ k8s_awx_awx_postgres_configuration_secret_definition }}"
     k8s_apply_no_log: true
 
-- name: awx-oidc Secretを描画する
+# SAMLログイン設定(settings断片 saml.py)。defaults の extra_settings_files が
+# このSecretをAWXの設定ファイルとして読み込ませる。中身(SP証明書/秘密鍵と
+# Authentik側IdP定義)は vault の k8s_secret_awx_saml が正。
+- name: awx-saml Secretを描画する
   ansible.builtin.set_fact:
-    k8s_awx_awx_oidc_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
+    k8s_awx_awx_saml_secret_definition: "{{ lookup('ansible.builtin.template', 'secrets.yaml.j2') }}"
   vars:
-    k8s_secret_manifest_name: awx-oidc
+    k8s_secret_manifest_name: awx-saml
     k8s_secret_manifest_namespace: platform
-    k8s_secret_manifest_data: "{{ k8s_secret_awx_oidc }}"
+    k8s_secret_manifest_data: "{{ k8s_secret_awx_saml }}"
   no_log: true
 
-- name: awx-oidc SecretをServer-Side Applyする
+- name: awx-saml SecretをServer-Side Applyする
   ansible.builtin.import_role:
     name: k8s
     tasks_from: apply
   vars:
-    k8s_definition: "{{ k8s_awx_awx_oidc_secret_definition }}"
+    k8s_definition: "{{ k8s_awx_awx_saml_secret_definition }}"
     k8s_apply_no_log: true
 
 - name: awx-operator Helmチャートを描画して適用する

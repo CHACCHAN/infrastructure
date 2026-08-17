@@ -101,6 +101,29 @@ AWXは未回答の質問を**空文字**で渡すことがある。空文字は�
 
 各サービスplaybookの最後にある `uri` / `wait_for` は `delegate_to: localhost`、つまり**AWXの実行Pod**から対象VMのLAN側IPへ接続する。構築は成功したのに最後の確認だけ落ちる場合は、Podからの経路・NetworkPolicy・VM側のfirewallを疑う。テンプレート初回作成時のチェックサム取得やHelmリポジトリへの通信も実行Pod側で必要になる。
 
+## SAMLログイン(Authentik連携)
+
+AWXへのログインはAuthentikの**SAML**連携(旧OIDCから移行済み)。設定は3段構え:
+
+| 何が | どこに |
+| --- | --- |
+| 非機密のSAML設定(SPエンティティID・組織情報・連絡先) | [roles/k8s_awx/defaults/main.yml](../../roles/k8s_awx/defaults/main.yml) の `extra_settings` |
+| 機密のsettings断片 `saml.py`(SP証明書・秘密鍵・Authentik側IdP定義) | vault の `k8s_secret_awx_saml` → Secret `awx-saml`(roles/k8s_awxが適用)→ AWX Operator の `extra_settings_files` が読み込む |
+| Authentik側のSAMLプロバイダ定義 | Authentik UI(このリポジトリの管理外) |
+
+SP証明書を更新するとき(期限切れ・鍵ローテーション):
+
+```sh
+# 1. プロジェクトルートで自己署名証明書を再生成(*.pemはgit管理外)
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 3650 -nodes
+
+# 2. vaultのsaml.py(SP_PUBLIC_CERT / SP_PRIVATE_KEY)を新しいpemの中身で更新
+ansible-vault edit vault/k8s_secrets.yml
+
+# 3. 反映(AWX Podがロールアウトされる)。Authentik側にも新しいcert.pemを登録する
+ansible-playbook playbooks/k8s/deploy.yml -e app=awx
+```
+
 ## Job Template一覧
 
 定義の正は [awx/job_templates.yml](../../awx/job_templates.yml)(このリストは対応表のみ)。
