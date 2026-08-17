@@ -34,7 +34,7 @@ ansible-playbook playbooks/awx/configure.yml -e awx_kubeconfig_content="$(cat ~/
 | `awx_admin_user` / `awx_admin_password` | str | 初回のみ | 環境変数 `CONTROLLER_USERNAME` / `CONTROLLER_PASSWORD` | トークン未発行時のブートストラップ認証(トークンが設定済みならそちらが優先) |
 | `awx_vault_password` | str | | 環境変数から自動 | Vault credentialへ登録する復号パスワード。既定は `ANSIBLE_VAULT_PASSWORD_FILE` の中身(空ならcredential作成をスキップ) |
 | `awx_kubeconfig_content` | str | 初回✔ | なし | k8s-deploy用kubeconfigの内容。未指定なら登録済みの値を変更しない |
-| `awx_scm_username` / `awx_scm_token` | str | | なし | プライベートリポジトリ用のSCM認証(GitHubユーザー+PAT)。指定時のみcredential作成 |
+| `vault_awx_scm_prikey` | str | | vault | ProjectのSSH同期用GitHub秘密鍵。設定されているときのみSCM credentialを作成しProjectへ紐づけ |
 | `awx_validate_certs` | bool | | `true` | AWX APIの証明書検証 |
 | 定義本体(`awx_project_*` / `awx_inventory_*` / `awx_credential_*` / `awx_ee_*` / `awx_job_templates` / `awx_survey_common`) | | ✔ | [awx/*.yml](../../awx/) | 収束させる対象の宣言(単一の真実)。変更はファイル編集で |
 

@@ -9,8 +9,8 @@
 #   3. k8s-deploy用のkubeconfigは初回に
 #      -e awx_kubeconfig_content="$(cat ~/.kube/config)" で渡す
 #      (2回目以降は未指定なら登録済みの値を変更しない)
-#   4. プライベートリポジトリの場合は
-#      -e awx_scm_username=<GitHubユーザー> -e awx_scm_token=<PAT>
+#   4. ProjectのGit同期はSSH。鍵は vault/awx_api.yml の vault_awx_scm_prikey
+#      (ansible-vault edit で設定)を Source Control credential として登録する
 #
 # 倣ったプラクティス: redhat-cop/controller_configuration の
 # 「接続情報のmodule_defaults一元化」と「定義YAML(awx/)の分離」。
@@ -31,8 +31,6 @@
          if lookup('ansible.builtin.env', 'ANSIBLE_VAULT_PASSWORD_FILE') | length > 0
          else '' }}
     awx_kubeconfig_content: ""
-    awx_scm_username: ""
-    awx_scm_token: ""
     # 初回(トークン未発行)のブートストラップ用。awx.awxコレクション標準の
     # CONTROLLER_USERNAME / CONTROLLER_PASSWORD 環境変数で管理者認証を渡せる。
     # トークン(vault/awx_api.yml)が設定済みならそちらが優先される。
@@ -72,16 +70,16 @@
         quiet: true
 
     # --- Credential(Job Templateより先に作る。JTが名前で参照するため) ---
-    - name: SCM認証情報を収束させる(プライベートリポジトリのときだけ)
+    - name: SCM認証情報(Git同期用SSH鍵)を収束させる
       awx.awx.credential:
         name: "{{ awx_project_scm_credential_name }}"
+        description: ProjectのSSH同期用GitHub鍵(実値はvault/awx_api.yml)
         organization: "{{ awx_organization }}"
         credential_type: Source Control
         inputs:
-          username: "{{ awx_scm_username }}"
-          password: "{{ awx_scm_token }}"
+          ssh_key_data: "{{ vault_awx_scm_prikey }}"
         state: present
-      when: awx_scm_username | length > 0
+      when: vault_awx_scm_prikey | default('') | length > 0
       no_log: true
 
     - name: Vault復号パスワードのCredentialを収束させる
@@ -141,7 +139,7 @@
         scm_update_on_launch: "{{ awx_project_scm_update_on_launch }}"
         credential: >-
           {{ awx_project_scm_credential_name
-             if awx_scm_username | length > 0 else omit }}
+             if vault_awx_scm_prikey | default('') | length > 0 else omit }}
         state: present
 
     - name: Inventoryを収束させる

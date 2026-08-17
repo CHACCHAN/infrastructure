@@ -7,11 +7,10 @@ awx_organization: Default
 
 awx_project_name: infrastructure
 awx_project_description: Proxmox/VM/Kubernetesの宣言的構成管理(このリポジトリ)
-awx_project_scm_url: https://github.com/CHACCHAN/infrastructure.git
+# SSH経由で同期する。認証は vault/awx_api.yml の vault_awx_scm_prikey を
+# configure.yml が Source Control credential(下の名前)として登録して使う。
+awx_project_scm_url: git@github.com:CHACCHAN/infrastructure.git
 awx_project_scm_branch: main
 # 実行のたびに最新のplaybookを使う(Git側を単一の真実にする)。
 awx_project_scm_update_on_launch: true
-# プライベートリポジトリの場合はSCM認証情報が必要。
-# -e awx_scm_username=<GitHubユーザー> -e awx_scm_token=<PAT> を渡すと
-# configure.yml がSCM Credentialを作成しProjectへ紐づける(未指定なら公開扱い)。
 awx_project_scm_credential_name: infrastructure SCM

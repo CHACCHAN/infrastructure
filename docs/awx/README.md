@@ -21,7 +21,7 @@ ansible-playbook playbooks/awx/configure.yml \
 ```
 
 - **Vault credential**: 既定でDevContainerの `ANSIBLE_VAULT_PASSWORD_FILE` の中身が登録される(明示は `-e awx_vault_password=`)
-- **プライベートリポジトリの場合**: `-e awx_scm_username=<GitHubユーザー> -e awx_scm_token=<PAT>` でSCM credentialも作成される
+- **ProjectのGit同期はSSH**(`git@github.com:CHACCHAN/infrastructure.git`)。鍵は `vault/awx_api.yml` の `vault_awx_scm_prikey`(`ansible-vault edit` で設定)から Source Control credential として自動登録される
 - Job Templateを追加・変更するときは [awx/job_templates.yml](../../awx/job_templates.yml) を編集して再実行(AWX UIでは編集しない。次回のconfigure実行で上書きされる)
 
 ### EEイメージのビルドと登録
