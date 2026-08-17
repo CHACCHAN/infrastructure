@@ -2,7 +2,7 @@
 # 実行例: ansible-playbook playbooks/pve/provision.yml -l k8s
 # 実行例: ansible-playbook playbooks/pve/provision.yml -l k3s-worker03
 # 実行例: ansible-playbook playbooks/pve/provision.yml
-# インベントリに無いVMを-eだけで構築する場合は docs/adhoc.md
+# インベントリに無いVMを-eだけで構築する場合は docs/pve/adhoc.md
 ---
 # -e profile= を指定したときだけ、インベントリ外のVMを一時ホストとして宣言する。
 - name: インベントリ外のVMを一時ホストとして宣言する
@@ -38,7 +38,7 @@
         fail_msg: >-
           {{ pve_provision_missing_vars | join(' / ') }} が未定義または空です。
           inventory/group_vars/all/pve.yml が読み込まれていません。
-          AWXではインベントリをプロジェクトのinventory/から同期するか(docs/awx.md)、
+          AWXではインベントリをプロジェクトのinventory/から同期するか(docs/awx/README.md)、
           不足している値を変数で指定してください。
         quiet: true
       vars:
@@ -65,7 +65,7 @@
           {{ inventory_hostname }}: {{ pve_provision_missing_host_vars | join(' / ') }}
           が未定義または空です。インベントリ実行では inventory/hosts.yml の
           ホスト定義を確認してください。インベントリ外のVMを変数だけで構築する場合は
-          -e profile= とあわせて -e vmid= -e node= -e ip= を指定します(docs/adhoc.md)。
+          -e profile= とあわせて -e vmid= -e node= -e ip= を指定します(docs/pve/adhoc.md)。
         quiet: true
       vars:
         pve_provision_required_host_vars:

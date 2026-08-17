@@ -1,7 +1,7 @@
 # AWXのJob TemplateとSurveyの定義(単一の真実)。
 # playbooks/awx/configure.yml が読み込み、awx.awx.job_template へ渡す。
 #
-# Survey設計の原則(docs/awx.md の運用ルールをコード化):
+# Survey設計の原則(docs/awx/README.md の運用ルールをコード化):
 # - 任意項目は required: false かつ default を持たせない
 #   (AWXは未回答の任意質問を「変数を送らない」扱いにする。空文字の既定値を
 #    持たせると default() で救えない空文字が届いてしまう)
@@ -149,7 +149,7 @@ awx_job_templates:
     playbook: playbooks/pve/template.yml
     survey_extra:
       - question_name: OS(os)
-        question_description: 対応カタログは docs/pve.md(例 debian)
+        question_description: 対応カタログは docs/pve/README.md(例 debian)
         variable: os
         type: text
         required: true

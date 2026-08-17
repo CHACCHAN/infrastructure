@@ -1,13 +1,12 @@
-# インベントリ外のVMを `-e` だけで構築する
+# adhoc.yml — インベントリ外のVMを変数だけで構築する
 
-`inventory/hosts.yml` に宣言していないVMを、コマンドラインの `-e` だけで構築するための仕組み。
-使い捨ての検証VM、宣言を書く前の新サービスの試作、同じ役割の一時的な増設に使う。
+`inventory/hosts.yml` に宣言していないVMを、コマンドラインの `-e`(またはAWXのSurvey)だけで構築するための**前処理部品**。使い捨ての検証VM、宣言を書く前の新サービスの試作、同じ役割の一時的な増設に使う。
 
 > **恒久的に運用するVMは `inventory/hosts.yml` に宣言する。** この機能は宣言を置き換えるものではなく、宣言を書く前の実験用。気に入ったら[インベントリへ移す](#気に入ったらインベントリへ移す)。
 
 ## 仕組み
 
-`-e profile=<役割グループ>` を指定したときだけ、[playbooks/pve/adhoc.yml](../playbooks/pve/adhoc.yml) が実行時にホストを1台つくり、そのグループへ入れる。
+`-e profile=<役割グループ>` を指定したときだけ、[playbooks/pve/adhoc.yml](../../playbooks/pve/adhoc.yml) が実行時にホストを1台つくり、そのグループへ入れる。
 以降は**インベントリに書いたホストとまったく同じ**に扱われるため、3層の変数解決もそのまま効く。
 
 ```mermaid
@@ -26,6 +25,7 @@ flowchart LR
 ```
 
 `-e profile=` が無ければ adhoc.yml は何もしないため、**通常のインベントリ運用には一切影響しない**。
+provision.yml / power.yml / 各サービスplaybookが先頭でimportする部品であり、**単体では実行しない**。
 
 ## 指定する変数
 
@@ -38,7 +38,7 @@ flowchart LR
 | `ip` | ✔ | 1枚目NICのIP(= `ansible_host`) | `172.16.11.99` |
 | `ip2` | | 2枚目NICのIP(= `cluster_ip`)。プレフィックス付き。NIC2枚の役割のみ | `10.10.20.19/24` |
 
-**これ以外は普段どおりの変数名でよい**。上書きしたい値を `-e pve_vm_memory=4096` のように足すだけで、優先順位はAnsible標準のまま(`-e` が最優先)。指定できる変数の一覧は [docs/pve.md](pve.md#vmの宣言のしかた) と `roles/*/defaults/main.yml` が正。
+**これ以外は普段どおりの変数名でよい**。上書きしたい値を `-e pve_vm_memory=4096` のように足すだけで、優先順位はAnsible標準のまま(`-e` が最優先)。指定できる変数の一覧は各playbookのページと `roles/*/defaults/main.yml` が正。
 
 > IPだけ `-e ansible_host=` ではなく `-e ip=` を使う。`-e` は**全ホストへ最優先で効く**ため、`ansible_host` を直接渡すと `hostvars[別ホスト].ansible_host` を参照している箇所(`group_vars/k8s.yml` の `kubernetes_server_ip` など)まで書き換わってしまう。adhoc.ymlが `ip` を新ホストのホスト変数として登録することで、他ホストを汚さずに済ませている。
 
@@ -103,6 +103,13 @@ ansible-playbook playbooks/pve/destroy.yml -e vmid=799 -e confirm=799
 | `-e ip2=10.10.20.19/24` | `cluster_ip: 10.10.20.19/24` |
 | `-e pve_vm_memory=4096` | `pve_vm_memory: 4096` |
 
+## AWXでの実行
+
+adhoc.yml自体はJob Templateにしない(前処理部品のため)。各Job Template(`pve-provision` / `vm-*`)の共通Surveyに `target` / `profile` / `vmid` / `node` / `ip` / `ip2` が入っており、**Surveyに回答するだけでこのページの直接実行と同じ動きになる**(SurveyはextraVarsとして届くため)。
+
+- Surveyの未回答は「変数を送らない」扱いになるよう定義済み(空文字が届くと `target` は安全のため実行を中止する)
+- 鍵はSurveyの `pve_ssh_pubkey_value` / `pve_ssh_prikey_value` に**本文**で渡す
+
 ## 制約と注意
 
 - **`-l`(`--limit`)と併用しない**。ホストを登録するlocalhostのプレイまで除外され、対象が0台になる。絞り込みは `-e target=` が行う
@@ -111,9 +118,10 @@ ansible-playbook playbooks/pve/destroy.yml -e vmid=799 -e confirm=799
 - IPは `-e ip=` / `-e ip2=` で渡す。`-e ansible_host=` や `-e cluster_ip=` を直接指定すると全ホストに効いてしまう
 - `profile=lab`(継承なし)でSSHまで進む場合は、cloud-initが作るユーザーと鍵を自分で渡す:
   `-e pve_ssh_user=<ユーザー名> -e pve_ssh_pubkey_file=~/.ssh/<公開鍵> -e pve_ssh_prikey_file=~/.ssh/<秘密鍵>`
-  (AWXのSurveyなどパスを置けない環境では鍵の本文で渡せる → [docs/vm.md](vm.md#鍵をファイルではなく本文で渡すawxのsurveyなど))
+  (AWXのSurveyなどパスを置けない環境では鍵の本文で渡せる → [docs/vm/ssh_key.md](../vm/ssh_key.md))
 - `profile=lab` のデフォルトゲートウェイは `group_vars/all/pve.yml` の `172.16.11.1`。別セグメント(vmbr2など)に置くなら `-e pve_ipv4_gw=` と `-e '{"pve_vm_nets":[{"bridge":"vmbr2"}]}'` も指定する
 - `--list-hosts` では対象を確認できない(ホストの登録は実行時に行われるため)
+- **インベントリが届かない実行(AWXの手動インベントリ等)では、IP重複チェックが実質skipされる**(比較相手の宣言が無いため)。この形態で使うときはIPの衝突を自分で確認する
 
 ### 実行前に止まるもの
 

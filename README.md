@@ -83,7 +83,7 @@ ansible-playbook playbooks/k8s/deploy.yml --check          # 差分の有無を�
 ansible-playbook playbooks/k8s/deploy.yml                  # 全アプリ
 ansible-playbook playbooks/k8s/deploy.yml -e app=portainer # 1アプリだけ
 
-# インベントリに書かずに1台だけ作る(検証VM。詳細は docs/adhoc.md)
+# インベントリに書かずに1台だけ作る(検証VM。詳細は docs/pve/adhoc.md)
 ansible-playbook playbooks/vm/dev/setup.yml \
   -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99
 ```
@@ -134,7 +134,7 @@ sequenceDiagram
 ├── vault/               # Ansible Vault(全ファイル暗号化済み)
 ├── collections/         # requirements.yml → ee/ へのsymlink(AWX互換の標準位置)
 ├── ee/                  # AWXカスタム実行環境(ansible-builder)。コレクション定義の実体
-└── docs/                # ドメイン別ドキュメント(pve / vm / k8s)
+└── docs/                # playbooks/と同構成のドキュメント(1 playbook=1ページ + awx/)
 ```
 
 ## 秘匿情報の扱い
@@ -148,9 +148,9 @@ sequenceDiagram
 | ドキュメント | 内容 |
 | --- | --- |
 | [infrastructure.md](infrastructure.md) | **インフラの全体像**: 物理NIC〜vmbrのネットワーク構成図と、サービス公開経路(Traefik / Cloudflare Tunnel / WireGuard) |
-| [docs/pve.md](docs/pve.md) | ① Proxmox操作ドメインの使い方(provision/power/destroy/template) |
-| [docs/vm.md](docs/vm.md) | ② VMセットアップドメインの使い方(サービス別playbook・k3sクラスタ構築・AWXから鍵を本文で渡す) |
-| [docs/k8s.md](docs/k8s.md) | ③ Kubernetesドメインの使い方(deploy・アプリ追加・Secret・チャート管理) |
-| [docs/adhoc.md](docs/adhoc.md) | **インベントリ外のVMを `-e` だけで構築する**(検証VM・宣言前の試作。全ドメイン共通) |
-| [docs/awx.md](docs/awx.md) | **AWXから実行するときの前提**(インベントリ・Limit・鍵・Survey・実行環境。全ドメイン共通) |
+| [docs/README.md](docs/README.md) | **ドキュメントの入口**(playbooks/と同じ構成で1 playbook=1ページ。実行例・変数一覧・AWX設定はここから辿る) |
+| [docs/pve/](docs/pve/README.md) | ① Proxmox操作ドメイン(provision/power/destroy/template/adhoc) |
+| [docs/vm/](docs/vm/README.md) | ② VMセットアップドメイン(サービス別playbook・k3sクラスタ構築・鍵を本文で渡す仕組み) |
+| [docs/k8s/](docs/k8s/README.md) | ③ Kubernetesドメイン(deploy・アプリ追加・Secret・チャート管理) |
+| [docs/awx/](docs/awx/README.md) | **AWX**(Web UIからの実行前提と、Job Template/Survey等の設定のコード管理) |
 | [.devcontainer/README.md](.devcontainer/README.md) | Dev Containerのセットアップ注意点 |

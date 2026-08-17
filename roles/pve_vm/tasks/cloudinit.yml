@@ -6,7 +6,7 @@
 - name: cloud-initの宣言値を組み立てる
   ansible.builtin.set_fact:
     # 鍵は本文(pve_ssh_pubkey_value)を優先し、無ければファイルから読む
-    # (AWXのSurveyなどファイルを置けない経路のため。詳細は docs/vm.md)。
+    # (AWXのSurveyなどファイルを置けない経路のため。詳細は docs/vm/ssh_key.md)。
     # どちらも未定義のホスト(役割プロファイルを持たない検証VM等)では
     # ユーザー・鍵の設定をスキップするため空文字にする。
     # noneを使うと、ansible-core 2.19より前では文字列 "None" になり

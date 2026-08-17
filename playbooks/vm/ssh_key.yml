@@ -3,7 +3,7 @@
 # (未指定なら何もしないため、ファイルパス(pve_ssh_prikey_file)での通常運用には影響しない)。
 # SSHは秘密鍵を「ファイル」でしか受け取れないため、AWXのSurveyのように本文しか
 # 渡せない経路ではここで実体化する。公開鍵は本文のままcloud-initへ渡せるため扱わない。
-# 書き出し先は group_vars/all/pve.yml の pve_ssh_prikey_tmpfile。詳細は docs/vm.md
+# 書き出し先は group_vars/all/pve.yml の pve_ssh_prikey_tmpfile。詳細は docs/vm/ssh_key.md
 ---
 - name: 本文で渡された秘密鍵を一時ファイルへ書き出す
   hosts: localhost

@@ -57,7 +57,7 @@
           k8sグループが無い実行では -e k3s_role=server|agent に加えて
           -e kubernetes_server_ip=(コントロールプレーンの管理IP)
           -e kubernetes_server_ssh_user= -e kubernetes_server_ssh_prikey=(鍵パス)
-          を指定し、クラスタ網は -e ip2=<CIDR> で渡します(docs/awx.md)。
+          を指定し、クラスタ網は -e ip2=<CIDR> で渡します(docs/vm/k3s.md)。
         quiet: true
       vars:
         kubernetes_preflight_required_vars:

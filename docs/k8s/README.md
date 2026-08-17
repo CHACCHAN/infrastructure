@@ -2,6 +2,8 @@
 
 k3sクラスタ上の全アプリを **Ansibleロールで宣言的に収束** させるドメイン。マニフェスト・Helm values・SecretのすべてがこのリポジトリにあるためGitが単一の真実であり、クラスタ全損からでも再構築できる(kustomizeは2026-08のPhase Mで解体済み)。
 
+playbookは [deploy.yml](../../playbooks/k8s/deploy.yml) の1本のみ → 使いかたは **[deploy.md](deploy.md)**。
+
 ## 全体像
 
 ```mermaid
@@ -30,18 +32,6 @@ flowchart TB
 | 外部公開 | Cloudflare Tunnel(`auth`/`api`)。他はLAN内のみ |
 | 共有DB | PostgreSQL(StatefulSet)。homarr/awx/pgadmin/nextcloud/guacamoleが共用 |
 | プライベートレジストリ | ghcr.io。pull用Secretをkubernetes-replicatorが全Namespaceへ複製 |
-
-## コマンド
-
-```sh
-ansible-playbook playbooks/k8s/deploy.yml --check          # 差分の有無(クラスタに触らない)
-ansible-playbook playbooks/k8s/deploy.yml                  # 全アプリ収束(収束済みならchanged=0)
-ansible-playbook playbooks/k8s/deploy.yml -e app=portainer # 1アプリだけ
-ansible-playbook playbooks/k8s/deploy.yml -e force=true    # フィールド所有権の衝突を強制取得(下記)
-```
-
-- 適用順は `k8s_apps` 登録簿(inventory/group_vars/all/k8s.yml)の並び順。依存(cert-manager→証明書、CRD→AWX)はロール内のwaitで担保
-- `kubectl` の直接利用は状態確認(`get`/`describe`/`logs`)に限る。書き込みは必ずdeploy.yml経由
 
 ## アプリの追加のしかた
 
@@ -133,6 +123,6 @@ flowchart LR
 
 ## 再構築(クラスタ全損時)
 
-1. `ansible-playbook playbooks/vm/k3s.yml` — VMからk3sクラスタまで構築(②ドメイン)
+1. `ansible-playbook playbooks/vm/k3s.yml` — VMからk3sクラスタまで構築(②ドメイン → [docs/vm/k3s.md](../vm/k3s.md))
 2. `ansible-playbook playbooks/k8s/deploy.yml` — 全アプリ+Secret収束(登録簿順で依存も解決)
 3. 手動残: Guacamole用DBスキーマ投入(initdb.sh)、AWXの `k8s_backup_awx_secret_key` の事前リストア(DB内資格情報の復号に必須)
