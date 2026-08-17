@@ -33,6 +33,14 @@
     awx_kubeconfig_content: ""
     awx_scm_username: ""
     awx_scm_token: ""
+    # 初回(トークン未発行)のブートストラップ用。awx.awxコレクション標準の
+    # CONTROLLER_USERNAME / CONTROLLER_PASSWORD 環境変数で管理者認証を渡せる。
+    # トークン(vault/awx_api.yml)が設定済みならそちらが優先される。
+    awx_admin_user: "{{ lookup('ansible.builtin.env', 'CONTROLLER_USERNAME') | default('', true) }}"
+    awx_admin_password: "{{ lookup('ansible.builtin.env', 'CONTROLLER_PASSWORD') | default('', true) }}"
+    awx_token_configured: >-
+      {{ vault_awx_oauthtoken | default('') | length > 0
+         and vault_awx_oauthtoken | default('') != 'CHANGE_ME' }}
   vars_files:
     - "{{ playbook_dir }}/../../vault/awx_api.yml"
     - "{{ playbook_dir }}/../../awx/project.yml"
@@ -45,19 +53,22 @@
   module_defaults:
     group/awx.awx.controller:
       controller_host: "{{ vault_awx_host }}"
-      controller_oauthtoken: "{{ vault_awx_oauthtoken }}"
+      controller_oauthtoken: "{{ vault_awx_oauthtoken if awx_token_configured else omit }}"
+      controller_username: "{{ awx_admin_user if not awx_token_configured else omit }}"
+      controller_password: "{{ awx_admin_password if not awx_token_configured else omit }}"
       validate_certs: "{{ awx_validate_certs | default(true) }}"
 
   tasks:
-    - name: AWXの接続トークンが設定されていることを確認する
+    - name: AWXの認証情報が設定されていることを確認する
       ansible.builtin.assert:
         that:
-          - vault_awx_oauthtoken | default('') | length > 0
-          - vault_awx_oauthtoken != 'CHANGE_ME'
+          - awx_token_configured or
+            (awx_admin_user | length > 0 and awx_admin_password | length > 0)
         fail_msg: >-
-          vault/awx_api.yml のトークンが未設定です。
-          ansible-vault edit vault/awx_api.yml で設定してください
-          (発行手順は同ファイル冒頭のコメント)。
+          AWXの認証情報がありません。ansible-vault edit vault/awx_api.yml で
+          OAuthトークンを設定するか(発行手順は同ファイル冒頭のコメント)、
+          初回は環境変数 CONTROLLER_USERNAME / CONTROLLER_PASSWORD で
+          管理者ログインを渡してください。
         quiet: true
 
     # --- Credential(Job Templateより先に作る。JTが名前で参照するため) ---

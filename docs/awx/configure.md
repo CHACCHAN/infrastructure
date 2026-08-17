@@ -18,11 +18,20 @@ ansible-playbook playbooks/awx/configure.yml \
 ansible-playbook playbooks/awx/configure.yml
 ```
 
+トークンをまだ発行していない初回は、awx.awxコレクション標準の環境変数で管理者ログインを渡せる(ブートストラップ経路。トークン設定後は不要):
+
+```sh
+export CONTROLLER_USERNAME=admin
+export CONTROLLER_PASSWORD=<AWX管理者パスワード>   # 実体はクラスタのSecret awx-admin-password
+ansible-playbook playbooks/awx/configure.yml -e awx_kubeconfig_content="$(cat ~/.kube/config)"
+```
+
 ## 変数一覧
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |
 | `vault_awx_host` / `vault_awx_oauthtoken` | str | ✔ | vault | AWXのURLとOAuthトークン([vault/awx_api.yml](../../vault/awx_api.yml)) |
+| `awx_admin_user` / `awx_admin_password` | str | 初回のみ | 環境変数 `CONTROLLER_USERNAME` / `CONTROLLER_PASSWORD` | トークン未発行時のブートストラップ認証(トークンが設定済みならそちらが優先) |
 | `awx_vault_password` | str | | 環境変数から自動 | Vault credentialへ登録する復号パスワード。既定は `ANSIBLE_VAULT_PASSWORD_FILE` の中身(空ならcredential作成をスキップ) |
 | `awx_kubeconfig_content` | str | 初回✔ | なし | k8s-deploy用kubeconfigの内容。未指定なら登録済みの値を変更しない |
 | `awx_scm_username` / `awx_scm_token` | str | | なし | プライベートリポジトリ用のSCM認証(GitHubユーザー+PAT)。指定時のみcredential作成 |
