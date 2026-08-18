@@ -35,7 +35,7 @@ ansible-playbook playbooks/k8s/deploy.yml -e force=true    # フィールド所�
 Job Template **`k8s-deploy`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。
 
 - Survey: `app`(任意・選択式。**選択肢は `k8s_apps` から自動生成**され二重管理しない)、`force`(任意・選択式)
-- **kubeconfigはCredentialで渡す**: カスタムCredential Type `kubeconfig` が内容をファイルとして注入し `K8S_AUTH_KUBECONFIG` を設定する(登録は `playbooks/awx/configure.yml -e awx_kubeconfig_content="$(cat ~/.kube/config)"`)
+- **kubeconfigはCredentialで渡す**: カスタムCredential Type `kubeconfig` が内容をファイルとして注入し `K8S_AUTH_KUBECONFIG` を設定する(登録は `playbooks/utils/awx/configure.yml -e awx_kubeconfig_content="$(cat ~/.kube/config)"`)
 - AWX PodのServiceAccountへのフォールバックは**効かない**(内部APIのURLが宣言と一致せずpreflightで止まる)。これは事故防止の仕様
 
 ## つまずきやすいポイント

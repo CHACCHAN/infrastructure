@@ -86,7 +86,7 @@ ansible-playbook playbooks/pve/provision.yml \
 
 ## AWXでの実行
 
-Job Template **`pve-provision`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml)、適用: `ansible-playbook playbooks/awx/configure.yml`)。
+Job Template **`pve-provision`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml)、適用: `ansible-playbook playbooks/utils/awx/configure.yml`)。
 
 - Surveyは共通セット(target / profile / vmid / node / ip / ip2 / pve_storage / SSHユーザー / 鍵2種 / cores / memory / disk_size + ハードウェア設定群)。**全問任意**: インベントリ実行なら未回答のまま起動、変えたい項目だけ回答する
 - `profile` は選択式(選択肢はインベントリの役割グループから自動生成)

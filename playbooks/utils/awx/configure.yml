@@ -1,7 +1,7 @@
 # AWX本体の設定(Project / Inventory / Credential / EE / Job Template+Survey)を
 # コードから冪等に収束させるPlaybook。定義の実体は awx/*.yml(単一の真実)。
 #
-# 実行例: ansible-playbook playbooks/awx/configure.yml
+# 実行例: ansible-playbook playbooks/utils/awx/configure.yml
 # 事前準備:
 #   1. ansible-vault edit vault/awx_api.yml でAWXのURLとOAuthトークンを設定
 #   2. 初回はVault credentialの実値が必要(既定でANSIBLE_VAULT_PASSWORD_FILEの
@@ -40,14 +40,14 @@
       {{ vault_awx_oauthtoken | default('') | length > 0
          and vault_awx_oauthtoken | default('') != 'CHANGE_ME' }}
   vars_files:
-    - "{{ playbook_dir }}/../../vault/awx_api.yml"
-    - "{{ playbook_dir }}/../../awx/project.yml"
-    - "{{ playbook_dir }}/../../awx/inventory.yml"
-    - "{{ playbook_dir }}/../../awx/credentials.yml"
-    - "{{ playbook_dir }}/../../awx/execution_environment.yml"
-    - "{{ playbook_dir }}/../../awx/job_templates.yml"
+    - "{{ playbook_dir }}/../../../vault/awx_api.yml"
+    - "{{ playbook_dir }}/../../../awx/project.yml"
+    - "{{ playbook_dir }}/../../../awx/inventory.yml"
+    - "{{ playbook_dir }}/../../../awx/credentials.yml"
+    - "{{ playbook_dir }}/../../../awx/execution_environment.yml"
+    - "{{ playbook_dir }}/../../../awx/job_templates.yml"
     # k8s-deployのSurvey選択肢(k8s_apps)をインベントリの宣言から解決する
-    - "{{ playbook_dir }}/../../inventory/group_vars/all/k8s.yml"
+    - "{{ playbook_dir }}/../../../inventory/group_vars/all/k8s.yml"
   module_defaults:
     group/awx.awx.controller:
       controller_host: "{{ vault_awx_host }}"

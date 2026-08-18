@@ -1,5 +1,5 @@
 # AWXのJobの実行状況を取得する単発実行ツール(utils)。
-# 実行例: ansible-playbook playbooks/utils/awx_job_status.yml -e job_id=123
+# 実行例: ansible-playbook playbooks/utils/awx/job_status.yml -e job_id=123
 # 実行例: 完了まで待つ場合は -e awx_job_wait=true (失敗したジョブは待ちタスクが失敗になる)
 ---
 - name: AWXのJobの実行状況を取得する
@@ -20,7 +20,7 @@
          if vault_awx_host is match('^https?://')
          else 'https://' ~ vault_awx_host }}
   vars_files:
-    - "{{ playbook_dir }}/../../vault/awx_api.yml"
+    - "{{ playbook_dir }}/../../../vault/awx_api.yml"
   module_defaults:
     group/awx.awx.controller:
       controller_host: "{{ vault_awx_host }}"
@@ -43,7 +43,7 @@
           - (job_id | default('') | string) is match('^[0-9]+$')
         fail_msg: >-
           対象のJob IDがありません。-e job_id=<番号> で指定してください
-          (番号は awx_job_launch.yml の出力かAWXのジョブ一覧で確認できます)。
+          (番号は job_launch.yml の出力かAWXのジョブ一覧で確認できます)。
         quiet: true
 
     - name: Jobの完了を待つ

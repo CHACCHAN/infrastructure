@@ -1,5 +1,5 @@
 # AWXのJob TemplateとSurveyの定義(単一の真実)。
-# playbooks/awx/configure.yml が読み込み、awx.awx.job_template へ渡す。
+# playbooks/utils/awx/configure.yml が読み込み、awx.awx.job_template へ渡す。
 #
 # Survey設計の原則(docs/awx/README.md の運用ルールをコード化):
 # - 任意項目は required: false かつ default を持たせない
@@ -373,10 +373,10 @@ awx_job_templates:
           - "false"
         required: false
 
-  # ④ 単発実行ツール(playbooks/utils/。docs/utils/README.md)
+  # ④ 単発実行ツール(playbooks/utils/awx/・authentik/。docs/utils/README.md)
   - name: utils-awx-job-launch
     description: AWXのJob Templateを名前指定で起動(既定で完了まで待つ)
-    playbook: playbooks/utils/awx_job_launch.yml
+    playbook: playbooks/utils/awx/job_launch.yml
     survey_extra:
       - question_name: 起動するJob Template名(job_template)
         question_description: 例 pve-provision。渡す変数(job_extra_vars)は変数欄でYAML/JSON指定
@@ -394,7 +394,7 @@ awx_job_templates:
 
   - name: utils-awx-job-status
     description: AWXのJobの実行状況を取得(オプションで完了待ち)
-    playbook: playbooks/utils/awx_job_status.yml
+    playbook: playbooks/utils/awx/job_status.yml
     survey_extra:
       - question_name: 対象のJob ID(job_id)
         variable: job_id
@@ -413,14 +413,14 @@ awx_job_templates:
 
   - name: utils-awx-inventory-sync
     description: Inventory Source(project-inventory)を同期しProject更新を反映
-    playbook: playbooks/utils/awx_inventory_sync.yml
+    playbook: playbooks/utils/awx/inventory_sync.yml
 
   - name: utils-authentik-users
     description: Authentikのユーザー作成とグループ所属を収束(冪等)
-    playbook: playbooks/utils/authentik_users.yml
+    playbook: playbooks/utils/authentik/users.yml
     survey_extra:
       - question_name: ユーザー名(username)
-        question_description: 一括作成はSurveyではなく変数欄の authentik_users で渡す(docs/utils/authentik_users.md)
+        question_description: 一括作成はSurveyではなく変数欄の authentik_users で渡す(docs/utils/authentik/users.md)
         variable: username
         type: text
         required: false

@@ -1,5 +1,5 @@
 # AWXのInventory Source(Project由来)を同期する単発実行ツール(utils)。
-# 実行例: ansible-playbook playbooks/utils/awx_inventory_sync.yml
+# 実行例: ansible-playbook playbooks/utils/awx/inventory_sync.yml
 # 実行例: 別のInventory/Sourceを対象にする場合は
 #           -e inventory_name=lab -e inventory_source=project-inventory
 # 既定値は awx/inventory.yml(単一の真実)から読む。
@@ -17,9 +17,9 @@
       {{ vault_awx_oauthtoken | default('') | length > 0
          and vault_awx_oauthtoken | default('') != 'CHANGE_ME' }}
   vars_files:
-    - "{{ playbook_dir }}/../../vault/awx_api.yml"
+    - "{{ playbook_dir }}/../../../vault/awx_api.yml"
     # Inventory名とSource名の既定値(awx_inventory_name / awx_inventory_source_name)。
-    - "{{ playbook_dir }}/../../awx/inventory.yml"
+    - "{{ playbook_dir }}/../../../awx/inventory.yml"
   module_defaults:
     group/awx.awx.controller:
       controller_host: "{{ vault_awx_host }}"

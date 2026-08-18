@@ -130,7 +130,7 @@ sequenceDiagram
 │   ├── pve/             # ① provision / power / destroy / template(+ adhoc=一時ホスト登録)
 │   ├── vm/              # ② サービスVMの一気通貫構築(dev/ は setup / password に分割)
 │   ├── k8s/             # ③ deploy(全アプリ or -e app=X)
-│   └── utils/           # 単発ツール(AWX API操作 / Authentikユーザー管理)
+│   └── utils/           # APIを叩く単発ツール(awx/=AWX設定収束・Job操作, authentik/=ユーザー管理)
 ├── roles/               # ドメイン別: pve* / vm* / k8s*
 ├── vault/               # Ansible Vault(全ファイル暗号化済み)
 ├── collections/         # requirements.yml → ee/ へのsymlink(AWX互換の標準位置)
@@ -153,6 +153,6 @@ sequenceDiagram
 | [docs/pve/](docs/pve/README.md) | ① Proxmox操作ドメイン(provision/power/destroy/template/adhoc) |
 | [docs/vm/](docs/vm/README.md) | ② VMセットアップドメイン(サービス別playbook・k3sクラスタ構築・鍵を本文で渡す仕組み) |
 | [docs/k8s/](docs/k8s/README.md) | ③ Kubernetesドメイン(deploy・アプリ追加・Secret・チャート管理) |
-| [docs/awx/](docs/awx/README.md) | **AWX**(Web UIからの実行前提と、Job Template/Survey等の設定のコード管理) |
-| [docs/utils/](docs/utils/README.md) | **単発ツール**(AWXのJob起動・状況取得・Inventory同期、Authentikユーザー/グループ管理) |
+| [docs/awx/](docs/awx/README.md) | **AWX**(Web UIからの実行前提とSurvey設計。設定の収束は docs/utils/awx/configure.md) |
+| [docs/utils/](docs/utils/README.md) | **単発ツール**(AWXの設定収束・Job起動・状況取得・Inventory同期、Authentikユーザー/グループ管理) |
 | [.devcontainer/README.md](.devcontainer/README.md) | Dev Containerのセットアップ注意点 |

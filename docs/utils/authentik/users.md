@@ -1,4 +1,4 @@
-# authentik_users.yml — Authentikのユーザーとグループ所属を収束させる
+# users.yml — Authentikのユーザーとグループ所属を収束させる
 
 Authentik REST API(`/api/v3/core/users/` ほか)でユーザーを作成し、任意でグループへ追加する。**単一ユーザーと複数ユーザーの一括作成**の両方に対応する。
 
@@ -14,15 +14,15 @@ Authentik REST API(`/api/v3/core/users/` ほか)でユーザーを作成し、�
 
 ```sh
 # 単一ユーザー(グループなし=作成のみ)
-ansible-playbook playbooks/utils/authentik_users.yml -e username=taro
+ansible-playbook playbooks/utils/authentik/users.yml -e username=taro
 
 # 単一ユーザー+グループ+初期パスワード
-ansible-playbook playbooks/utils/authentik_users.yml \
+ansible-playbook playbooks/utils/authentik/users.yml \
   -e username=taro -e display_name="Taro Yamada" -e email=taro@example.com \
   -e user_groups=developers,ops -e user_password='S3cret-Pass123'
 
 # 複数ユーザーの一括作成(ファイルで渡す)
-ansible-playbook playbooks/utils/authentik_users.yml -e @users.yml
+ansible-playbook playbooks/utils/authentik/users.yml -e @users.yml
 ```
 
 一括作成のファイル書式(`users.yml`。**リポジトリにはコミットしない**こと):

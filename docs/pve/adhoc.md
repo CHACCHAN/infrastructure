@@ -52,7 +52,7 @@ ansible-inventory --graph lab
 ls inventory/group_vars/ | grep -v '^all'
 ```
 
-グループを追加すれば、そのままprofileとして使える(AWXのSurvey選択肢は `playbooks/awx/configure.yml` の再実行で追従する)。どの役割グループとも違う構成を試すときは `profile=lab`(何も継承せず、必要な値を全部 `-e` で渡す)。
+グループを追加すれば、そのままprofileとして使える(AWXのSurvey選択肢は `playbooks/utils/awx/configure.yml` の再実行で追従する)。どの役割グループとも違う構成を試すときは `profile=lab`(何も継承せず、必要な値を全部 `-e` で渡す)。
 
 > IPだけ `-e ansible_host=` ではなく `-e ip=` を使う。`-e` は**全ホストへ最優先で効く**ため、`ansible_host` を直接渡すと `hostvars[別ホスト].ansible_host` を参照している箇所(`group_vars/k8s.yml` の `kubernetes_server_ip` など)まで書き換わってしまう。adhoc.ymlが `ip` を新ホストのホスト変数として登録することで、他ホストを汚さずに済ませている。
 

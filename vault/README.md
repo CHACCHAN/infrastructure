@@ -10,8 +10,8 @@
 | `supabase.yml` | Supabaseダッシュボードのログインパスワード | `playbooks/vm/supabase.yml` |
 | `cloudflare.yml` | Cloudflare APIトークン | `playbooks/vm/ddns.yml` |
 | `wg-easy.yml` | wg-easyの管理者パスワード等 | `playbooks/vm/wg-easy.yml` |
-| `awx_api.yml` | AWXのURL・OAuthトークン・Project同期用SSH鍵(`vault_awx_host` / `vault_awx_oauthtoken` / `vault_awx_scm_prikey`) | `playbooks/awx/configure.yml`、`playbooks/utils/awx_*.yml` |
-| `authentik.yml` | Authentik APIの接続先とトークン(`vault_authentik_host` / `vault_authentik_api_token`) | `playbooks/utils/authentik_users.yml` |
+| `awx_api.yml` | AWXのURL・OAuthトークン・Project同期用SSH鍵(`vault_awx_host` / `vault_awx_oauthtoken` / `vault_awx_scm_prikey`) | `playbooks/utils/awx/*.yml` |
+| `authentik.yml` | Authentik APIの接続先とトークン(`vault_authentik_host` / `vault_authentik_api_token`) | `playbooks/utils/authentik/users.yml` |
 
 > **注意**: `k8s_secrets.yml` 内のSecretの**内部キー名**は、pgadminだけ大文字スネークケース(`PGADMIN_OAUTH2_CLIENT_ID` 等)で書く。pgadminはチャートの `envVarsFromSecrets`(キー名がそのまま環境変数名になる)方式のため。他アプリは `db-password` のようなケバブケース + マニフェスト側の `secretKeyRef.key` 明示。
 

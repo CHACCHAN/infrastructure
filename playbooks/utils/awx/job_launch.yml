@@ -1,5 +1,5 @@
 # AWXのJob Templateを名前指定で起動する単発実行ツール(utils)。
-# 実行例: ansible-playbook playbooks/utils/awx_job_launch.yml -e job_template=pve-power \
+# 実行例: ansible-playbook playbooks/utils/awx/job_launch.yml -e job_template=pve-power \
 #           -e '{"job_extra_vars": {"target": "k8s", "state": "started"}}'
 # 実行例: 起動だけして完了を待たない場合は -e awx_job_wait=false
 # 注意: extra varsを受け取るJTは ask_variables_on_launch かSurveyの対応質問が必要
@@ -19,7 +19,7 @@
       {{ vault_awx_oauthtoken | default('') | length > 0
          and vault_awx_oauthtoken | default('') != 'CHANGE_ME' }}
   vars_files:
-    - "{{ playbook_dir }}/../../vault/awx_api.yml"
+    - "{{ playbook_dir }}/../../../vault/awx_api.yml"
   module_defaults:
     group/awx.awx.controller:
       controller_host: "{{ vault_awx_host }}"
@@ -61,4 +61,4 @@
           - "Job Template {{ job_template }} を起動しました (job id={{ utils_awx_job.id }})"
           - "状態: {{ utils_awx_job.status | default('起動要求のみ(完了待ちなし)') }}"
           - "出力: {{ vault_awx_host }}/#/jobs/playbook/{{ utils_awx_job.id }}/output"
-          - "あとから確認: ansible-playbook playbooks/utils/awx_job_status.yml -e job_id={{ utils_awx_job.id }}"
+          - "あとから確認: ansible-playbook playbooks/utils/awx/job_status.yml -e job_id={{ utils_awx_job.id }}"

@@ -21,7 +21,7 @@ collections:
     version: ">=13.0.0,<14.0.0"
   - name: ansible.posix # mount 等
     version: ">=2.0.0,<3.0.0"
-  - name: awx.awx # AWX自身の構成管理(playbooks/awx/configure.yml)
+  - name: awx.awx # AWX自身の構成管理(playbooks/utils/awx/configure.yml)
     # コレクション版はAWX本体版と揃える(公式推奨)。awx-ee:latestにも同梱
     # されているが、Project同期とEEが常に同じ版を見るようここで明示する。
     version: ">=24.6.1,<25.0.0"
