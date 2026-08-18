@@ -1,0 +1,54 @@
+# AWXのInventory Source(Project由来)を同期する単発実行ツール(utils)。
+# 実行例: ansible-playbook playbooks/utils/awx_inventory_sync.yml
+# 実行例: 別のInventory/Sourceを対象にする場合は
+#           -e inventory_name=lab -e inventory_source=project-inventory
+# 既定値は awx/inventory.yml(単一の真実)から読む。
+---
+- name: AWXのInventory Sourceを同期する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: localでawxkitを利用できるコントローラ側Pythonへ固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    awx_admin_user: "{{ lookup('ansible.builtin.env', 'CONTROLLER_USERNAME') | default('', true) }}"
+    awx_admin_password: "{{ lookup('ansible.builtin.env', 'CONTROLLER_PASSWORD') | default('', true) }}"
+    awx_token_configured: >-
+      {{ vault_awx_oauthtoken | default('') | length > 0
+         and vault_awx_oauthtoken | default('') != 'CHANGE_ME' }}
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/awx_api.yml"
+    # Inventory名とSource名の既定値(awx_inventory_name / awx_inventory_source_name)。
+    - "{{ playbook_dir }}/../../awx/inventory.yml"
+  module_defaults:
+    group/awx.awx.controller:
+      controller_host: "{{ vault_awx_host }}"
+      controller_oauthtoken: "{{ vault_awx_oauthtoken if awx_token_configured else omit }}"
+      controller_username: "{{ awx_admin_user if not awx_token_configured else omit }}"
+      controller_password: "{{ awx_admin_password if not awx_token_configured else omit }}"
+      validate_certs: "{{ awx_validate_certs | default(true) }}"
+
+  tasks:
+    - name: チェックモードに対応していないことを通知する
+      ansible.builtin.assert:
+        that:
+          - not ansible_check_mode
+        fail_msg: このplaybookはAPI呼び出しのみのため --check には対応していません。
+        quiet: true
+
+    - name: Inventory Sourceを同期する
+      awx.awx.inventory_source_update:
+        name: "{{ inventory_source | default(awx_inventory_source_name, true) }}"
+        inventory: "{{ inventory_name | default(awx_inventory_name, true) }}"
+        # 同期の完了まで待つ(失敗した同期はこのタスクも失敗になる)。
+        wait: true
+        timeout: "{{ awx_job_timeout | default(600) | int }}"
+      register: utils_awx_sync
+
+    - name: 同期結果を表示する
+      ansible.builtin.debug:
+        msg: >-
+          Inventory {{ inventory_name | default(awx_inventory_name, true) }} の
+          Source {{ inventory_source | default(awx_inventory_source_name, true) }} を
+          同期しました(status={{ utils_awx_sync.status | default('successful') }})。
+          Project更新に追従したホスト/変数がAWXへ反映されています。

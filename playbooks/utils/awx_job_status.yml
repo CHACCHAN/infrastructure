@@ -1,0 +1,91 @@
+# AWXのJobの実行状況を取得する単発実行ツール(utils)。
+# 実行例: ansible-playbook playbooks/utils/awx_job_status.yml -e job_id=123
+# 実行例: 完了まで待つ場合は -e awx_job_wait=true (失敗したジョブは待ちタスクが失敗になる)
+---
+- name: AWXのJobの実行状況を取得する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: localでawxkitを利用できるコントローラ側Pythonへ固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    awx_admin_user: "{{ lookup('ansible.builtin.env', 'CONTROLLER_USERNAME') | default('', true) }}"
+    awx_admin_password: "{{ lookup('ansible.builtin.env', 'CONTROLLER_PASSWORD') | default('', true) }}"
+    awx_token_configured: >-
+      {{ vault_awx_oauthtoken | default('') | length > 0
+         and vault_awx_oauthtoken | default('') != 'CHANGE_ME' }}
+    # vault_awx_hostがスキーム無しでも動くよう補う(awx.awxモジュールと同じ既定=https)。
+    awx_api_base: >-
+      {{ vault_awx_host
+         if vault_awx_host is match('^https?://')
+         else 'https://' ~ vault_awx_host }}
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/awx_api.yml"
+  module_defaults:
+    group/awx.awx.controller:
+      controller_host: "{{ vault_awx_host }}"
+      controller_oauthtoken: "{{ vault_awx_oauthtoken if awx_token_configured else omit }}"
+      controller_username: "{{ awx_admin_user if not awx_token_configured else omit }}"
+      controller_password: "{{ awx_admin_password if not awx_token_configured else omit }}"
+      validate_certs: "{{ awx_validate_certs | default(true) }}"
+
+  tasks:
+    - name: チェックモードに対応していないことを通知する
+      ansible.builtin.assert:
+        that:
+          - not ansible_check_mode
+        fail_msg: このplaybookはAPI呼び出しのみのため --check には対応していません。
+        quiet: true
+
+    - name: 対象のJob IDが指定されていることを確認する
+      ansible.builtin.assert:
+        that:
+          - (job_id | default('') | string) is match('^[0-9]+$')
+        fail_msg: >-
+          対象のJob IDがありません。-e job_id=<番号> で指定してください
+          (番号は awx_job_launch.yml の出力かAWXのジョブ一覧で確認できます)。
+        quiet: true
+
+    - name: Jobの完了を待つ
+      awx.awx.job_wait:
+        job_id: "{{ job_id | int }}"
+        timeout: "{{ awx_job_timeout | default(1800) | int }}"
+      when: awx_job_wait | default(false) | bool
+
+    # 認証ヘッダ(トークン)が失敗時の出力へ出ないようno_logにし、判定は次のassertで行う。
+    - name: Jobの現在状況を取得する
+      ansible.builtin.uri:
+        url: "{{ awx_api_base }}/api/v2/jobs/{{ job_id }}/"
+        method: GET
+        headers: >-
+          {{ {'Authorization': 'Bearer ' ~ vault_awx_oauthtoken}
+             if awx_token_configured else {} }}
+        url_username: "{{ omit if awx_token_configured else awx_admin_user }}"
+        url_password: "{{ omit if awx_token_configured else awx_admin_password }}"
+        force_basic_auth: "{{ not awx_token_configured }}"
+        validate_certs: "{{ awx_validate_certs | default(true) }}"
+        return_content: true
+      register: utils_awx_job_info
+      failed_when: false
+      no_log: true
+
+    - name: Jobを取得できたことを確認する
+      ansible.builtin.assert:
+        that:
+          - utils_awx_job_info.status | default(0) == 200
+        fail_msg: >-
+          Job {{ job_id }} を取得できませんでした
+          (HTTP {{ utils_awx_job_info.status | default('接続失敗') }})。
+          job_idの打ち間違いか、vault/awx_api.yml の接続情報を確認してください。
+        quiet: true
+
+    - name: Jobの状況を表示する
+      ansible.builtin.debug:
+        msg:
+          - "Job {{ job_id }}: {{ utils_awx_job_info.json.name | default('(名前不明)') }}"
+          - "状態: {{ utils_awx_job_info.json.status }} (failed={{ utils_awx_job_info.json.failed }})"
+          - >-
+            開始: {{ utils_awx_job_info.json.started | default('(未開始)', true) }} /
+            終了: {{ utils_awx_job_info.json.finished | default('(未終了)', true) }} /
+            所要: {{ utils_awx_job_info.json.elapsed | default(0) }}秒
+          - "出力: {{ vault_awx_host }}/#/jobs/playbook/{{ job_id }}/output"

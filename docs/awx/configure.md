@@ -43,7 +43,7 @@ ansible-playbook playbooks/awx/configure.yml -e awx_kubeconfig_content="$(cat ~/
 1. トークン未設定(`CHANGE_ME`)なら実行前に停止
 2. Credential類(SCM→Vault→kubeconfig型→kubeconfig)を先に収束(Job Templateが名前で参照するため)
 3. Project(Git同期)→ Inventory + Source(Project由来 `inventory/`)→ EE を収束
-4. Job Template 14本を、共通Survey+JT固有Surveyを合成して収束(`k8s-deploy` の `app` 選択肢は `k8s_apps` から実行時解決)
+4. Job Template 18本(pve系4 + vm系9 + k8s系1 + utils系4)を、共通Survey+JT固有Surveyを合成して収束(`k8s-deploy` の `app` 選択肢は `k8s_apps` から実行時解決)
 
 ## つまずきやすいポイント
 

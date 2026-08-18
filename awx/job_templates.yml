@@ -372,3 +372,74 @@ awx_job_templates:
           - "true"
           - "false"
         required: false
+
+  # ④ 単発実行ツール(playbooks/utils/。docs/utils/README.md)
+  - name: utils-awx-job-launch
+    description: AWXのJob Templateを名前指定で起動(既定で完了まで待つ)
+    playbook: playbooks/utils/awx_job_launch.yml
+    survey_extra:
+      - question_name: 起動するJob Template名(job_template)
+        question_description: 例 pve-provision。渡す変数(job_extra_vars)は変数欄でYAML/JSON指定
+        variable: job_template
+        type: text
+        required: true
+      - question_name: 完了を待つ(awx_job_wait)
+        question_description: 未回答なら待つ。起動だけして戻るなら false
+        variable: awx_job_wait
+        type: multiplechoice
+        choices:
+          - "true"
+          - "false"
+        required: false
+
+  - name: utils-awx-job-status
+    description: AWXのJobの実行状況を取得(オプションで完了待ち)
+    playbook: playbooks/utils/awx_job_status.yml
+    survey_extra:
+      - question_name: 対象のJob ID(job_id)
+        variable: job_id
+        type: integer
+        required: true
+        min: 1
+        max: 999999999
+      - question_name: 完了を待つ(awx_job_wait)
+        question_description: 未回答なら現在状況の表示のみ
+        variable: awx_job_wait
+        type: multiplechoice
+        choices:
+          - "true"
+          - "false"
+        required: false
+
+  - name: utils-awx-inventory-sync
+    description: Inventory Source(project-inventory)を同期しProject更新を反映
+    playbook: playbooks/utils/awx_inventory_sync.yml
+
+  - name: utils-authentik-users
+    description: Authentikのユーザー作成とグループ所属を収束(冪等)
+    playbook: playbooks/utils/authentik_users.yml
+    survey_extra:
+      - question_name: ユーザー名(username)
+        question_description: 一括作成はSurveyではなく変数欄の authentik_users で渡す(docs/utils/authentik_users.md)
+        variable: username
+        type: text
+        required: false
+      - question_name: 表示名(display_name)
+        question_description: 未回答ならユーザー名と同じ
+        variable: display_name
+        type: text
+        required: false
+      - question_name: メールアドレス(email)
+        variable: email
+        type: text
+        required: false
+      - question_name: 所属グループ(user_groups)
+        question_description: カンマ区切り(例 developers,ops)。未回答ならユーザー作成のみ
+        variable: user_groups
+        type: text
+        required: false
+      - question_name: 初期パスワード(user_password)
+        question_description: 新規作成したユーザーにだけ設定(既存ユーザーは変更しない)
+        variable: user_password
+        type: password
+        required: false

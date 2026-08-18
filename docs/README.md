@@ -10,6 +10,7 @@
 | ② VMセットアップ(vm) | [vm/README.md](vm/README.md) | VMの中身(OS設定・Docker・サービス)をSSHで構築 |
 | ③ Kubernetes(k8s) | [k8s/README.md](k8s/README.md) | k3sクラスタ上の全アプリを宣言的に収束 |
 | AWX | [awx/README.md](awx/README.md) | Web UIからの実行と、その設定のコード管理 |
+| 単発ツール(utils) | [utils/README.md](utils/README.md) | 単発で叩く実用ツール集(AWX API操作・Authentikユーザー管理) |
 
 ## 実行方式は二本立て
 

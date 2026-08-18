@@ -1,0 +1,329 @@
+# Authentikのユーザー作成とグループ所属を収束させる単発実行ツール(utils)。
+# 実行例(単一): ansible-playbook playbooks/utils/authentik_users.yml \
+#                 -e username=taro -e display_name="Taro Yamada" \
+#                 -e email=taro@example.com -e user_groups=developers,ops
+# (変数名が groups でないのは、Ansibleのマジック変数 groups と衝突するため)
+# 実行例(一括): ansible-playbook playbooks/utils/authentik_users.yml -e @users.yml
+#   users.yml の書式は docs/utils/authentik_users.md を参照
+#   (authentik_users: [{username:, name:, email:, groups: [], password: }] のリスト)
+#
+# 冪等性:
+# - 既存ユーザーは作り直さない(名前・メール等も上書きしない。作成のみ)
+# - グループ追加はAuthentik APIの仕様により所属済みでも安全(何度実行してもよい)
+# - groups未指定(空)ならユーザー作成のみ行う
+# - passwordは新規作成したユーザーにだけ設定する(既存ユーザーのパスワードは変えない)
+#
+# APIトークンは vault/authentik.yml(暗号化済み)の vault_authentik_api_token。
+# 認証ヘッダが失敗時の出力へ出ないよう、API呼び出しはすべて no_log とし、
+# 成否は直後のassertでトークンを含まない情報(HTTP状態と応答JSON)だけで判定する。
+---
+- name: Authentikのユーザーとグループ所属を収束させる
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    authentik_api_base: >-
+      {{ (vault_authentik_host | regex_replace('/+$', '')) ~ '/api/v3' }}
+    # 単一指定(-e/AWXのSurvey)と一括指定(authentik_users)を同じリストへ正規化する。
+    # AWXのSurveyは未回答の質問を空文字で渡すことがあるため、中身の有無で判定する。
+    authentik_users_input: >-
+      {{ (authentik_users | default([], true))
+         + ([{'username': username,
+              'name': display_name | default('', true),
+              'email': email | default('', true),
+              'groups': user_groups | default([], true),
+              'password': user_password | default('', true)}]
+            if (username | default('', true) | length > 0) else []) }}
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/authentik.yml"
+  module_defaults:
+    # 全API呼び出しへ認証ヘッダを一括供給する(トークンは vault/authentik.yml)。
+    ansible.builtin.uri:
+      headers:
+        Authorization: "Bearer {{ vault_authentik_api_token }}"
+        Content-Type: application/json
+      return_content: true
+
+  tasks:
+    - name: チェックモードに対応していないことを通知する
+      ansible.builtin.assert:
+        that:
+          - not ansible_check_mode
+        fail_msg: このplaybookはAPI呼び出しのみのため --check には対応していません。
+        quiet: true
+
+    - name: 対象ユーザーが指定されていることを確認する
+      ansible.builtin.assert:
+        that:
+          - authentik_users_input | length > 0
+        fail_msg: >-
+          作成するユーザーがありません。単一なら -e username=<ユーザー名>、
+          一括なら -e @users.yml (authentik_usersのリスト)で指定してください
+          (docs/utils/authentik_users.md)。
+        quiet: true
+
+    # groupsはSurvey経由だとカンマ区切り文字列、ファイル経由だとリストで届くため
+    # ここでリストへ揃える。nameは未指定ならusernameを流用する(APIの必須項目)。
+    - name: 指定内容を正規化する
+      ansible.builtin.set_fact:
+        authentik_users_resolved: >-
+          {%- set authentik_out = [] -%}
+          {%- for authentik_u in authentik_users_input -%}
+          {%-   set authentik_g = authentik_u.groups | default([], true) -%}
+          {%-   set authentik_glist = (authentik_g if authentik_g is not string
+                                       else authentik_g.split(','))
+                                      | map('trim') | reject('equalto', '') | list -%}
+          {%-   set _ = authentik_out.append({
+                  'username': authentik_u.username | default('', true) | trim,
+                  'name': (authentik_u.name | default('', true))
+                          or (authentik_u.username | default('', true) | trim),
+                  'email': authentik_u.email | default('', true),
+                  'groups': authentik_glist,
+                  'password': authentik_u.password | default('', true)}) -%}
+          {%- endfor -%}
+          {{ authentik_out }}
+      # passwordを含むため出力を抑止する。
+      no_log: true
+
+    - name: ユーザー名の形式と重複を検証する
+      ansible.builtin.assert:
+        that:
+          - authentik_invalid_usernames | length == 0
+          - authentik_all_usernames | unique | length == authentik_all_usernames | length
+        fail_msg: >-
+          ユーザー名の指定に問題があります。
+          形式不正: {{ authentik_invalid_usernames | join(', ') | default('(なし)', true) }} /
+          指定の重複: {{ authentik_all_usernames | difference(authentik_all_usernames | unique)
+                        | unique | join(', ') | default('(なし)', true) }}。
+          ユーザー名は英数字と @ . + _ - の150文字以内で、一覧内で一意にしてください。
+        quiet: true
+      vars:
+        authentik_all_usernames: "{{ authentik_users_resolved | map(attribute='username') | list }}"
+        authentik_invalid_usernames: >-
+          {{ authentik_all_usernames
+             | reject('match', '^[a-zA-Z0-9@.+_-]{1,150}$') | list }}
+
+    # --- グループの事前解決(指定がある場合のみ。無ければこの2タスクは対象0件) ---
+    - name: 指定されたグループを検索する
+      ansible.builtin.uri:
+        url: "{{ authentik_api_base }}/core/groups/?name={{ item | urlencode }}"
+        method: GET
+        status_code: [200, -1]
+      register: authentik_group_lookup
+      loop: "{{ authentik_users_resolved | map(attribute='groups') | flatten | unique }}"
+      failed_when: false
+      no_log: true
+
+    - name: 指定されたグループがすべて存在することを確認する
+      ansible.builtin.assert:
+        that:
+          - authentik_group_lookup_failed | length == 0
+          - authentik_groups_missing | length == 0
+        fail_msg: >-
+          グループを解決できません。
+          API失敗: {{ authentik_group_lookup_failed | join(', ') | default('(なし)', true) }} /
+          存在しないグループ: {{ authentik_groups_missing | join(', ') | default('(なし)', true) }}。
+          グループはAuthentik側で先に作成してください(このツールは作成しません)。
+          API失敗の場合は vault/authentik.yml の接続先とトークンを確認してください。
+        quiet: true
+      vars:
+        authentik_group_lookup_failed: >-
+          {{ authentik_group_lookup.results | default([])
+             | rejectattr('status', 'equalto', 200)
+             | map(attribute='item') | list }}
+        authentik_groups_missing: >-
+          {%- set authentik_missing = [] -%}
+          {%- for authentik_r in authentik_group_lookup.results | default([])
+                if authentik_r.status | default(0) == 200 -%}
+          {%-   if authentik_r.json.results | selectattr('name', 'equalto', authentik_r.item)
+                   | list | length == 0 -%}
+          {%-     set _ = authentik_missing.append(authentik_r.item) -%}
+          {%-   endif -%}
+          {%- endfor -%}
+          {{ authentik_missing }}
+
+    - name: グループ名からIDへの対応表を作る
+      ansible.builtin.set_fact:
+        authentik_group_pk_map: >-
+          {%- set authentik_map = {} -%}
+          {%- for authentik_r in authentik_group_lookup.results | default([]) -%}
+          {%-   for authentik_g in authentik_r.json.results
+                   | selectattr('name', 'equalto', authentik_r.item) -%}
+          {%-     set _ = authentik_map.update({authentik_g.name: authentik_g.pk}) -%}
+          {%-   endfor -%}
+          {%- endfor -%}
+          {{ authentik_map }}
+
+    # --- ユーザーの存在確認と作成 ---
+    # ?username= は完全一致検索だが、応答からも完全一致だけを拾う(将来の仕様変化に備える)。
+    - name: 既存ユーザーを検索する
+      ansible.builtin.uri:
+        url: "{{ authentik_api_base }}/core/users/?username={{ item.username | urlencode }}"
+        method: GET
+        status_code: [200, -1]
+      register: authentik_user_lookup
+      loop: "{{ authentik_users_resolved }}"
+      loop_control:
+        label: "{{ item.username }}"
+      failed_when: false
+      no_log: true
+
+    - name: ユーザー検索がAPIに受理されたことを確認する
+      ansible.builtin.assert:
+        that:
+          - authentik_user_lookup_failed | length == 0
+        fail_msg: >-
+          ユーザー検索に失敗しました:
+          {{ authentik_user_lookup_failed | join(', ') }}。
+          vault/authentik.yml の接続先(vault_authentik_host)とトークンを確認してください。
+        quiet: true
+      vars:
+        authentik_user_lookup_failed: >-
+          {{ authentik_user_lookup.results
+             | rejectattr('status', 'equalto', 200)
+             | map(attribute='item.username') | list }}
+
+    - name: 既存ユーザーと作成対象を仕分ける
+      ansible.builtin.set_fact:
+        authentik_users_to_create: >-
+          {%- set authentik_create = [] -%}
+          {%- for authentik_r in authentik_user_lookup.results -%}
+          {%-   if authentik_r.json.results
+                   | selectattr('username', 'equalto', authentik_r.item.username)
+                   | list | length == 0 -%}
+          {%-     set _ = authentik_create.append(authentik_r.item) -%}
+          {%-   endif -%}
+          {%- endfor -%}
+          {{ authentik_create }}
+        authentik_existing_pk_map: >-
+          {%- set authentik_map = {} -%}
+          {%- for authentik_r in authentik_user_lookup.results -%}
+          {%-   for authentik_u in authentik_r.json.results
+                   | selectattr('username', 'equalto', authentik_r.item.username) -%}
+          {%-     set _ = authentik_map.update({authentik_u.username: authentik_u.pk}) -%}
+          {%-   endfor -%}
+          {%- endfor -%}
+          {{ authentik_map }}
+      # passwordを含むため出力を抑止する。
+      no_log: true
+
+    - name: ユーザーを作成する
+      ansible.builtin.uri:
+        url: "{{ authentik_api_base }}/core/users/"
+        method: POST
+        body_format: json
+        # パスワードは作成時に渡せない(別エンドポイント)。emailは指定時のみ送る。
+        body: >-
+          {{ {'username': item.username, 'name': item.name}
+             | combine({'email': item.email} if item.email | length > 0 else {}) }}
+        status_code: [201, -1]
+      register: authentik_user_create
+      loop: "{{ authentik_users_to_create }}"
+      loop_control:
+        label: "{{ item.username }}"
+      failed_when: false
+      no_log: true
+
+    - name: ユーザーを作成できたことを確認する
+      ansible.builtin.assert:
+        that:
+          - authentik_create_failed | length == 0
+        fail_msg: >-
+          ユーザー作成に失敗しました:
+          {{ authentik_create_failed | map(attribute='item.username') | list | join(', ') }}
+          (HTTP {{ authentik_create_failed | map(attribute='status') | list }} /
+          応答 {{ authentik_create_failed | map(attribute='json', default={}) | list }})。
+        quiet: true
+      vars:
+        authentik_create_failed: >-
+          {{ authentik_user_create.results | default([])
+             | rejectattr('status', 'equalto', 201) | list }}
+
+    # 「パスワードを渡した=新規ユーザーに設定したい」の意味。既存ユーザーは変えない
+    # (変えたい場合はAuthentikのフローかWeb UIで行う)。
+    - name: 新規ユーザーへパスワードを設定する
+      ansible.builtin.uri:
+        url: "{{ authentik_api_base }}/core/users/{{ item.json.pk }}/set_password/"
+        method: POST
+        body_format: json
+        body:
+          password: "{{ item.item.password }}"
+        status_code: [200, 204, -1]
+      register: authentik_set_password
+      loop: "{{ authentik_user_create.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.username | default('(スキップ)') }}"
+      when: item.item.password | default('', true) | length > 0
+      failed_when: false
+      no_log: true
+
+    - name: パスワードを設定できたことを確認する
+      ansible.builtin.assert:
+        that:
+          - authentik_password_failed | length == 0
+        fail_msg: >-
+          パスワード設定に失敗しました:
+          {{ authentik_password_failed | join(', ') }}。
+          Authentikのパスワードポリシーを満たしているか確認してください。
+        quiet: true
+      vars:
+        authentik_password_failed: >-
+          {{ authentik_set_password.results | default([])
+             | selectattr('status', 'defined')
+             | rejectattr('status', 'in', [200, 204])
+             | map(attribute='item.item.username') | list }}
+
+    - name: ユーザー名からIDへの対応表を作る
+      ansible.builtin.set_fact:
+        authentik_user_pk_map: >-
+          {%- set authentik_map = dict(authentik_existing_pk_map) -%}
+          {%- for authentik_r in authentik_user_create.results | default([])
+                if authentik_r.status | default(0) == 201 -%}
+          {%-   set _ = authentik_map.update({authentik_r.item.username: authentik_r.json.pk}) -%}
+          {%- endfor -%}
+          {{ authentik_map }}
+
+    # --- グループ所属(groups未指定のユーザーはペアが生成されず作成のみで終わる) ---
+    # add_user はAuthentik API側が冪等(所属済みでも成功を返す)。
+    - name: ユーザーをグループへ追加する
+      ansible.builtin.uri:
+        url: "{{ authentik_api_base }}/core/groups/{{ authentik_group_pk_map[item.1] }}/add_user/"
+        method: POST
+        body_format: json
+        body:
+          pk: "{{ authentik_user_pk_map[item.0.username] | int }}"
+        status_code: [200, 204, -1]
+      register: authentik_add_user
+      loop: "{{ authentik_users_resolved | subelements('groups') }}"
+      loop_control:
+        label: "{{ item.0.username }} → {{ item.1 }}"
+      failed_when: false
+      no_log: true
+
+    - name: グループへ追加できたことを確認する
+      ansible.builtin.assert:
+        that:
+          - authentik_add_failed | length == 0
+        fail_msg: >-
+          グループ追加に失敗しました: {{ authentik_add_failed | join(', ') }}。
+          トークンにグループ変更の権限があるか確認してください。
+        quiet: true
+      vars:
+        authentik_add_failed: >-
+          {{ authentik_add_user.results | default([])
+             | rejectattr('status', 'in', [200, 204])
+             | map(attribute='item.0.username') | list }}
+
+    - name: 実行結果を表示する
+      ansible.builtin.debug:
+        msg:
+          - "作成したユーザー: {{ authentik_users_to_create | map(attribute='username') | list | join(', ') | default('(なし。全員作成済み)', true) }}"
+          - "作成済みのため触れなかったユーザー: {{ authentik_existing_pk_map.keys() | list | join(', ') | default('(なし)', true) }}"
+          - >-
+            収束させたグループ所属:
+            {%- set authentik_pairs = [] -%}
+            {%- for authentik_p in authentik_users_resolved | subelements('groups') -%}
+            {%-   set _ = authentik_pairs.append(authentik_p.0.username ~ ' → ' ~ authentik_p.1) -%}
+            {%- endfor -%}
+            {{ ' ' ~ (authentik_pairs | join(', ') | default('(グループ指定なし)', true)) }}

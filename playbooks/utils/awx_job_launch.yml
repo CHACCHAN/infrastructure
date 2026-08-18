@@ -1,0 +1,64 @@
+# AWXのJob Templateを名前指定で起動する単発実行ツール(utils)。
+# 実行例: ansible-playbook playbooks/utils/awx_job_launch.yml -e job_template=pve-power \
+#           -e '{"job_extra_vars": {"target": "k8s", "state": "started"}}'
+# 実行例: 起動だけして完了を待たない場合は -e awx_job_wait=false
+# 注意: extra varsを受け取るJTは ask_variables_on_launch かSurveyの対応質問が必要
+#       (このリポジトリのJTは全て変数欄を許可している。docs/awx/README.md)
+---
+- name: AWXのJob Templateを起動する
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: localでawxkitを利用できるコントローラ側Pythonへ固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    # トークン未発行のブートストラップ経路(CONTROLLER_*)はconfigure.ymlと同じ。
+    awx_admin_user: "{{ lookup('ansible.builtin.env', 'CONTROLLER_USERNAME') | default('', true) }}"
+    awx_admin_password: "{{ lookup('ansible.builtin.env', 'CONTROLLER_PASSWORD') | default('', true) }}"
+    awx_token_configured: >-
+      {{ vault_awx_oauthtoken | default('') | length > 0
+         and vault_awx_oauthtoken | default('') != 'CHANGE_ME' }}
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/awx_api.yml"
+  module_defaults:
+    group/awx.awx.controller:
+      controller_host: "{{ vault_awx_host }}"
+      controller_oauthtoken: "{{ vault_awx_oauthtoken if awx_token_configured else omit }}"
+      controller_username: "{{ awx_admin_user if not awx_token_configured else omit }}"
+      controller_password: "{{ awx_admin_password if not awx_token_configured else omit }}"
+      validate_certs: "{{ awx_validate_certs | default(true) }}"
+
+  tasks:
+    - name: チェックモードに対応していないことを通知する
+      ansible.builtin.assert:
+        that:
+          - not ansible_check_mode
+        fail_msg: このplaybookはAPI呼び出しのみのため --check には対応していません。
+        quiet: true
+
+    # AWXのSurveyは未回答の質問を空文字で渡すことがあるため、is defined ではなく中身で判定する。
+    - name: 起動するJob Template名が指定されていることを確認する
+      ansible.builtin.assert:
+        that:
+          - job_template | default('', true) | length > 0
+        fail_msg: >-
+          起動するJob Template名がありません。
+          -e job_template=<JT名> で指定してください(一覧は docs/awx/README.md)。
+        quiet: true
+
+    - name: Job Templateを起動する
+      awx.awx.job_launch:
+        name: "{{ job_template }}"
+        extra_vars: "{{ job_extra_vars | default(omit) }}"
+        # 既定は完了まで待つ(失敗したジョブはこのタスクも失敗になる)。
+        wait: "{{ awx_job_wait | default(true) | bool }}"
+        timeout: "{{ awx_job_timeout | default(1800) | int }}"
+      register: utils_awx_job
+
+    - name: 起動結果を表示する
+      ansible.builtin.debug:
+        msg:
+          - "Job Template {{ job_template }} を起動しました (job id={{ utils_awx_job.id }})"
+          - "状態: {{ utils_awx_job.status | default('起動要求のみ(完了待ちなし)') }}"
+          - "出力: {{ vault_awx_host }}/#/jobs/playbook/{{ utils_awx_job.id }}/output"
+          - "あとから確認: ansible-playbook playbooks/utils/awx_job_status.yml -e job_id={{ utils_awx_job.id }}"
