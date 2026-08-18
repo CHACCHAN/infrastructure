@@ -17,6 +17,8 @@
     mode: "0600"
   check_mode: false
   changed_when: false
+  # values経由で秘密値を渡すロールはk8s_helm_no_log=trueで全経路の出力を抑止する
+  no_log: "{{ k8s_helm_no_log | default(false) }}"
 
 - name: Helmチャートを描画する
   ansible.builtin.command:
@@ -35,21 +37,36 @@
   register: k8s_helm_template
   changed_when: false
   check_mode: false
+  no_log: "{{ k8s_helm_no_log | default(false) }}"
 
 # PyYAML(YAML 1.1)はYAML 1.2の8進表記「0oNNN」を文字列として読み、数値を要求する
 # フィールドで型エラーになる(実例: nextcloudチャートの defaultMode: 0o755)。
-# kubectlはYAML 1.2対応のため旧手順では顕在化しなかった。主要なパーミッション値を
-# 10進へ正規化してから適用する。
+# kubectlはYAML 1.2対応のため旧手順では顕在化しなかった。「: 0oNNN」で終わる行の
+# 値を10進へ変換してから適用する(どの8進値が来ても変換できるよう汎用化している)。
 - name: チャート出力のYAML 1.2 8進表記を10進へ正規化する
   ansible.builtin.set_fact:
     k8s_helm_manifest: >-
-      {{ k8s_helm_template.stdout
-         | regex_replace('(?m): 0o755$', ': 493')
-         | regex_replace('(?m): 0o750$', ': 488')
-         | regex_replace('(?m): 0o644$', ': 420')
-         | regex_replace('(?m): 0o444$', ': 292')
-         | regex_replace('(?m): 0o440$', ': 288')
-         | regex_replace('(?m): 0o400$', ': 256') }}
+      {%- set k8s_helm_lines = [] -%}
+      {%- for k8s_helm_line in k8s_helm_template.stdout.splitlines() -%}
+      {%-   if k8s_helm_line is match('^.*: 0o[0-7]+\s*$') -%}
+      {#-   後方参照('\1')はJinja文字列リテラルのエスケープ処理でchr(1)になり
+            使えないため、regex_searchで値を取り出す。int(base=8)は
+            Python仕様により 0o プレフィックス付きのまま10進へ変換できる。 -#}
+      {%-     set k8s_helm_octal = k8s_helm_line | regex_search('0o[0-7]+\s*$') | trim -%}
+      {%-     set _ = k8s_helm_lines.append(
+                k8s_helm_line
+                | regex_replace('0o[0-7]+\s*$',
+                                k8s_helm_octal | int(base=8) | string)) -%}
+      {%-   else -%}
+      {%-     set _ = k8s_helm_lines.append(k8s_helm_line) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ k8s_helm_lines | join(k8s_helm_newline) }}
+  no_log: "{{ k8s_helm_no_log | default(false) }}"
+  vars:
+    # Jinja式の中の '\n' リテラルは改行にならない(バックスラッシュ+nの2文字になる)
+    # ため、改行はYAMLの二重引用符で定義した変数を使う(ssh_key.ymlと同じイディオム)。
+    k8s_helm_newline: "\n"
 
 - name: Helm描画結果をServer-Side Applyする
   ansible.builtin.import_role:
@@ -59,6 +76,7 @@
     k8s_definition: "{{ k8s_helm_manifest }}"
     k8s_namespace: >-
       {{ k8s_helm_namespace if k8s_helm_inject_namespace | default(false) | bool else omit }}
+    k8s_apply_no_log: "{{ k8s_helm_no_log | default(false) }}"
 
 - name: Helm values用の一時ファイルを削除する
   ansible.builtin.file:

@@ -1,6 +1,6 @@
 # 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
 ---
-k8s_homarr_helm_version: "8.26.0"
+k8s_homarr_helm_version: "8.27.0"
 k8s_homarr_values:
   strategyType: Recreate
 

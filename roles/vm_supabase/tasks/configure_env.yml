@@ -71,6 +71,25 @@
          | rejectattr('value', 'equalto', '') | items2dict }}
   no_log: true
 
+# ANON_KEY / SERVICE_ROLE_KEY は JWT_SECRET で署名されたJWTのため、3つは常に
+# 同じ出どころ(すべて指定/引き継ぎ、またはすべて自動生成)でなければならない。
+# 一部だけ指定すると、生成された別のJWT_SECRETと混ざって署名検証が通らなくなる。
+- name: JWT関連の指定が揃っていることを検証する
+  ansible.builtin.assert:
+    that:
+      - supabase_jwt_supplied | length in [0, 3]
+    fail_msg: >-
+      JWT_SECRET / ANON_KEY / SERVICE_ROLE_KEY のうち
+      {{ supabase_jwt_supplied | join(' / ') }} だけが指定(または.envから引き継ぎ)
+      されています。この3つはJWT_SECRETで署名された組のため、揃っていないと
+      APIの認証が壊れます。3つすべてを指定するか、すべて未指定(自動生成)にしてください。
+    quiet: true
+  vars:
+    supabase_jwt_supplied: >-
+      {{ ['JWT_SECRET', 'ANON_KEY', 'SERVICE_ROLE_KEY']
+         | select('in', (supabase_secrets_kept | combine(supabase_secrets_given)).keys() | list)
+         | list }}
+
 # 公式スクリプトが作るのは下の14項目。1つでも揃っていなければ生成する
 # (既に持っている値は後で上書きするため、生成しても影響はない)
 - name: 生成が必要か判定する

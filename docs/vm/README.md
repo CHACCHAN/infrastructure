@@ -92,7 +92,7 @@ pve_ssh_prikey_file: ~/.ssh/id_ed25519_wg_easy
 
 # --- ③ サービス設定(vm_<service>ロールが使う) ---
 wg_easy_init_host: wg.example.com
-wg_easy_version: "15.4.0-beta.1"
+wg_easy_version: "15.4.0"
 ```
 
 - SSH接続は **provisionがcloud-initに書き込んだユーザー・鍵をそのまま使う**ため、宣言が一致していれば必ず入れる

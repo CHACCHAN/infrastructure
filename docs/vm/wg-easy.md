@@ -22,7 +22,7 @@ ansible-playbook playbooks/vm/wg-easy.yml \
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |
 | `wg_easy_init_host` | str | ✔ | 役割プロファイル | クライアントが接続するFQDN/IP |
-| `wg_easy_version` | str | | `15.4.0-beta.1` | イメージの版(OAuth対応の要件あり) |
+| `wg_easy_version` | str | | `15.4.0` | イメージの版(OAuth対応の要件あり) |
 | `wg_easy_wg_port` | int | | `51820` | WireGuardのUDPポート |
 | `wg_easy_ui_port` | int | | `51821` | Web UIポート |
 | `wg_easy_init_password` | str | | vault / 自動生成 | 初期管理者パスワード |

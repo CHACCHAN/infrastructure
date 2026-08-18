@@ -14,6 +14,6 @@ wg_easy_init_host: cc-chacchan.com
 wg_easy_oauth_providers: oidc
 wg_easy_oauth_oidc_server: https://auth.cc-chacchan.com/application/o/wg-easy/
 wg_easy_oauth_oidc_name: Authentik
-wg_easy_version: "15.4.0-beta.1"
+wg_easy_version: "15.4.0"
 wg_easy_insecure: false
 wg_easy_init_dns: 172.16.11.3

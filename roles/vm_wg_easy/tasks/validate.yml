@@ -38,6 +38,54 @@
   loop_control:
     label: "{{ item.name }}"
 
+# .env は KEY=VALUE 形式のまま docker compose(env_file)に読まれるため、
+# 行構造や引用を壊す文字を含む値だけを弾く(それ以外の記号や長さは制限しない。
+# 既に稼働中のパスワードを再収束で弾かないため、許可リストではなくブロックリスト)。
+# 値をログに出さないよう、判定は変数名だけを残す形で行う
+# (assertにno_logを付けるとfail_msgごと隠れてしまう)。
+- name: 手動指定された秘密情報を集める
+  ansible.builtin.set_fact:
+    wg_easy_given_secrets:
+      wg_easy_init_password: "{{ wg_easy_init_password | default('', true) }}"
+      wg_easy_oauth_oidc_client_secret: >-
+        {{ wg_easy_oauth_oidc_client_secret | default('', true) }}
+      wg_easy_oauth_google_client_secret: >-
+        {{ wg_easy_oauth_google_client_secret | default('', true) }}
+      wg_easy_oauth_github_client_secret: >-
+        {{ wg_easy_oauth_github_client_secret | default('', true) }}
+  no_log: true
+
+- name: 形式が不正な指定を抽出する
+  ansible.builtin.set_fact:
+    # Jinjaは連鎖比較(a <= b <= c)を解釈しないため、範囲判定はandで書く。
+    # 空文字はループが回らないため自然に「指定なし」として通る。
+    wg_easy_invalid_secrets: >-
+      {%- set wg_easy_invalid = [] -%}
+      {%- for wg_easy_item in wg_easy_given_secrets | dict2items -%}
+      {%-   for wg_easy_char in wg_easy_item.value -%}
+      {%-     if (wg_easy_char in wg_easy_env_unsafe_chars
+                  or not (wg_easy_char >= ' ' and wg_easy_char <= '~'))
+                 and wg_easy_item.key not in wg_easy_invalid -%}
+      {%-       set _ = wg_easy_invalid.append(wg_easy_item.key) -%}
+      {%-     endif -%}
+      {%-   endfor -%}
+      {%- endfor -%}
+      {{ wg_easy_invalid }}
+  vars:
+    # 空白・引用符・#(コメント開始)・$(composeの変数展開)・バックスラッシュ・
+    # バッククォート。制御文字と非ASCIIは上の範囲判定で弾く。
+    wg_easy_env_unsafe_chars: " \"'#$`\\"
+
+- name: 手動指定されたパスワード・シークレットの形式を検証する
+  ansible.builtin.assert:
+    that:
+      - wg_easy_invalid_secrets | length == 0
+    fail_msg: >-
+      {{ wg_easy_invalid_secrets | join('、') }} に .env で扱えない文字が含まれています。
+      空白・引用符・#・$・バックスラッシュ・バッククォート・非ASCII文字は
+      使えません(.env が KEY=VALUE 形式のまま docker compose に読まれるため)。
+    quiet: true
+
 - name: 初期セットアップの指定を決定する
   ansible.builtin.set_fact:
     # クライアントの接続先ポートは、未指定ならWireGuardの公開ポートと同じにする

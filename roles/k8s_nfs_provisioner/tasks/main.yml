@@ -14,3 +14,21 @@
     k8s_helm_no_hooks: true
     k8s_helm_include_crds: false
     k8s_helm_inject_namespace: true
+
+# 直後に適用されるpostgresqlがこのプロビジョナのStorageClass(truenas-nfs)で
+# PVCを作る。暗黙の依存で待たせず、ここでPodの受け付け可能まで明示的に待つ。
+- name: nfs provisioner Deploymentのrolloutを待つ
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: nfs-nfs-subdir-external-provisioner
+    namespace: storage
+  register: k8s_nfs_provisioner_rollout
+  until: >-
+    k8s_nfs_provisioner_rollout.resources | length > 0 and
+    (k8s_nfs_provisioner_rollout.resources[0].status.conditions | default([])
+    | selectattr('type', 'equalto', 'Available')
+    | selectattr('status', 'equalto', 'True') | list | length > 0)
+  retries: 36
+  delay: 5
+  when: not ansible_check_mode

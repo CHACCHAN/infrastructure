@@ -7,14 +7,13 @@
 wg_easy_install_dir: /opt/wg-easy
 wg_easy_container_name: wg-easy
 
-# ⚠ OAuth/OIDCは 15.4.0-beta.1 で追加された機能のため、既定をそのベータ版にしている。
-# 安定版(15.3.0以前)ではOAUTH_*が無視され、ログイン画面はユーザー名/パスワードだけになる。
-# パスワード認証しか使わないなら wg_easy_version=15.3.0 のような安定版でよい。
-# masterに追従する edge / nightly タグも指定できる(さらに不安定)
+# OAuth/OIDCは 15.4.0 で追加された機能(15.4.0-beta.1で先行導入、安定版は2026-08-14リリース)。
+# 15.3.0以前ではOAUTH_*が無視され、ログイン画面はユーザー名/パスワードだけになる。
+# masterに追従する edge / nightly タグも指定できる(不安定)
 wg_easy_image: ghcr.io/wg-easy/wg-easy
-wg_easy_version: "15.4.0-beta.1"
+wg_easy_version: "15.4.0"
 # OAuth/OIDCが使える最小のバージョン(実際に有効かは構築後にAPIで確認する)
-wg_easy_oauth_min_version: "15.4.0-beta.1"
+wg_easy_oauth_min_version: "15.4.0"
 
 # --- ポート ---
 # WireGuard本体(UDP)。VM側とコンテナ側で同じ番号になる

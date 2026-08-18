@@ -52,7 +52,7 @@ spec:
       containers:
         - name: cloudflared
           # latest は使わない。更新するときはここを明示的に上げる。
-          image: cloudflare/cloudflared:2026.7.3
+          image: cloudflare/cloudflared:2026.8.2
           # 明示しないと k8s が既定値を埋める (タグが latest なら Always、
           # それ以外は IfNotPresent)。タグを固定しているので IfNotPresent でよい。
           # 書いておかないと、マニフェストを読んだだけでは実際の値が分からない。

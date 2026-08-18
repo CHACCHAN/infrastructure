@@ -69,6 +69,44 @@
           管理者ログインを渡してください。
         quiet: true
 
+    # 全Job Templateが名前でVault credentialを参照するため、実値(awx_vault_password)を
+    # 渡さない実行では「AWX側に登録済みか」を先に確認する。未作成のままJob Templateの
+    # 収束へ進むと、名前解決に失敗する分かりにくいエラーが後半で出るため。
+    - name: Vault credentialの登録状況を確認する(実値を渡さない実行のみ)
+      ansible.builtin.uri:
+        url: >-
+          {{ (vault_awx_host
+              if vault_awx_host is match('^https?://')
+              else 'https://' ~ vault_awx_host)
+             ~ '/api/v2/credentials/?name='
+             ~ (awx_credential_vault_name | urlencode) }}
+        headers: >-
+          {{ {'Authorization': 'Bearer ' ~ vault_awx_oauthtoken}
+             if awx_token_configured else {} }}
+        url_username: "{{ omit if awx_token_configured else awx_admin_user }}"
+        url_password: "{{ omit if awx_token_configured else awx_admin_password }}"
+        force_basic_auth: "{{ not awx_token_configured }}"
+        validate_certs: "{{ awx_validate_certs | default(true) }}"
+        return_content: true
+      register: awx_vault_credential_lookup
+      # 到達不可などの失敗は次のassertでまとめて判定する(トークンを含むため出力は抑止)
+      failed_when: false
+      no_log: true
+      when: awx_vault_password | length == 0
+
+    - name: Vault credentialが利用可能であることを確認する
+      ansible.builtin.assert:
+        that:
+          - awx_vault_password | length > 0
+            or (awx_vault_credential_lookup.json.count | default(0) | int) > 0
+        fail_msg: >-
+          Vault復号パスワードが供給されておらず、AWX上にもCredential
+          「{{ awx_credential_vault_name }}」が登録されていません。
+          全Job Templateがこの名前を参照するため、このまま進むと後半の
+          Job Template収束が失敗します。DevContainerでは ANSIBLE_VAULT_PASSWORD_FILE
+          から自動供給されます。手動実行では -e awx_vault_password=... で実値を渡してください。
+        quiet: true
+
     # --- Credential(Job Templateより先に作る。JTが名前で参照するため) ---
     - name: SCM認証情報(Git同期用SSH鍵)を収束させる
       awx.awx.credential:
