@@ -1,0 +1,25 @@
+# Coolify本体のヘルスチェック。コンテナのhealthとAPIの両方で確かめる。
+---
+- name: Coolifyコンテナがhealthyになるまで待つ
+  ansible.builtin.command:
+    argv:
+      - docker
+      - inspect
+      - --format
+      - "{{ '{{.State.Health.Status}}' }}"
+      - coolify
+  become: true
+  changed_when: false
+  register: coolify_container_health
+  retries: "{{ coolify_ready_retries }}"
+  delay: "{{ coolify_ready_delay }}"
+  until: (coolify_container_health.stdout | default('') | trim) == 'healthy'
+
+- name: Web UIのAPIが応答することを確認する
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ coolify_ui_port }}/api/health"
+    status_code: [200]
+  register: coolify_api_health
+  retries: "{{ coolify_ready_retries }}"
+  delay: "{{ coolify_ready_delay }}"
+  until: coolify_api_health is succeeded

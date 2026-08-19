@@ -7,7 +7,6 @@
 | --- | --- | --- |
 | `proxmox_api.yml` | Proxmox VE APIトークン認証の4変数(`vault_proxmox_api_host` / `vault_proxmox_api_user` / `vault_proxmox_api_token_id` / `vault_proxmox_api_token_secret`) | `playbooks/pve/`(①。②のprovision部も) |
 | `k8s_secrets.yml` | k8sアプリのSecret実値(`k8s_secret_<Secret名スネークケース>`)と、オペレータ生成物のバックアップ(`k8s_backup_*`) | `playbooks/k8s/deploy.yml`(③) |
-| `supabase.yml` | Supabaseダッシュボードのログインパスワード | `playbooks/vm/supabase.yml` |
 | `cloudflare.yml` | Cloudflare APIトークン | `playbooks/vm/ddns.yml` |
 | `wg-easy.yml` | wg-easyの管理者パスワード等 | `playbooks/vm/wg-easy.yml` |
 | `awx_api.yml` | AWXのURL・OAuthトークン・Project同期用SSH鍵(`vault_awx_host` / `vault_awx_oauthtoken` / `vault_awx_scm_prikey`) | `playbooks/utils/awx/*.yml` |

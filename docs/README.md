@@ -9,7 +9,7 @@
 | ① Proxmox操作(pve) | [pve/README.md](pve/README.md) | VMの宣言的な構築・電源・削除・テンプレート(API経由) |
 | ② VMセットアップ(vm) | [vm/README.md](vm/README.md) | VMの中身(OS設定・Docker・サービス)をSSHで構築 |
 | ③ Kubernetes(k8s) | [k8s/README.md](k8s/README.md) | k3sクラスタ上の全アプリを宣言的に収束 |
-| AWX | [awx/README.md](awx/README.md) | Web UIからの実行の前提とSurvey設計(設定を収束させるplaybookは utils/awx/) |
+| AWX | [utils/awx/README.md](utils/awx/README.md) | Web UIからの実行の前提とSurvey設計(設定を収束させるplaybookも utils/awx/) |
 | 単発ツール(utils) | [utils/README.md](utils/README.md) | APIを叩く単発ツール集(utils/awx/=AWX設定収束・Job操作、utils/authentik/=ユーザー管理) |
 
 ## 実行方式は二本立て

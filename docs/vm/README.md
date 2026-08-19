@@ -24,7 +24,7 @@ flowchart TB
 ```
 
 - サービス固有変数の既定値一覧と説明は `roles/vm_<サービス>/defaults/main.yml` が正。各ページの表は主要なものだけを載せている
-- インベントリに無いVMを変数だけで構築する方法は [docs/pve/adhoc.md](../pve/adhoc.md)、AWXから実行する前提は [docs/awx/](../awx/README.md)
+- インベントリに無いVMを変数だけで構築する方法は [docs/pve/adhoc.md](../pve/adhoc.md)、AWXから実行する前提は [docs/awx/](../utils/awx/README.md)
 
 ## playbook一覧(1ページ=1playbook)
 
@@ -36,7 +36,7 @@ flowchart TB
 | [dev/password.yml](../../playbooks/vm/dev/password.yml) | [dev/password.md](dev/password.md) | 開発VMのログインパスワードだけ更新 | proxmox_api.yml |
 | [k3s.yml](../../playbooks/vm/k3s.yml) | [k3s.md](k3s.md) | k3sクラスタ(k8sグループ全台) | − |
 | [pbs.yml](../../playbooks/vm/pbs.yml) | [pbs.md](pbs.md) | Proxmox Backup Server | − |
-| [supabase.yml](../../playbooks/vm/supabase.yml) | [supabase.md](supabase.md) | Supabase | supabase.yml |
+| [coolify.yml](../../playbooks/vm/coolify.yml) | [coolify.md](coolify.md) | Coolify(セルフホストPaaS) | なし |
 | [technitium.yml](../../playbooks/vm/technitium.yml) | [technitium.md](technitium.md) | Technitium DNS | − |
 | [wg-easy.yml](../../playbooks/vm/wg-easy.yml) | [wg-easy.md](wg-easy.md) | wg-easy(WireGuard VPN) | wg-easy.yml |
 | [ssh_key.yml](../../playbooks/vm/ssh_key.yml) | [ssh_key.md](ssh_key.md) | 前処理(単体では使わない) | − |
@@ -114,4 +114,4 @@ wg_easy_version: "15.4.0"
 | セットアップ途中で `No route to host` | ゲストのネットワーク断か再起動中。少し待って同じplaybookを再実行(冪等なので途中からやり直せる) |
 | Cockpit / xrdp にログインできない | PAM用のログインパスワードが未設定。[dev/password.md](dev/password.md) で設定する(SSHは公開鍵なので影響が出ない) |
 | `QEMU Guest Agent is not running ... guest-ping failed` | VM設定は `pve_vm_agent: 1` だがゲスト側にエージェントが未導入。`roles/vm` を通していない新規VMで起きる。先に構築playbookを流すか `-e pve_power_force=true` |
-| 構築は成功したのに最後の疎通確認だけ失敗 | 確認は実行元(AWXなら実行Pod)から行われる。実行元→VMのLAN側IPへの経路・firewallを確認([docs/awx/](../awx/README.md)) |
+| 構築は成功したのに最後の疎通確認だけ失敗 | 確認は実行元(AWXなら実行Pod)から行われる。実行元→VMのLAN側IPへの経路・firewallを確認([docs/awx/](../utils/awx/README.md)) |

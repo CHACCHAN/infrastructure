@@ -28,7 +28,7 @@ flowchart TB
 ```
 
 - VM変数の既定値一覧と説明は [roles/pve_vm/defaults/main.yml](../../roles/pve_vm/defaults/main.yml)、クラスタ共通値(ストレージ・ブリッジ・IP体系)は [inventory/group_vars/all/pve.yml](../../inventory/group_vars/all/pve.yml) が正。このドキュメントには書き写さない
-- AWXから実行する前提は [docs/awx/](../awx/README.md)
+- AWXから実行する前提は [docs/awx/](../utils/awx/README.md)
 
 ## playbook一覧(1ページ=1playbook)
 
@@ -83,7 +83,7 @@ lab:
 
 ### ブートディスクのストレージ(pve_storage)
 
-`group_vars/all/pve.yml` の既定は `ssd01` だが、役割・個体ごとに自由に変えられる(実例: authentik=`local-lvm`、supabase=`ssd02`)。対象ノードに存在するストレージ名を指定する。
+`group_vars/all/pve.yml` の既定は `ssd01` だが、役割・個体ごとに自由に変えられる(実例: authentik=`local-lvm`、coolify=`ssd02`)。対象ノードに存在するストレージ名を指定する。
 
 ```yaml
 # 役割ごと(group_vars/<役割>.yml)         # 個体ごと(hosts.yml)         # 実行時
@@ -174,9 +174,9 @@ ansible-playbook playbooks/pve/provision.yml -e target=tmp02 -e profile=lab \
 
 | 症状 | 原因と対処 |
 | --- | --- |
-| `pve_storage / pve_bridge / ... が未定義です` | inventory/group_vars/all が読み込まれていない。AWXならインベントリをプロジェクトから同期する([docs/awx/](../awx/README.md))か、列挙された変数を指定する |
+| `pve_storage / pve_bridge / ... が未定義です` | inventory/group_vars/all が読み込まれていない。AWXならインベントリをプロジェクトから同期する([docs/awx/](../utils/awx/README.md))か、列挙された変数を指定する |
 | `vmid / node / ansible_host が未定義です` | ホストの宣言漏れ、またはインベントリ外VMの指定漏れ。`-e profile=` とあわせて `-e vmid= -e node= -e ip=` を渡す([adhoc.md](adhoc.md)) |
 | `stopped` が `powerdown failed - got timeout` | ゲストOSがシャットダウン要求に応答できない(起動直後など)。少し待つか `-e pve_power_force=true` |
-| `proxmoxer` が見つからない | Dev Containerのリビルド漏れ、またはAWXの実行環境にPython依存が無い([docs/awx/](../awx/README.md))。`playbooks/pve/*` はコントローラのPythonを使う設計 |
+| `proxmoxer` が見つからない | Dev Containerのリビルド漏れ、またはAWXの実行環境にPython依存が無い([docs/awx/](../utils/awx/README.md))。`playbooks/pve/*` はコントローラのPythonを使う設計 |
 | テンプレートVMIDに「テンプレートではないVMが存在」 | 過去の構築が途中で止まった残骸。PVE UIで確認し、不要なら `destroy.yml` で削除してから再実行 |
 | destroyが拒否される | 仕様: `confirm` の不一致、または対象が起動中。`power.yml` で停止してから |

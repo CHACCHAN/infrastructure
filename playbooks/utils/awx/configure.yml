@@ -219,7 +219,7 @@
         execution_environment: "{{ awx_ee_name }}"
         credentials: >-
           {{ [awx_credential_vault_name] + (item.extra_credentials | default([])) }}
-        # 変数欄からの上書きは許可し、Limitは使わせない(docs/awx/README.md §2)
+        # 変数欄からの上書きは許可し、Limitは使わせない(docs/utils/awx/README.md §2)
         ask_variables_on_launch: true
         ask_limit_on_launch: false
         survey_enabled: "{{ awx_jt_survey_spec | length > 0 }}"

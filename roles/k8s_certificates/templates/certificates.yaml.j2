@@ -68,6 +68,9 @@ spec:
   dnsNames:
     - {{ k8s_domain }}
     - "*.{{ k8s_domain }}"
+    # Coolifyのデプロイ公開用。ワイルドカードは1階層しかカバーしないため
+    # *.cc-chacchan.com とは別に明示する(検証は同じDNS-01/Cloudflare)
+    - "*.web.{{ k8s_domain }}"
 
   privateKey:
     algorithm: ECDSA

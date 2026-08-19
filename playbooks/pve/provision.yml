@@ -38,7 +38,7 @@
         fail_msg: >-
           {{ pve_provision_missing_vars | join(' / ') }} が未定義または空です。
           inventory/group_vars/all/pve.yml が読み込まれていません。
-          AWXではインベントリをプロジェクトのinventory/から同期するか(docs/awx/README.md)、
+          AWXではインベントリをプロジェクトのinventory/から同期するか(docs/utils/awx/README.md)、
           不足している値を変数で指定してください。
         quiet: true
       vars:

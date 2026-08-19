@@ -3,7 +3,7 @@
 #           -e '{"job_extra_vars": {"target": "k8s", "state": "started"}}'
 # 実行例: 起動だけして完了を待たない場合は -e awx_job_wait=false
 # 注意: extra varsを受け取るJTは ask_variables_on_launch かSurveyの対応質問が必要
-#       (このリポジトリのJTは全て変数欄を許可している。docs/awx/README.md)
+#       (このリポジトリのJTは全て変数欄を許可している。docs/utils/awx/README.md)
 ---
 - name: AWXのJob Templateを起動する
   hosts: localhost
@@ -43,7 +43,7 @@
           - job_template | default('', true) | length > 0
         fail_msg: >-
           起動するJob Template名がありません。
-          -e job_template=<JT名> で指定してください(一覧は docs/awx/README.md)。
+          -e job_template=<JT名> で指定してください(一覧は docs/utils/awx/README.md)。
         quiet: true
 
     - name: Job Templateを起動する

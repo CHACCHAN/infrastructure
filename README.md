@@ -135,7 +135,7 @@ sequenceDiagram
 ├── vault/               # Ansible Vault(全ファイル暗号化済み)
 ├── collections/         # requirements.yml → ee/ へのsymlink(AWX互換の標準位置)
 ├── ee/                  # AWXカスタム実行環境(ansible-builder)。コレクション定義の実体
-└── docs/                # playbooks/と同構成のドキュメント(1 playbook=1ページ + awx/ + utils/)
+└── docs/                # playbooks/と同構成のドキュメント(1 playbook=1ページ)
 ```
 
 ## 秘匿情報の扱い
@@ -153,6 +153,6 @@ sequenceDiagram
 | [docs/pve/](docs/pve/README.md) | ① Proxmox操作ドメイン(provision/power/destroy/template/adhoc) |
 | [docs/vm/](docs/vm/README.md) | ② VMセットアップドメイン(サービス別playbook・k3sクラスタ構築・鍵を本文で渡す仕組み) |
 | [docs/k8s/](docs/k8s/README.md) | ③ Kubernetesドメイン(deploy・アプリ追加・Secret・チャート管理) |
-| [docs/awx/](docs/awx/README.md) | **AWX**(Web UIからの実行前提とSurvey設計。設定の収束は docs/utils/awx/configure.md) |
+| [docs/utils/awx/](docs/utils/awx/README.md) | **AWX**(Web UIからの実行前提とSurvey設計・EEビルド。設定の収束は configure.md) |
 | [docs/utils/](docs/utils/README.md) | **単発ツール**(AWXの設定収束・Job起動・状況取得・Inventory同期、Authentikユーザー/グループ管理) |
 | [.devcontainer/README.md](.devcontainer/README.md) | Dev Containerのセットアップ注意点 |

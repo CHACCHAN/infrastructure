@@ -3,9 +3,9 @@
 skip_list:
   # var-naming[no-role-prefix]
   #   ロール名は「層(pve_/vm_/k8s_)+サービス名」、変数名は層を落とした
-  #   サービス名で揃える規約を採っている(role vm_supabase -> supabase_*、
+  #   サービス名で揃える規約を採っている(role vm_authentik -> authentik_*、
   #   role pve_vm -> pve_*)。層は配置場所で既に判別できるため、変数名にまで
-  #   重ねると vm_supabase_install_dir のように冗長になる。
+  #   重ねると vm_authentik_install_dir のように冗長になる。
   #   加えて svc_* は roles/vm・roles/vm_docker が「呼び出し元から受け取る
   #   引数」として文書化している共有インターフェース
   #   (svc_name / svc_install_dir / svc_ufw_ports / svc_env_path /

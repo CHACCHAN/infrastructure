@@ -1,0 +1,54 @@
+# Coolify(セルフホストPaaS)を独立VMへ構築する。Debian 13(cloud image)専用。
+# 全VM共通の処理は vm / vm_docker ロールと共有している。
+#
+# 導入は公式install.sh(バージョン引数で固定)。Coolifyは自身の内蔵プロキシ(Traefik)を
+# :80/:443 に立て、デプロイしたアプリとUIドメインをHostヘッダで捌く。
+# 外部(k3sのTraefik)からはHTTPで:80へ転送する構成(TLSは外部で終端。docs/vm/coolify.md)。
+---
+- name: 対象OSを確認する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: assert_debian
+
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: ディスクの空き容量を確認する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: check_disk_space
+  vars:
+    svc_name: Coolify
+    svc_min_free_gb: "{{ coolify_min_free_disk_gb }}"
+    svc_min_free_var: coolify_min_free_disk_gb
+
+- name: VM共通の初期セットアップを実行する
+  ansible.builtin.import_role:
+    name: vm
+
+# install.shもDockerを入れられるが、リポジトリ標準の導入経路(vm_docker)に揃える
+# (スクリプトは既存のDockerを尊重する)。
+- name: Dockerをセットアップする
+  ansible.builtin.import_role:
+    name: vm_docker
+
+- name: Coolifyをインストールする
+  ansible.builtin.import_tasks: install_coolify.yml
+
+- name: サービスの起動を確認する
+  ansible.builtin.import_tasks: verify_service.yml
+
+# 内蔵プロキシ(80/443)・UI(8000)・リアルタイム/ターミナル(6001/6002)。
+# 6001/6002はUIをドメイン経由(内蔵プロキシ)で使う場合は外部開放不要だが、
+# LAN内からIP直打ち(:8000)で使う経路のために開けておく。
+- name: Coolifyが使うポートを開放する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports:
+      - {port: "{{ coolify_proxy_http_port }}", proto: tcp}
+      - {port: "{{ coolify_proxy_https_port }}", proto: tcp}
+      - {port: "{{ coolify_ui_port }}", proto: tcp}
+      - {port: "{{ coolify_realtime_port }}", proto: tcp}
+      - {port: "{{ coolify_terminal_port }}", proto: tcp}

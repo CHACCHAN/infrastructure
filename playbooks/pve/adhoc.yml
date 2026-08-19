@@ -4,7 +4,7 @@
 # 実行例: ansible-playbook playbooks/pve/provision.yml \
 #           -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99
 # AWXではJob Templateの変数欄・Surveyが -e と同じextra varsとして届く。
-# 変数の一覧と使い分けは docs/pve/adhoc.md、AWXから使う場合の前提は docs/awx/README.md
+# 変数の一覧と使い分けは docs/pve/adhoc.md、AWXから使う場合の前提は docs/utils/awx/README.md
 ---
 - name: インベントリ外のVMを一時ホストとして宣言する
   hosts: localhost
@@ -118,7 +118,7 @@
               inventory/group_vars/ のプロファイルは適用されません
               (roles/*/defaults の既定値と、指定した変数だけで構築されます)。
               宣言どおりに構築するには、AWXのインベントリをプロジェクトの
-              inventory/ から同期してください(docs/awx/README.md)。
+              inventory/ から同期してください(docs/utils/awx/README.md)。
           when: not pve_adhoc_project_inventory
 
         # サービスplaybook(playbooks/vm/*)は前提とする役割をprofile_expectedで渡す。

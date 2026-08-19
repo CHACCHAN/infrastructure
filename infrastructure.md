@@ -50,7 +50,7 @@ flowchart TB
     vm_service02["TechnitiumDNS<br>vmbr0: 172.16.11.3"]
     vm_service03["Cloudflare-DDNS-UI<br>vmbr0: 172.16.11.4"]
     vm_service04["WG-Easy<br>vmbr0: 172.16.11.5"]
-    vm_service05["Supabase<br>vmbr0: 172.16.11.6"]
+    vm_service05["Coolify<br>vmbr0: 172.16.11.6"]
     vm_service06["Proxmox Backup Server<br>vmbr0: 172.16.11.7<br>vmbr1: 10.10.10.7"]
 
     vm_service01 ~~~ vm_service04
@@ -90,7 +90,7 @@ flowchart TB
 
 ## 公開経路(Traefik)
 
-すべてのHTTP(S)公開はk3s同梱のTraefik v3に集約される。**インターネットへ出るのはCloudflare Tunnel経由の2ホストだけ**で、残りはLAN内(WireGuard接続中の端末を含む)からのみ到達できる。
+すべてのHTTP(S)公開はk3s同梱のTraefik v3に集約される。**インターネットへ出るのはCloudflare Tunnel経由のホスト(auth. と *.web.)だけ**で、残りはLAN内(WireGuard接続中の端末を含む)からのみ到達できる。
 
 ```mermaid
 flowchart TB
@@ -120,7 +120,7 @@ flowchart TB
 
   subgraph pub["インターネット公開(entrypoints: web,websecure)"]
     H_AUTH["auth.cc-chacchan.com<br>→ Authentik 172.16.11.2:9000"]
-    H_API["api.cc-chacchan.com<br>→ Supabase 172.16.11.6:8000<br>/rest /auth /storage /realtime /functions"]
+    H_WEB["*.web.cc-chacchan.com<br>→ Coolify 172.16.11.6:80<br>(デプロイしたアプリ)"]
   end
 
   subgraph lan_app["LAN内のみ: クラスタ内アプリ(Ingress→Service→Pod)"]
@@ -128,8 +128,8 @@ flowchart TB
   end
 
   subgraph lan_ext["LAN内のみ: クラスタ外サービス(k8s_external)"]
-    E_FWD["ddns. → 172.16.11.4:8080<br>supabase. → 172.16.11.6:8000<br>Authentik forwardAuth Middleware を通す"]
-    E_NET["dns. → 172.16.11.3:5380<br>doh. → 172.16.11.3:8053<br>wgui. → 172.16.11.5:51821"]
+    E_FWD["ddns. → 172.16.11.4:8080<br>Authentik forwardAuth Middleware を通す"]
+    E_NET["dns. → 172.16.11.3:5380<br>doh. → 172.16.11.3:8053<br>wgui. → 172.16.11.5:51821<br>coolify. → 172.16.11.6:80"]
     E_INFRA["pve01.〜pve10. → 172.16.11.11〜.20:8006<br>pbs. → 172.16.11.7:8007<br>nas. → 172.16.11.10:443<br>自己署名HTTPS(insecureSkipVerify)"]
   end
 

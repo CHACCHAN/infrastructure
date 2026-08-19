@@ -114,7 +114,11 @@ spec:
     customRequestHeaders:
       X-Forwarded-Proto: https
       X-Forwarded-Port: "443"
-      X-Forwarded-Host: {{ ingress.host }}
+{# ワイルドカードホストでは固定値にせず、Traefikの自動付与(実リクエストのHost)に任せる。
+   引用符はYAMLが * をエイリアスと解釈しないために必須 #}
+{% if '*' not in ingress.host %}
+      X-Forwarded-Host: "{{ ingress.host }}"
+{% endif %}
 ---
 {% endif %}
 apiVersion: networking.k8s.io/v1

@@ -53,7 +53,7 @@ ansible-playbook playbooks/pve/provision.yml \
 
 | 変数 | 型 | 既定値 | 説明 |
 | --- | --- | --- | --- |
-| `pve_storage` | str | `ssd01`(宣言値) | ブートディスクのストレージ。**固定ではない**: 役割・個体・`-e`/Surveyで `ssd02` / `local-lvm` 等へ上書きできる(実例: authentik=local-lvm、supabase=ssd02) |
+| `pve_storage` | str | `ssd01`(宣言値) | ブートディスクのストレージ。**固定ではない**: 役割・個体・`-e`/Surveyで `ssd02` / `local-lvm` 等へ上書きできる(実例: authentik=local-lvm、coolify=ssd02) |
 | `pve_bridge` | str | `vmbr0` | 1枚目NICのブリッジ(NIC構成ごと変えるなら `pve_vm_nets`) |
 | `pve_ipv4_prefix` | int | `24` | IPv4プレフィックス長 |
 | `pve_ipv4_gw` | str | `172.16.11.1` | デフォルトゲートウェイ |

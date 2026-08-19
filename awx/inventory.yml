@@ -1,6 +1,6 @@
 # AWXのInventory定義。手動インベントリではなくProject由来
 # (inventory/ をSourceとして同期)にする。group_vars/ の3層が
-# そのまま届き、手元実行と同じ宣言で動くため(docs/awx/README.md §1)。
+# そのまま届き、手元実行と同じ宣言で動くため(docs/utils/awx/README.md §1)。
 ---
 awx_inventory_name: lab
 awx_inventory_description: inventory/hosts.yml をProjectから同期(3層構造ごと届く)

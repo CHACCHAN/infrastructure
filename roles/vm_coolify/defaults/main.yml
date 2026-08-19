@@ -1,0 +1,36 @@
+# タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
+# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+---
+# Coolifyの版。公式install.shへ引数で渡して固定する(勝手に最新へ上げない)。
+# 上げるときはこの値を変えて playbooks/vm/coolify.yml を再実行する(再実行=アップグレード)
+coolify_version: "4.3.9"
+# 本体の自動アップデート機能は止め、版の管理をこのリポジトリの宣言へ寄せる
+coolify_autoupdate: false
+
+# データと設定の置き場(上流install.shの固定パス。変更できないため参照用)
+coolify_data_dir: /data/coolify
+
+# --- ポート(上流docker-compose.prod.ymlの既定) ---
+# Web UI(初回セットアップとLAN内からの直接アクセス用)
+coolify_ui_port: 8000
+# 内蔵プロキシ(Traefik)。デプロイしたアプリとUIドメインはここへHostヘッダで届く
+coolify_proxy_http_port: 80
+coolify_proxy_https_port: 443
+# リアルタイム通知(soketi)とWebターミナル。ドメイン経由なら内蔵プロキシが集約する
+coolify_realtime_port: 6001
+coolify_terminal_port: 6002
+
+# --- 初回インストール時のroot管理者(任意) ---
+# 3つセットで指定すると初回インストール時に管理者を事前作成する。
+# 未指定ならWeb UI(http://<IP>:8000)の初回アクセス画面で作成する。
+# 既にインストール済みのVMでは無視される(上流仕様: 初回のみ有効)
+coolify_root_username: ""
+coolify_root_user_email: ""
+coolify_root_user_password: ""
+
+# install.shの要件(ディスク全体30GB・空き20GB)に合わせた事前チェック値
+coolify_min_free_disk_gb: 20
+
+# ヘルスチェックの待ち(リトライ回数 / 間隔(秒))
+coolify_ready_retries: 30
+coolify_ready_delay: 10

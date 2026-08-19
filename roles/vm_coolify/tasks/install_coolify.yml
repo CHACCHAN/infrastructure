@@ -1,0 +1,73 @@
+# 公式インストールスクリプト(cdn.coollabs.io)で導入する。バージョンは引数で固定し、
+# 同じスクリプトの再実行がアップグレードになる(上流仕様。既存の.env値は保持される)。
+# スクリプトは誰でも書き込める/tmpではなく/usr/local/srcに置き、実行後は残さない。
+---
+- name: 導入済みのCoolifyの版を確認する
+  ansible.builtin.command:
+    argv:
+      - docker
+      - inspect
+      - --format
+      - "{{ '{{.Config.Image}}' }}"
+      - coolify
+  become: true
+  changed_when: false
+  failed_when: false
+  register: coolify_installed_image
+
+- name: インストールが必要か判定する
+  ansible.builtin.set_fact:
+    coolify_already_installed: "{{ (coolify_installed_image.rc | default(1)) == 0 }}"
+    # 版指定がある場合は、動いている版と違えば入れ直す(=アップグレード)。
+    # 指定が無ければ入っている版をそのまま使う(勝手に最新へ上げない)
+    coolify_install_required: >-
+      {{ (coolify_installed_image.rc | default(1)) != 0
+         or ((coolify_version | default('', true)) | length > 0
+             and coolify_version not in (coolify_installed_image.stdout | default(''))) }}
+
+- name: 現在の状態を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ (coolify_installed_image.stdout | trim)
+         if (coolify_already_installed | bool) else 'Coolifyは未導入です' }}
+      → {{ 'インストール(またはアップグレード)を行います'
+            if (coolify_install_required | bool) else '設定の確認のみ行います' }}
+
+- name: Coolifyをインストールする
+  when: coolify_install_required | bool
+  block:
+    - name: Coolify公式インストールスクリプトを取得する
+      ansible.builtin.get_url:
+        url: https://cdn.coollabs.io/coolify/install.sh
+        dest: /usr/local/src/install-coolify.sh
+        owner: root
+        group: root
+        mode: "0755"
+      become: true
+
+    # ROOT_*は初回インストール時のみ有効(上流仕様)。指定があるときだけ渡す。
+    # AUTOUPDATEは.envへ書き込まれ、本体の自動更新を止める(版はこの宣言で管理)。
+    - name: インストールスクリプトを実行する
+      ansible.builtin.command:
+        argv: >-
+          {{ ['bash', '/usr/local/src/install-coolify.sh']
+             + ([coolify_version] if (coolify_version | default('', true)) | length > 0
+                else []) }}
+      environment: >-
+        {{ {'AUTOUPDATE': (coolify_autoupdate | bool) | ternary('true', 'false')}
+           | combine({'ROOT_USERNAME': coolify_root_username,
+                      'ROOT_USER_EMAIL': coolify_root_user_email,
+                      'ROOT_USER_PASSWORD': coolify_root_user_password}
+                     if (coolify_root_given | length == 3
+                         and not (coolify_already_installed | bool)) else {}) }}
+      become: true
+      changed_when: true
+      # 管理者パスワードを渡すときだけ出力を抑止する(通常は進捗ログを見せる)。
+      no_log: "{{ coolify_root_given | length == 3 and not (coolify_already_installed | bool) }}"
+
+  always:
+    - name: インストールスクリプトを削除する
+      ansible.builtin.file:
+        path: /usr/local/src/install-coolify.sh
+        state: absent
+      become: true

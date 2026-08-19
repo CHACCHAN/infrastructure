@@ -1,7 +1,7 @@
 # AWXのJob TemplateとSurveyの定義(単一の真実)。
 # playbooks/utils/awx/configure.yml が読み込み、awx.awx.job_template へ渡す。
 #
-# Survey設計の原則(docs/awx/README.md の運用ルールをコード化):
+# Survey設計の原則(docs/utils/awx/README.md の運用ルールをコード化):
 # - 任意項目は required: false かつ default を持たせない
 #   (AWXは未回答の任意質問を「変数を送らない」扱いにする。空文字の既定値を
 #    持たせると default() で救えない空文字が届いてしまう)
@@ -270,6 +270,25 @@ awx_job_templates:
     playbook: playbooks/vm/authentik.yml
     use_common_survey: true
 
+  - name: vm-coolify
+    description: Coolify(セルフホストPaaS)を一気通貫構築
+    playbook: playbooks/vm/coolify.yml
+    use_common_survey: true
+    survey_extra:
+      - question_name: 初期root管理者名(coolify_root_username)
+        question_description: 3つセットで回答すると初回インストール時に事前作成(未回答ならWeb UIで作成)
+        variable: coolify_root_username
+        type: text
+        required: false
+      - question_name: 初期root管理者メール(coolify_root_user_email)
+        variable: coolify_root_user_email
+        type: text
+        required: false
+      - question_name: 初期root管理者パスワード(coolify_root_user_password)
+        variable: coolify_root_user_password
+        type: password
+        required: false
+
   - name: vm-ddns
     description: Cloudflare DDNS UIを一気通貫構築
     playbook: playbooks/vm/ddns.yml
@@ -306,11 +325,6 @@ awx_job_templates:
   - name: vm-pbs
     description: Proxmox Backup Serverを一気通貫構築
     playbook: playbooks/vm/pbs.yml
-    use_common_survey: true
-
-  - name: vm-supabase
-    description: Supabase(セルフホスト)を一気通貫構築
-    playbook: playbooks/vm/supabase.yml
     use_common_survey: true
 
   - name: vm-technitium

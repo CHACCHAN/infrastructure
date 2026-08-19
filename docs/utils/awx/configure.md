@@ -49,5 +49,5 @@ ansible-playbook playbooks/utils/awx/configure.yml -e awx_kubeconfig_content="$(
 
 - **Job TemplateをAWX UIで直さない** → 定義は [awx/job_templates.yml](../../../awx/job_templates.yml) が正。UIの変更は次回のconfigure実行で上書きされる
 - **kubeconfig credentialは「渡したときだけ」更新** → 毎回渡す必要はない。ローテーション時だけ `-e awx_kubeconfig_content=` を付けて再実行
-- **EEイメージのpullに失敗する** → 実体は `ghcr.io/chacchan/awx-ee-custom:latest`([awx/execution_environment.yml](../../../awx/execution_environment.yml))。プライベートイメージのpullは replicator が配る `ghcr-pull-secret` に依存するため、pull失敗時はまずそちらを確認([docs/awx/README.md](../../awx/README.md#eeイメージのビルドと登録))
+- **EEイメージのpullに失敗する** → 実体は `ghcr.io/chacchan/awx-ee-custom:latest`([awx/execution_environment.yml](../../../awx/execution_environment.yml))。プライベートイメージのpullは replicator が配る `ghcr-pull-secret` に依存するため、pull失敗時はまずそちらを確認([docs/awx/README.md](README.md#eeイメージのビルドと登録))
 - **このplaybook自体をAWXのJTにはしていない** → AWXが自分の定義を書き換えるループを避けるため、実行はDevContainer等の外側から行う

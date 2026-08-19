@@ -23,7 +23,7 @@ playbooks/utils/
 - すべて **localhost実行**(SSH不要)。リポジトリルートから `ansible-playbook playbooks/utils/<サービス>/<name>.yml` で実行する
 - vaultの復号は他playbookと同じ(Dev Containerでは `ANSIBLE_VAULT_PASSWORD_FILE` で自動)
 - **`--check` には対応しない**(API呼び出しのみのため。実行前assertで明示的に止まる)
-- `awx/configure.yml` 以外はAWXからも実行できる(Job Template `utils-*`。定義は [awx/job_templates.yml](../../awx/job_templates.yml)、前提は [docs/awx/README.md](../awx/README.md))。configure.yml だけはAWXが自分の定義を書き換えるループを避けるため、外側(DevContainer等)から実行する
+- `awx/configure.yml` 以外はAWXからも実行できる(Job Template `utils-*`。定義は [awx/job_templates.yml](../../awx/job_templates.yml)、前提は [docs/awx/README.md](awx/README.md))。configure.yml だけはAWXが自分の定義を書き換えるループを避けるため、外側(DevContainer等)から実行する
 
 ## 必要なvault変数
 

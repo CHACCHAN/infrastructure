@@ -71,30 +71,26 @@ k8s_external_routes:
         backend_service: authentik-external
         forwarded_https: true
 
-  - name: supabase
+  - name: coolify
     backend_ip: 172.16.11.6
-    scheme: none
-    ports: [{ name: api, port: 8000 }]
+    scheme: http
+    # すべて内蔵プロキシ(:80)へHostヘッダ付きで渡す。UI(:8000)を直接経由しないのは、
+    # リアルタイム通知/Webターミナル(6001/6002)を内蔵プロキシが集約するため
+    # (Coolify側の設定: Instance Domain / Wildcard Domain。docs/vm/coolify.md)
+    ports: [{ name: http, port: 80 }]
     ingresses:
-      - name: supabase-authentik-outpost
-        host: "supabase.{{ k8s_domain }}"
+      # 管理UI(LAN内限定)。X-Forwarded-Proto: https が無いとログインが壊れるため必須
+      - name: coolify
+        host: "coolify.{{ k8s_domain }}"
         port: http
-        path: /outpost.goauthentik.io
-        backend_service: authentik-external
         forwarded_https: true
-        forwarded_https_name: supabase-forwarded-https
-      - name: supabase-studio
-        host: "supabase.{{ k8s_domain }}"
-        port: api
-        middlewares: [authentik-forward-auth, supabase-forwarded-https]
-      - name: supabase-api
-        host: "api.{{ k8s_domain }}"
-        port: api
+      # デプロイしたアプリの公開用ワイルドカード。Cloudflare Tunnel(HTTP :80)からも
+      # 到達できるようentrypointsへwebを含める(公開の可否はCloudflare側の経路表で決まる)
+      - name: coolify-apps
+        host: "*.web.{{ k8s_domain }}"
+        port: http
         entrypoints: "web,websecure"
-        tls: false
         forwarded_https: true
-        forwarded_https_name: api-forwarded-https
-        paths: [/rest/v1, /auth/v1, /storage/v1, /realtime/v1, /functions/v1]
 
   - name: technitium-dns
     backend_ip: 172.16.11.3
