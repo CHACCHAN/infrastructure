@@ -1,0 +1,12 @@
+# Portainer VMのProxmox VMプロファイル。
+# Docker単体運用のVM(Portainer本体と、Portainer経由でデプロイするコンテナが同居)。
+---
+# 全体既定のssd01はpve08では無効(inactive)のため、このノードで有効なlocal-lvmを明示する
+pve_storage: local-lvm
+pve_vm_cores: 8
+pve_vm_cpu_type: x86-64-v2-AES
+pve_vm_memory: 8192
+pve_vm_disk_size: 128
+pve_ssh_user: portainer
+pve_ssh_pubkey_file: ~/.ssh/id_ed25519_portainer.pub
+pve_ssh_prikey_file: ~/.ssh/id_ed25519_portainer

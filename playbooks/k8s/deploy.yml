@@ -1,5 +1,5 @@
 # 全アプリの差分確認: ansible-playbook playbooks/k8s/deploy.yml --check --diff
-# 単一アプリの収束: ansible-playbook playbooks/k8s/deploy.yml -e app=portainer
+# 単一アプリの収束: ansible-playbook playbooks/k8s/deploy.yml -e app=homarr
 # 所有権衝突の初回移行のみ: ansible-playbook playbooks/k8s/deploy.yml -e force=true
 ---
 - name: Kubernetesアプリを宣言順に収束させる

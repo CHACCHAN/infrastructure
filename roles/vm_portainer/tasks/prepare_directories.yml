@@ -1,0 +1,23 @@
+# 先に作っておかないと、docker composeがマウント元をroot所有で作る前提が崩れる。
+# 公式イメージはUSER指定が無くroot権限で動くため、所有者はrootのままでよい。
+#
+#   data/ … Portainerの設定・利用者・暗号化鍵(bolt DB)。**バックアップ対象**
+---
+- name: Portainerの設置ディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ portainer_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+# 資格情報と暗号化鍵が入るためroot専用にする
+- name: コンテナへマウントするディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ portainer_install_dir }}/data"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  become: true

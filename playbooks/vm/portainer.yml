@@ -1,0 +1,64 @@
+# Portainer(DockerのWeb UI管理)VMを宣言から一気通貫で構築するPlaybook。
+# 用途はこのVMのDocker単体管理に限定する(Kubernetes管理はRancherの担当)。
+# 公開はメインクラスタのTraefikがTLS終端し、HTTPで:9000へ転送する(LAN内限定。
+# 経路は inventory/group_vars/all/k8s.yml の k8s_external_routes。docs/vm/portainer.md)。
+# 実行例: ansible-playbook playbooks/vm/portainer.yml
+---
+# 0. AWXのSurveyなど、鍵を本文で受け取った場合に一時ファイルへ書き出す
+- name: 接続用の秘密鍵を用意する
+  ansible.builtin.import_playbook: ssh_key.yml
+
+# 1. Proxmox側: テンプレート→クローン→設定→cloud-init→起動まで収束
+- name: VMを収束させる
+  ansible.builtin.import_playbook: ../pve/provision.yml
+  vars:
+    target: portainer
+    profile_expected: portainer
+
+# 2. VM内部: SSHでサービスをセットアップ
+- name: Portainerをセットアップする
+  hosts: "{{ target | default('portainer', true) }}"
+  gather_facts: false
+  vars:
+    ansible_user: "{{ pve_ssh_user }}"
+    ansible_ssh_private_key_file: "{{ pve_ssh_prikey_resolved }}"
+    # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+  pre_tasks:
+    - name: SSH接続を待つ
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ vm_ssh_wait_timeout | default(600) }}"
+
+    # play冒頭の自動ファクト収集はpre_tasksより先に走ってしまうため、
+    # SSH到達を待ってから明示的に収集する
+    - name: ファクトを収集する
+      ansible.builtin.setup:
+  roles:
+    - vm_portainer
+  post_tasks:
+    # dockerグループへの追加とカーネル更新を反映してから外部疎通を確認する。
+    - name: 構成を反映するためVMを再起動する
+      ansible.builtin.import_role:
+        name: vm
+        tasks_from: reboot_vm
+
+    - name: 実行元の端末からWeb UIに接続できることを確認する
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ portainer_http_port | default(9000) }}/api/status"
+        status_code: [200]
+      delegate_to: localhost
+      become: false
+      register: portainer_remote_status
+      retries: 30
+      delay: 10
+      until: portainer_remote_status is succeeded
+
+    - name: 構築結果と次の手順を表示する
+      ansible.builtin.debug:
+        msg:
+          - "Portainer Business Edition {{ portainer_version }} を構築しました:
+             https://portainer.{{ k8s_domain }}/(LAN内限定)"
+          - "初回セットアップ(Web UI): 管理者アカウント作成 → ライセンスキー入力
+             (portainer.io で無料発行。3ノードまで無料枠)"
+          - "経路の反映(メインクラスタ側。未反映なら):
+             ansible-playbook playbooks/k8s/deploy.yml -e app=external"

@@ -36,6 +36,7 @@ flowchart TB
 | [dev/password.yml](../../playbooks/vm/dev/password.yml) | [dev/password.md](dev/password.md) | 開発VMのログインパスワードだけ更新 | proxmox_api.yml |
 | [k3s.yml](../../playbooks/vm/k3s.yml) | [k3s.md](k3s.md) | k3sクラスタ(k8sグループ全台) | − |
 | [pbs.yml](../../playbooks/vm/pbs.yml) | [pbs.md](pbs.md) | Proxmox Backup Server | − |
+| [portainer.yml](../../playbooks/vm/portainer.yml) | [portainer.md](portainer.md) | Portainer(DockerのWeb UI管理) | − |
 | [coolify.yml](../../playbooks/vm/coolify.yml) | [coolify.md](coolify.md) | Coolify(セルフホストPaaS) | なし |
 | [rancher.yml](../../playbooks/vm/rancher.yml) | [rancher.md](rancher.md) | Rancher(Kubernetes管理サーバー) | rancher.yml |
 | [technitium.yml](../../playbooks/vm/technitium.yml) | [technitium.md](technitium.md) | Technitium DNS | − |

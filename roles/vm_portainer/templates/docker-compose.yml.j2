@@ -1,0 +1,23 @@
+# Ansible(roles/vm_portainer)が生成。手動編集は次回実行で上書きされます。
+#
+# 内容は公式のインストール手順(docker run)と同じ構成。差分は次の3点:
+#   - データを名前付きボリュームではなくバインドマウントにしている
+#     (設置ディレクトリごとバックアップできるようにするため。wg-easyと同じ方針)
+#   - TLSはメインクラスタのTraefikで終端するため --http-enabled でHTTP待受を有効化し、
+#     HTTP(:9000)だけを公開する(既定のHTTPS :9443 は公開しない)
+#   - このVMのDockerを管理するためdocker.sockをマウントする
+---
+services:
+  portainer:
+    container_name: {{ portainer_container_name }}
+    image: {{ portainer_image }}:{{ portainer_version }}
+    restart: unless-stopped
+    command: --http-enabled
+    ports:
+      # Web UI(HTTP)。TLS終端はメインクラスタのTraefik
+      - "{{ portainer_http_port }}:9000/tcp"
+    volumes:
+      # このVMのDockerを管理するためのソケット
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 設定・利用者・暗号化鍵(bolt DB)
+      - ./data:/data

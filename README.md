@@ -35,7 +35,7 @@ flowchart TB
 | --- | --- | --- | --- |
 | ① Proxmox操作 | `roles/pve` `pve_vm` `pve_template` | インベントリの宣言そのもの | `playbooks/pve/` |
 | ② VMセットアップ | `roles/vm` `vm_docker` | `vm_authentik` `vm_wg_easy` `vm_k3s` … | `playbooks/vm/` |
-| ③ Kubernetes | `roles/k8s` | `k8s_external` `k8s_portainer` `k8s_guacamole` … | `playbooks/k8s/` |
+| ③ Kubernetes | `roles/k8s` | `k8s_external` `k8s_homarr` `k8s_guacamole` … | `playbooks/k8s/` |
 
 ```mermaid
 flowchart LR
@@ -81,7 +81,7 @@ ansible-playbook playbooks/vm/authentik.yml
 # Kubernetesアプリの収束(Secretも含めて全部。収束済みなら changed=0)
 ansible-playbook playbooks/k8s/deploy.yml --check          # 差分の有無を確認
 ansible-playbook playbooks/k8s/deploy.yml                  # 全アプリ
-ansible-playbook playbooks/k8s/deploy.yml -e app=portainer # 1アプリだけ
+ansible-playbook playbooks/k8s/deploy.yml -e app=homarr # 1アプリだけ
 
 # インベントリに書かずに1台だけ作る(検証VM。詳細は docs/pve/adhoc.md)
 ansible-playbook playbooks/vm/dev/setup.yml \

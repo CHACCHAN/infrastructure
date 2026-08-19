@@ -139,6 +139,6 @@ ansible-playbook playbooks/k8s/deploy.yml -e app=awx
 | Job Template | playbook | ドキュメント |
 | --- | --- | --- |
 | pve-provision / pve-power / pve-destroy / pve-template | playbooks/pve/*.yml | [docs/pve/](../../pve/README.md) |
-| vm-authentik / vm-coolify / vm-ddns / vm-k3s / vm-pbs / vm-rancher / vm-technitium / vm-wg-easy / vm-dev-setup / vm-dev-password | playbooks/vm/*.yml | [docs/vm/](../../vm/README.md) |
+| vm-authentik / vm-coolify / vm-ddns / vm-k3s / vm-pbs / vm-portainer / vm-rancher / vm-technitium / vm-wg-easy / vm-dev-setup / vm-dev-password | playbooks/vm/*.yml | [docs/vm/](../../vm/README.md) |
 | k8s-deploy | playbooks/k8s/deploy.yml | [docs/k8s/deploy.md](../../k8s/deploy.md) |
 | utils-awx-job-launch / utils-awx-job-status / utils-awx-inventory-sync / utils-authentik-users | playbooks/utils/awx/*.yml / playbooks/utils/authentik/users.yml | [docs/utils/](../README.md) |

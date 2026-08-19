@@ -2,8 +2,8 @@
 # 単体k3s(server・Traefik無効)の上へHelmでRancherを載せる(docs/vm/rancher.md)。
 ---
 pve_storage: ssd01
-pve_vm_cores: 12
-pve_vm_cpu_type: x86-64-v3
+pve_vm_cores: 8
+pve_vm_cpu_type: x86-64-v2-AES
 pve_vm_memory: 8192
 pve_vm_disk_size: 64
 pve_ssh_user: rancher

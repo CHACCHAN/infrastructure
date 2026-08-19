@@ -1,0 +1,45 @@
+# Portainer(DockerのWeb UI管理)を独立VMへ構築する。Debian専用。
+# 全VM共通の処理は vm / vm_docker ロールと共有している。
+#
+# 用途はこのVMのDocker単体管理に限定する(Kubernetes管理はRancherの担当)。
+# TLSはメインクラスタのTraefikで終端し、ここは --http-enabled のHTTP(:9000)で
+# 待ち受ける(Coolify・Rancherと同じ外部TLS終端パターン。docs/vm/portainer.md)。
+---
+- name: 対象OSを確認する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: assert_debian
+
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: VM共通の初期セットアップを実行する
+  ansible.builtin.import_role:
+    name: vm
+
+- name: Dockerをインストールする
+  ansible.builtin.import_role:
+    name: vm_docker
+
+- name: Portainer用のディレクトリを準備する
+  ansible.builtin.import_tasks: prepare_directories.yml
+
+- name: Portainerのコンテナを起動する
+  ansible.builtin.import_tasks: ../../vm_docker/tasks/deploy_compose.yml
+  vars:
+    svc_name: Portainer
+    svc_install_dir: "{{ portainer_install_dir }}"
+    # .env等の外部設定ファイルは無い(設定はcompose定義がすべて)
+    svc_config_changed: false
+
+# Web UI(HTTP)のみ。HTTPS(:9443)はcompose側で公開していないため開けない
+- name: PortainerのWeb UIポートを開放する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports:
+      - {port: "{{ portainer_http_port }}", proto: tcp}
+
+- name: サービスの起動を確認する
+  ansible.builtin.import_tasks: verify_service.yml

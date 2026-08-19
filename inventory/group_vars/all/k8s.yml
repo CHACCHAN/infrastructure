@@ -18,7 +18,6 @@ k8s_apps:
   - external
   - cloudflared
   - guacamole
-  - portainer
   - awx
   - homarr
   - pgadmin
@@ -90,6 +89,18 @@ k8s_external_routes:
         host: "*.web.{{ k8s_domain }}"
         port: http
         entrypoints: "web,websecure"
+        forwarded_https: true
+
+  - name: portainer
+    backend_ip: 172.16.11.9
+    scheme: http
+    # Portainer VM(Docker単体運用)のWeb UI。--http-enabled のHTTP待受(:9000)へ転送する。
+    # TLS終端はここ(メインクラスタのTraefik)で完結する(docs/vm/portainer.md)
+    ports: [{ name: http, port: 9000 }]
+    ingresses:
+      - name: portainer
+        host: "portainer.{{ k8s_domain }}"
+        port: http
         forwarded_https: true
 
   - name: rancher

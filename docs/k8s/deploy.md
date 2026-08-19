@@ -9,7 +9,7 @@
 ```sh
 ansible-playbook playbooks/k8s/deploy.yml --check          # 差分の有無(クラスタに触らない)
 ansible-playbook playbooks/k8s/deploy.yml                  # 全アプリ収束(収束済みならchanged=0)
-ansible-playbook playbooks/k8s/deploy.yml -e app=portainer # 1アプリだけ
+ansible-playbook playbooks/k8s/deploy.yml -e app=homarr # 1アプリだけ
 ansible-playbook playbooks/k8s/deploy.yml -e force=true    # フィールド所有権の衝突を強制取得(一度きり)
 ```
 

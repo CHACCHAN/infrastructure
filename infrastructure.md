@@ -124,7 +124,7 @@ flowchart TB
   end
 
   subgraph lan_app["LAN内のみ: クラスタ内アプリ(Ingress→Service→Pod)"]
-    A_APPS["portainer. / ansible.(AWX) / homarr.<br>pgadmin. / nextcloud. / guacamole.<br>認証はAuthentik OIDC(アプリ側で実装)"]
+    A_APPS["ansible.(AWX) / homarr.<br>pgadmin. / nextcloud. / guacamole.<br>認証はAuthentik OIDC(アプリ側で実装)"]
   end
 
   subgraph lan_ext["LAN内のみ: クラスタ外サービス(k8s_external)"]

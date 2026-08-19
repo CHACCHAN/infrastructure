@@ -16,7 +16,7 @@ flowchart TB
     subgraph 型["役割ごとの型"]
         E["外部経路型 k8s_external<br>宣言リスト→64リソース量産"]
         S["自前アプリ型<br>k8s_guacamole / k8s_cloudflared<br>k8s_certificates / k8s_namespaces"]
-        H["Helm型(リリースなし)<br>k8s_portainer k8s_awx k8s_homarr<br>k8s_pgadmin k8s_nextcloud k8s_postgresql<br>k8s_cert_manager k8s_nfs_provisioner<br>k8s_kubernetes_replicator"]
+        H["Helm型(リリースなし)<br>k8s_awx k8s_homarr<br>k8s_pgadmin k8s_nextcloud k8s_postgresql<br>k8s_cert_manager k8s_nfs_provisioner<br>k8s_kubernetes_replicator"]
     end
     B["roles/k8s(ベース)<br>apply: SSA(field_manager=kubectl)<br>helm: チャートpin描画→SSA"]
     宣言 --> D --> E & S & H --> B --> C["k3sクラスタ"]
@@ -59,13 +59,12 @@ flowchart TB
 
 ### 上流Helmチャートのアプリ
 
-`roles/k8s_portainer` をひな型に: defaults/main.ymlに `<役割>_helm_version`(バージョン固定)と `<役割>_values`(values全文)を置き、tasks/main.ymlで `roles/k8s` のhelmを呼ぶ。**Helmリリースは作らない**(helm template→SSA)。
+`roles/k8s_homarr` をひな型に: defaults/main.ymlに `<役割>_helm_version`(バージョン固定)と `<役割>_values`(values全文)を置き、tasks/main.ymlで `roles/k8s` のhelmを呼ぶ。**Helmリリースは作らない**(helm template→SSA)。
 
 | チャート | 固定 | 特記 |
 | --- | --- | --- |
 | jetstack/cert-manager | v1.21.0 | --no-hooks。ns注入禁止(kube-systemにも書く) |
 | nfs-subdir-external-provisioner | 4.0.18 | --no-hooks。**ns注入必須**(忘れるとdefaultに落ちる) |
-| portainer/portainer | 239.5.0 | --no-hooks |
 | awx-operator | 3.2.1 | --include-crds。ns注入必須。AWX本体はOperatorが作る |
 | homarr-labs/homarr | 8.26.0 | ns注入必須。OCI版は使わない |
 | runix/pgadmin4 | 1.66.0 | --no-hooks |
