@@ -1,0 +1,47 @@
+# Rancher本体をHelmで導入する(チャート版=本体版。rancher_versionで固定)。
+# メインクラスタの roles/k8s は「helm template + SSA」だが、あちらは接続先検証つきの
+# deploy.yml(メインクラスタ専用)のため、別クラスタへ向ける本ロールは
+# kubernetes.core.helm + kubeconfig明示指定で行う。
+#
+# valuesは公式のExternal TLS Termination構成に合わせている:
+# - tls=external: TLSはメインクラスタのTraefikで終端し、Rancherは:80のHTTPで受けて
+#   X-Forwarded-Proto: https を信頼する。cert-managerは不要(公式ドキュメントに明記)で、
+#   ingress.tls.source も参照されない
+# - agentTLSMode=system-store: 既定のstrict(CAピン留め)はLet's Encryptの中間CA
+#   ローテーションで下流クラスタのエージェント接続が壊れるため、OSの信頼ストア検証にする
+# - ingress.enabled=false + service.type=LoadBalancer: このk3sはTraefik無効のため
+#   Ingressは作らず、k3s同梱のServiceLB(Klipper)がServiceをVMの:80へ直接束ねる
+---
+- name: Helmリポジトリを登録する
+  kubernetes.core.helm_repository:
+    name: "{{ rancher_helm_repo_name }}"
+    repo_url: "{{ rancher_helm_repo_url }}"
+  delegate_to: localhost
+  become: false
+
+- name: Rancherをインストールする
+  kubernetes.core.helm:
+    name: "{{ rancher_release_name }}"
+    chart_ref: "{{ rancher_helm_repo_name }}/rancher"
+    chart_version: "{{ rancher_version }}"
+    release_namespace: "{{ rancher_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ rancher_kubeconfig_path }}"
+    update_repo_cache: true
+    wait: true
+    wait_timeout: "{{ rancher_helm_wait_timeout }}"
+    values:
+      hostname: "{{ rancher_hostname }}"
+      # シングルノードのため1(既定の3はHA構成用)
+      replicas: 1
+      bootstrapPassword: "{{ rancher_bootstrap_password }}"
+      tls: external
+      agentTLSMode: system-store
+      ingress:
+        enabled: false
+      service:
+        type: LoadBalancer
+  delegate_to: localhost
+  become: false
+  # bootstrapPasswordがvaluesに含まれるため全出力を抑止する
+  no_log: true

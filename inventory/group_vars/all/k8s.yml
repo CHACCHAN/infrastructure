@@ -92,6 +92,19 @@ k8s_external_routes:
         entrypoints: "web,websecure"
         forwarded_https: true
 
+  - name: rancher
+    backend_ip: 172.16.11.8
+    scheme: http
+    # Rancher VM(単体k3s・Traefik無効)のServiceLBが:80で受ける。TLS終端はここ
+    # (メインクラスタのTraefik)で完結し、Rancher側は tls=external で
+    # X-Forwarded-Proto: https を信頼する(docs/vm/rancher.md)
+    ports: [{ name: http, port: 80 }]
+    ingresses:
+      - name: rancher
+        host: "rancher.{{ k8s_domain }}"
+        port: http
+        forwarded_https: true
+
   - name: technitium-dns
     backend_ip: 172.16.11.3
     scheme: http

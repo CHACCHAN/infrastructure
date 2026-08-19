@@ -1,0 +1,14 @@
+# 公開経路と同じ入口(ServiceLBの:80)からRancherの死活エンドポイントに到達できることを
+# 実行元から確認する。Podのロールアウト自体は install_rancher.yml のhelm(wait)が保証済みで、
+# ここでの主目的はServiceLB→Podの公開経路の検証。
+---
+- name: 公開経路(:80)の疎通を確認する
+  ansible.builtin.uri:
+    url: "http://{{ ansible_host }}/healthz"
+    status_code: [200]
+  delegate_to: localhost
+  become: false
+  register: rancher_healthz
+  retries: "{{ rancher_ready_retries }}"
+  delay: "{{ rancher_ready_delay }}"
+  until: rancher_healthz is succeeded

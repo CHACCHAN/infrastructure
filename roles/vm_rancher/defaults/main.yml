@@ -1,0 +1,34 @@
+# タイムゾーン(vm_timezone)・ロケール(vm_locale)などの共通既定は roles/vm 側にある。
+# k3s自体の変数(バージョン・Traefik無効化・SAN)は roles/vm_k3s の担当で、
+# このロールはその上へのRancher導入(Helm)だけを受け持つ。
+---
+# Rancherのバージョン(Helmチャート版=本体版)。stableリポジトリの最新に合わせて固定する。
+# 上げるときはKubernetesサポートマトリクスを確認し、inventory/group_vars/rancher.ymlの
+# kubernetes_version(このVMのk3s)が対応範囲に収まっているかを必ず併せて確認する
+rancher_version: "2.14.3"
+
+# Helmチャートの取得元(公式)
+rancher_helm_repo_name: rancher-latest
+rancher_helm_repo_url: https://releases.rancher.com/server-charts/latest
+
+# デプロイ先
+rancher_namespace: cattle-system
+rancher_release_name: rancher
+
+# 公開FQDN(メインクラスタのTraefikがTLS終端してHTTP :80へ転送してくる)。
+# 必須。playbooks/vm/rancher.yml が rancher.{{ k8s_domain }} を渡す
+rancher_hostname: ""
+
+# 初期管理者(admin)のブートストラップパスワード。必須。vault/rancher.ymlから渡す
+rancher_bootstrap_password: ""
+
+# helmに渡すkubeconfig。未指定ならVM上のkubeconfigを一時ファイルへ取得して使い、
+# 実行後に削除する(tasks/fetch_kubeconfig.yml)。手元の別ファイルを使う場合のみ指定する
+rancher_kubeconfig_path: ""
+
+# Helmのロールアウト完了待ちの上限
+rancher_helm_wait_timeout: 15m
+
+# 公開経路(:80)の疎通確認(リトライ回数 / 間隔(秒))
+rancher_ready_retries: 30
+rancher_ready_delay: 10

@@ -1,0 +1,22 @@
+# Rancher管理サーバーVMのProxmox VMプロファイル。
+# 単体k3s(server・Traefik無効)の上へHelmでRancherを載せる(docs/vm/rancher.md)。
+---
+pve_storage: ssd01
+pve_vm_cores: 12
+pve_vm_cpu_type: x86-64-v3
+pve_vm_memory: 8192
+pve_vm_disk_size: 64
+pve_ssh_user: rancher
+pve_ssh_pubkey_file: ~/.ssh/id_ed25519_rancher.pub
+pve_ssh_prikey_file: ~/.ssh/id_ed25519_rancher
+
+# --- k3s(server単体)の設定 ---
+# Rancher 2.14系のサポート上限はKubernetes v1.35のため、メインクラスタ(k8sグループ)とは
+# 別にここで固定する。Rancherを上げるときはサポートマトリクスを確認してから併せて上げる。
+# https://www.suse.com/suse-rancher/support-matrix/
+kubernetes_version: v1.35.7+k3s1
+# TLS終端はメインクラスタのTraefikに一本化するため、このVMにTraefikは入れない。
+# 公開はRancherのService(type: LoadBalancer)をk3s同梱のServiceLBが:80へ直接束ねる
+kubernetes_disable: ["traefik"]
+# APIサーバー証明書に公開FQDNを足す(VM自身のIPはroleが自動で追加する)
+kubernetes_tls_san: ["rancher.{{ k8s_domain }}"]

@@ -37,6 +37,7 @@ flowchart TB
 | [k3s.yml](../../playbooks/vm/k3s.yml) | [k3s.md](k3s.md) | k3sクラスタ(k8sグループ全台) | − |
 | [pbs.yml](../../playbooks/vm/pbs.yml) | [pbs.md](pbs.md) | Proxmox Backup Server | − |
 | [coolify.yml](../../playbooks/vm/coolify.yml) | [coolify.md](coolify.md) | Coolify(セルフホストPaaS) | なし |
+| [rancher.yml](../../playbooks/vm/rancher.yml) | [rancher.md](rancher.md) | Rancher(Kubernetes管理サーバー) | rancher.yml |
 | [technitium.yml](../../playbooks/vm/technitium.yml) | [technitium.md](technitium.md) | Technitium DNS | − |
 | [wg-easy.yml](../../playbooks/vm/wg-easy.yml) | [wg-easy.md](wg-easy.md) | wg-easy(WireGuard VPN) | wg-easy.yml |
 | [ssh_key.yml](../../playbooks/vm/ssh_key.yml) | [ssh_key.md](ssh_key.md) | 前処理(単体では使わない) | − |

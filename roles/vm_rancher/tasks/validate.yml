@@ -1,0 +1,31 @@
+# 以降のタスクが参照する値をここで検証する。
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - ansible_user is defined
+      - (ansible_user | default('', true)) | length > 0
+      - (rancher_hostname | default('', true)) | length > 0
+    fail_msg: >-
+      ansible_user / rancher_hostname が指定されていません。
+      playbooks/vm/rancher.yml 経由での実行を前提にしています
+      (単体実行なら -e "ansible_user=<ユーザ名>" -e "rancher_hostname=<公開FQDN>")。
+    quiet: true
+
+# 値そのものはログに出さず、有無だけを判定する。
+- name: 初期管理者パスワードが渡されていることを検証する
+  ansible.builtin.assert:
+    that:
+      - (rancher_bootstrap_password | default('', true)) | length > 0
+    fail_msg: >-
+      rancher_bootstrap_password が空です。vault/rancher.yml の
+      vault_rancher_bootstrap_password を設定してください
+      (ansible-vault edit vault/rancher.yml)。
+    quiet: true
+
+- name: 構築する内容を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ ansible_host }} の単体k3sへ Rancher {{ rancher_version }} を構築します
+      / 公開FQDN https://{{ rancher_hostname }}/
+      (TLS終端はメインクラスタのTraefik。VMへはHTTP :80で届く)

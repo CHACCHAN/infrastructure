@@ -327,6 +327,11 @@ awx_job_templates:
     playbook: playbooks/vm/pbs.yml
     use_common_survey: true
 
+  - name: vm-rancher
+    description: Rancher(Kubernetes管理サーバー)を一気通貫構築
+    playbook: playbooks/vm/rancher.yml
+    use_common_survey: true
+
   - name: vm-technitium
     description: Technitium DNS(内部DNS)を一気通貫構築
     playbook: playbooks/vm/technitium.yml

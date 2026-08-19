@@ -1,0 +1,40 @@
+# Rancher(Kubernetes管理サーバー)を単体k3sの上へHelmで導入する。
+# 前提: vm_k3s で server(Traefik無効)が構築済みであること(playbooks/vm/rancher.yml)。
+# Helm操作はVM内ではなく実行元(手元のcontrol node / AWXの実行Pod)から
+# VMのAPIサーバーへ行う(kubeconfigを明示指定し、実行元の環境変数に依存しない)。
+---
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: Kubeconfigを実行元へ取得する
+  ansible.builtin.import_tasks: fetch_kubeconfig.yml
+  when: (rancher_kubeconfig_path | default('', true)) | length == 0
+
+# kubeconfigはクラスタの管理者権限そのもののため、取得した一時ファイルは
+# インストールの成否にかかわらず必ず削除する
+- name: RancherをHelmで導入する
+  block:
+    - name: Rancherをインストールする
+      ansible.builtin.import_tasks: install_rancher.yml
+  always:
+    - name: 取得した一時kubeconfigを削除する
+      ansible.builtin.file:
+        path: "{{ rancher_kubeconfig_path }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      changed_when: false
+      when: rancher_kubeconfig_fetched | default(false) | bool
+
+# ServiceLBがRancherのService(:80/:443)をVMへ束ねるが、メインクラスタのTraefikからの
+# HTTP転送だけを受ける想定のため:80のみ開放する(:443は自己署名のため使わない)
+- name: Rancherが使うポートを開放する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports:
+      - {port: 80, proto: tcp}
+
+- name: サービスの起動を確認する
+  ansible.builtin.import_tasks: verify_service.yml
