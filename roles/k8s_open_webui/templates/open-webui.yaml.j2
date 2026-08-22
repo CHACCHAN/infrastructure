@@ -1,0 +1,282 @@
+# OpenWebUI 本体。
+#
+# 上流に公式 Helm チャートはあるが、1 Pod の単純構成なので
+# Deployment / Service を直接書く (ひな型は k8s_guacamole)。
+#
+# **PVC を持たない。** ユーザ・チャット・管理設定は PostgreSQL の openwebui DB、
+# RAG のベクトルは同じ DB の pgvector (VECTOR_DB=pgvector) にある。
+# DATA_DIR に残るのはアップロードしたファイル実体と埋め込みモデルの
+# キャッシュだけで、どちらも作り直せるので emptyDir に置いている
+# (TrueNAS の NFS は使わない。NFS 上のファイル DB がロック不備で壊れる
+#  問題を、置き場ごと無くして解消している)。
+#
+# **裏返しに、Pod を作り直すとアップロード済みファイルの実体は消える。**
+# チャンク済みテキストとベクトルは DB 側に残るので RAG の検索と引用は
+# 生き続けるが、元ファイルのダウンロードはできなくなる。実体まで残したい
+# なら STORAGE_PROVIDER=s3 で外部オブジェクトストレージへ寄せること。
+#
+# LLM バックエンド (Ollama / OpenAI 互換 API) は繋いでいない。
+# 接続先と API キーは管理画面 (管理者設定 > 接続) から入れる想定で、
+# 設定値は PostgreSQL の config テーブルに永続化される。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: open-webui
+    app.kubernetes.io/component: workload
+    app.kubernetes.io/part-of: open-webui
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  replicas: 1
+  # RollingUpdate にはしない。起動時に alembic マイグレーションが走るので、
+  # イメージのタグを上げたときに新旧 Pod が同じ DB へ同時にマイグレーションを
+  # かけるのを避ける。更新のたびに数十秒のダウンタイムが出るのは許容する。
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      # selector は作成後に変更できない。ここは最小限に固定する。
+      app.kubernetes.io/name: open-webui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: open-webui
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        # 公式イメージの既定は root だが、書き込み先は DATA_DIR (= PVC) と
+        # /tmp だけなので非 root で動かせる (HOME を /tmp に向ける。下の env)。
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: open-webui
+          # latest は使わない。更新はタグを書き換えて --check → 適用。
+          image: ghcr.io/open-webui/open-webui:v0.11.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+
+            # uid 1000 は /etc/passwd に居ないので HOME が /root のままになり、
+            # Python 系ライブラリの ~/.cache 書き込みが Permission denied になる。
+            # 揮発してよいキャッシュなので /tmp に逃がす。
+            # (HuggingFace のモデルキャッシュはイメージ側の ENV が
+            #  DATA_DIR 配下 = PVC を指しているのでそのまま)
+            - name: HOME
+              value: /tmp
+
+            ## 公開 URL — OAuth コールバックや通知内リンクの組み立てに使う。
+            # Traefik が TLS を終端するので、ここで https を明示する。
+            - name: WEBUI_URL
+              value: "https://ai.{{ k8s_domain }}"
+
+            ## セッション署名鍵 — JWT の署名と DB 内資格情報の暗号化に使う。
+            # 未設定だとコンテナ内に自動生成され、Pod 再起動のたびに
+            # 全ユーザーがログアウトされるため Secret で固定する。
+            - name: WEBUI_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-app
+                  key: webui-secret-key
+
+            ## DB — platform namespace 共用の PostgreSQL (openwebui DB)
+            #
+            # **必須。** 未設定だと DATA_DIR 配下のファイル DB に落ちるが、
+            # NFS 上ではロックが効かず壊れうる。
+            # スキーマは起動時に OpenWebUI 自身の alembic マイグレーションが作る
+            # (空の DB を渡すだけでよい。DB は roles/k8s_postgresql の
+            #  初回起動スクリプトが作る)。
+            #
+            # 接続 URL 丸ごとを Secret に入れている (実体は vault/k8s_secrets.yml
+            # の k8s_secret_open_webui_db)。パスワードだけ分ける形にはしていない
+            # — OpenWebUI が受け取るのは DATABASE_URL の 1 変数だけなので、
+            # マニフェスト側で URL を組み立てるとパスワードの断片が env に出る。
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-db
+                  key: db-url
+
+            ## RAG のベクトルストア — 同じ PostgreSQL の pgvector
+            #
+            # 既定は Chroma で、DATA_DIR 配下のファイル DB になる。
+            # 置き場を持たない構成にするため pgvector に寄せている。
+            # 接続先は PGVECTOR_DB_URL を省くと DATABASE_URL と同じになる
+            # (openwebui DB の document_chunk テーブルを使う)。
+            #
+            # vector 拡張は roles/k8s_postgresql のイメージ (pgvector/pgvector)
+            # に入っていて、CREATE EXTENSION は OpenWebUI が起動時に流す
+            # (postgres superuser で繋いでいるので通る)。
+            #
+            # ベクトルの次元数は PGVECTOR_INITIALIZE_MAX_VECTOR_LENGTH の
+            # 既定 1536 のまま。既定の埋め込みモデル (all-MiniLM-L6-v2 / 384) も
+            # OpenAI の text-embedding-3-small (1536) も収まる。
+            - name: VECTOR_DB
+              value: pgvector
+
+            ## 認証 — Authentik の OIDC (authorization code flow)
+            #
+            # Authentik 側: Provider は Confidential クライアント、
+            # Application Slug は open-web-ui。Redirect URI は下の
+            # OPENID_REDIRECT_URI と**完全一致**していないと弾かれる。
+            - name: OAUTH_PROVIDER_NAME
+              # ログイン画面のボタンに出る表示名
+              value: Authentik
+            - name: OPENID_PROVIDER_URL
+              value: "https://auth.{{ k8s_domain }}/application/o/open-web-ui/.well-known/openid-configuration"
+            - name: OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-oidc
+                  key: oidc-client-id
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-oidc
+                  key: oidc-client-secret
+            - name: OAUTH_SCOPES
+              value: "openid email profile"
+            - name: OPENID_REDIRECT_URI
+              value: "https://ai.{{ k8s_domain }}/oauth/oidc/callback"
+            # Authentik で認証が通ったユーザのアカウントを自動作成する。
+            # false だと管理者が先にユーザを作らない限りログインできない。
+            # 自動作成されたユーザのロールは DEFAULT_USER_ROLE (既定 pending) で、
+            # 管理者が承認するまで使えない。
+            - name: ENABLE_OAUTH_SIGNUP
+              value: "true"
+            # 同じメールアドレスのローカルアカウントがあれば OIDC ログインを
+            # そこへ統合する (最初のローカル管理者を Authentik ログインへ引き継ぐ)。
+            - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
+              value: "true"
+            # **ローカルのメール+パスワードログインは退避経路として残す**
+            # (Authentik が落ちても管理者はログインできる。他アプリと同じ方針)。
+            # 既定で有効なので明示はしないが、無効化するときはここに
+            # ENABLE_LOGIN_FORM: "false" を足す。
+
+            ## LLM バックエンド
+            # Ollama はクラスタ内に居ないので探しに行かせない
+            # (有効のままだと localhost:11434 へのプローブでエラーログが出続ける)。
+            # OpenAI 互換 API は管理画面から登録する想定なので env では触らない。
+            - name: ENABLE_OLLAMA_API
+              value: "false"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            # RAG のローカル埋め込みモデル (sentence-transformers) を使うと
+            # CPU とメモリを食う。上限は緩めにしておく。
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            # readOnlyRootFilesystem は付けていない。HOME を /tmp に向けた
+            # キャッシュ書き込みと、起動時の一時ファイル生成があるため。
+          volumeMounts:
+            - name: data
+              # DATA_DIR の既定値。イメージ側は root 所有なので、
+              # 非 root (uid 1000) で書けるようにボリュームを被せる。
+              mountPath: /app/backend/data
+          # 起動時に alembic マイグレーションと、埋め込みモデル
+          # (既定は all-MiniLM-L6-v2) の取得が走る。emptyDir なので Pod を
+          # 作り直すたびに取り直しになる。10s × 60 = 最大 10 分の猶予。
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            failureThreshold: 5
+      volumes:
+        - name: data
+          # 中身はアップロードのファイル実体と埋め込みモデルのキャッシュだけ。
+          # fsGroup 1000 が効くので uid 1000 でそのまま書ける。
+          #
+          # 既定の埋め込みモデル (all-MiniLM-L6-v2) のキャッシュは実測で
+          # 約 900MB (HuggingFace が onnx / openvino / pytorch を全部持ってくる)。
+          # **Pod を作り直すたびに取り直しになる。** 嫌なら管理画面で
+          # 埋め込みを OpenAI 側 (rag.embedding_engine=openai) に寄せると
+          # ローカルモデルを持たなくなる。
+          # 上限はノードのディスクを守るための保険 (超えると Pod が evict される)。
+          emptyDir:
+            sizeLimit: 8Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: open-webui
+    app.kubernetes.io/component: workload
+    app.kubernetes.io/part-of: open-webui
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: open-webui
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: http
+
+---
+# OpenWebUI の公開経路 (LAN 内限定)。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: open-webui
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: open-webui
+    app.kubernetes.io/component: route
+    app.kubernetes.io/part-of: open-webui
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    # HTTPS 専用で公開する。平文 HTTP (:80) では 404 になる。
+    traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+    # Authentik の forwardAuth Middleware は付けない。
+    # OpenWebUI 自身が OIDC で Authentik に投げるため二重になるうえ、
+    # チャット表示に使う WebSocket (socket.io) が通らなくなる。
+    # traefik.ingress.kubernetes.io/router.middlewares: "platform-authentik-forward-auth@kubernetescrd"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - "ai.{{ k8s_domain }}"
+      # platform/certificates/ の Certificate が作るワイルドカード証明書
+      secretName: {{ k8s_tls_secret }}
+  rules:
+    - host: "ai.{{ k8s_domain }}"
+      http:
+        paths:
+          - path: "/"
+            pathType: Prefix
+            backend:
+              service:
+                name: open-webui
+                port:
+                  name: http

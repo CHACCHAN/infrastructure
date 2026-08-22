@@ -22,6 +22,7 @@ k8s_apps:
   - homarr
   - pgadmin
   - nextcloud
+  - open_webui
 
 k8s_namespaces_list:
   - cert-manager

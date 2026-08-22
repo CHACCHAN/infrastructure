@@ -15,7 +15,7 @@ flowchart TB
     D["playbooks/k8s/deploy.yml<br>(1動詞: 全アプリ or -e app=X)"]
     subgraph 型["役割ごとの型"]
         E["外部経路型 k8s_external<br>宣言リスト→64リソース量産"]
-        S["自前アプリ型<br>k8s_guacamole / k8s_cloudflared<br>k8s_certificates / k8s_namespaces"]
+        S["自前アプリ型<br>k8s_guacamole / k8s_open_webui<br>k8s_cloudflared<br>k8s_certificates / k8s_namespaces"]
         H["Helm型(リリースなし)<br>k8s_awx k8s_homarr<br>k8s_pgadmin k8s_nextcloud k8s_postgresql<br>k8s_cert_manager k8s_nfs_provisioner<br>k8s_kubernetes_replicator"]
     end
     B["roles/k8s(ベース)<br>apply: SSA(field_manager=kubectl)<br>helm: チャートpin描画→SSA"]

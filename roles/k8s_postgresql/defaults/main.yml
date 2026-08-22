@@ -5,14 +5,29 @@ k8s_postgresql_values:
   fullnameOverride: postgresql
 
   image:
-    # **alpine は使わない。** alpine 版の postgres ユーザは uid 70 で、
-    # チャート既定の securityContext (runAsUser: 999) と食い違って起動しない。
-    # debian 版が 999 なので、そちらに合わせる。
+    # **公式 postgres ではなく pgvector 入りイメージを使う。**
+    # OpenWebUI の RAG ベクトルストアを pgvector に寄せていて (roles/k8s_open_webui)、
+    # vector 拡張が無いイメージだと OpenWebUI 起動時の CREATE EXTENSION で落ちる。
+    # 中身は公式 postgres の debian 版 + 拡張。
     #
-    # **16 系にしているのは AWX の都合。** AWX 24.6.1 が同梱する PostgreSQL は
+    # **alpine 系は使わない。** alpine 版の postgres ユーザは uid 70 で、
+    # チャート既定の securityContext (runAsUser: 999) と食い違って起動しない。
+    # このイメージは debian ベースで 999 なのでそのまま噛み合う。
+    registry: "docker.io"
+    repository: "pgvector/pgvector"
+    # タグは <pgvector版>-pg<PostgreSQLメジャー>。
+    #
+    # **16 系から動かさないのは AWX の都合。** AWX 24.6.1 が同梱する PostgreSQL は
     # 15 で、上流が動作確認しているのもそのバージョンだけ。外部 DB として
     # 使う分には新しいものでも動くとされているが、18 は検証範囲外。
-    tag: "16.14"
+    #
+    # **-trixie を外さない。** 既定のタグは bookworm ベース (glibc 2.36) で、
+    # trixie ベースの postgres:16.14 で作った既存 DB (照合順序バージョン 2.41)
+    # と食い違い、起動時に collation version mismatch を出す。照合順序が
+    # 変わるとテキスト索引の並びが崩れるので、glibc を合わせる。
+    #
+    # 0.8.6-pg16-trixie の中身は PostgreSQL 16.15。
+    tag: "0.8.6-pg16-trixie"
 
   settings:
     # superuser のパスワードを読む Secret。中身は vault/postgresql.yaml。
@@ -29,13 +44,13 @@ k8s_postgresql_values:
     pgDir: "pg"
 
   # 初回起動時 (データディレクトリが空のとき) だけ実行されるスクリプト。
-  # 空の DB を 5 つ作るだけ。
+  # 空の DB を 6 つ作り、openwebui にだけ vector 拡張を入れる。
   #
   # ロールは作らない。アプリは postgres ユーザで自分の DB に繋ぐ。
   # アプリごとにロールを分けると、同じパスワードを「PostgreSQL 側」と
   # 「アプリ側の接続情報」の 2 か所に書くことになり、事故のほうが大きい。
   #
-  # **2 回目以降は実行されない。** DB を後から足す場合は
+  # **2 回目以降は実行されない。** DB や拡張を後から足す場合は
   # psql で手動で作ること (README.md に手順がある)。
   customScripts:
     10-create-databases.sh: |
@@ -47,6 +62,13 @@ k8s_postgresql_values:
       CREATE DATABASE pgadmin;
       CREATE DATABASE nextcloud;
       CREATE DATABASE guacamole;
+      CREATE DATABASE openwebui;
+      EOSQL
+
+      # OpenWebUI の RAG ベクトルストア (VECTOR_DB=pgvector) 用。
+      # 拡張は DB 単位なので openwebui DB の中で作る。
+      psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname openwebui <<'EOSQL'
+      CREATE EXTENSION IF NOT EXISTS vector;
       EOSQL
 
   storage:
