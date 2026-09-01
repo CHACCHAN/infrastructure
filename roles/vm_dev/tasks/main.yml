@@ -33,11 +33,17 @@
 - name: PackageKitのオフライン誤検知を回避する
   ansible.builtin.import_tasks: configure_packagekit_network.yml
 
+# kubectl / Helm の導入手順は他のロール(vm_hermes)とも共有するため、
+# ベースロール(roles/vm)側の共有タスクを呼ぶ。
 - name: Kubernetes CLI(kubectl)をインストールする
-  ansible.builtin.import_tasks: install_kubectl.yml
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: install_kubectl
 
 - name: Helmをインストールする
-  ansible.builtin.import_tasks: install_helm.yml
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: install_helm
 
 - name: VSCode Serverの定期クリーンアップを設定する
   ansible.builtin.import_tasks: configure_vscode_cleanup.yml

@@ -1,0 +1,32 @@
+# 公式ドキュメント(https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)の
+# 手順に従い、最新安定版のkubectlバイナリをチェックサム検証付きで導入する。
+#
+# 複数のロール(vm_dev / vm_hermes)がKubernetesを操作するため、ベースロール側の
+# 共有タスクとして置いている。呼び出しは import_role(tasks_from: install_kubectl)。
+# 受け取る変数は無い(常に stable.txt の最新安定版を入れる)。
+---
+- name: 最新安定版のkubectlバージョン番号を取得する
+  ansible.builtin.uri:
+    url: https://dl.k8s.io/release/stable.txt
+    return_content: true
+    timeout: 30
+  register: vm_kubectl_version
+  changed_when: false
+  retries: 3
+  delay: 5
+  until: vm_kubectl_version is succeeded
+
+- name: チェックサム検証付きでkubectlバイナリをダウンロードする
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/{{ vm_kubectl_version.content | trim }}/bin/linux/amd64/kubectl"
+    checksum: "sha256:https://dl.k8s.io/release/{{ vm_kubectl_version.content | trim }}/bin/linux/amd64/kubectl.sha256"
+    dest: /usr/local/bin/kubectl
+    owner: root
+    group: root
+    mode: "0755"
+    timeout: 60
+  become: true
+  register: vm_kubectl_download
+  retries: 3
+  delay: 5
+  until: vm_kubectl_download is succeeded

@@ -1,0 +1,168 @@
+# 以降のタスクが参照する値をここで検証する。
+---
+- name: 必須変数が正しく渡されているか検証する
+  ansible.builtin.assert:
+    that:
+      - ansible_user is defined
+      - (ansible_user | default('', true)) | length > 0
+    fail_msg: >-
+      ansible_user が指定されていません。
+      Hermes専用ユーザー(サービスの実行ユーザー)としても使うため、
+      -e "ansible_user=<ユーザ名>" で指定してください。
+    quiet: true
+
+# HERMES_HOMEとsystemdのHOMEにこの値を使うため、収集済みであることを確かめる
+# (ファクト収集前にロールを呼ぶと未定義になる)。
+- name: SSHユーザーのHOMEが取得できていることを確認する
+  ansible.builtin.assert:
+    that:
+      - ansible_env.HOME | default('', true) | length > 0
+    fail_msg: >-
+      ansible_env.HOME を取得できていません
+      (ファクト収集より前にこのロールが呼ばれていないか確認してください)。
+    quiet: true
+
+# 共通の assert_debian.yml はディストリビューションしか見ないため、ここで版も確認する。
+- name: 対象OSがDebian 13であることを確認する
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution_major_version == '13'
+    fail_msg: >-
+      このロールはDebian 13(trixie)のcloud image専用です
+      (検出されたバージョン: {{ ansible_distribution }} {{ ansible_distribution_version }})。
+    quiet: true
+
+# upstreamのリリースタグは v<年>.<月>.<日>[.<連番>] 形式(例 v2026.8.31 / v2026.8.16.2)。
+# main追従(latest相当)を宣言に混ぜないため、書式で弾く。
+- name: Hermesの版が固定されていることを検証する
+  ansible.builtin.assert:
+    that:
+      - (hermes_version | default('', true)) | length > 0
+      - hermes_version is match('^v?[0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}(\.[0-9]+)?$')
+    fail_msg: >-
+      hermes_version にはupstreamのリリースタグを指定してください
+      (例 v2026.8.31。指定値: {{ hermes_version | default('(未指定)') }})。
+      main や latest のような可変の参照は受け付けません
+      (タグ一覧: https://github.com/NousResearch/hermes-agent/tags)。
+    quiet: true
+
+- name: dashboardのポート指定を検証する
+  ansible.builtin.assert:
+    that:
+      - hermes_dashboard_port | int > 0
+      - hermes_dashboard_port | int < 65536
+    fail_msg: >-
+      hermes_dashboard_port が不正です
+      (1〜65535の範囲で指定してください。指定値: {{ hermes_dashboard_port }})。
+    quiet: true
+
+# SSOを使うかは宣言の有無で決まる(上流プラグインは issuer と client_id の
+# 両方が揃ったときだけプロバイダを登録する)。以降のタスクとテンプレートは
+# ここで確定した事実だけを見る(条件を各所で書き写さないため)。
+- name: dashboardでSSO(OIDC)を使うかを判定する
+  ansible.builtin.set_fact:
+    hermes_oidc_enabled: >-
+      {{ ((hermes_oidc_issuer | default('', true)) | trim | length > 0)
+         and ((hermes_oidc_client_id | default('', true)) | trim | length > 0) }}
+    # 片方だけの宣言は「SSOなし」と見分けがつかない(プラグインが黙って登録を諦める)
+    hermes_oidc_partial: >-
+      {{ ((hermes_oidc_issuer | default('', true)) | trim | length > 0)
+         != ((hermes_oidc_client_id | default('', true)) | trim | length > 0) }}
+
+- name: SSOの宣言が揃っていることを検証する
+  ansible.builtin.assert:
+    that:
+      - not hermes_oidc_partial
+    fail_msg: >-
+      hermes_oidc_issuer と hermes_oidc_client_id は両方そろえて宣言してください
+      (片方だけではSSOが有効になりません。両方空ならSSOなしで構築します)。
+    quiet: true
+
+# 非loopback待受のdashboardは認証プロバイダが無いと起動時に落ちる(上流仕様)。
+- name: dashboardの認証プロバイダが1つ以上あることを確認する
+  ansible.builtin.assert:
+    that:
+      - (hermes_dashboard_enable_basic_auth | bool) or hermes_oidc_enabled
+    fail_msg: >-
+      dashboardの認証プロバイダが1つもありません。
+      hermes_dashboard_enable_basic_auth を true にするか、
+      hermes_oidc_issuer / hermes_oidc_client_id を宣言してください
+      (LANへ待受を開くdashboardはプロバイダを1つも登録できないと起動しません)。
+    quiet: true
+
+- name: SSOの宣言内容を検証する
+  ansible.builtin.assert:
+    that:
+      - (hermes_oidc_issuer | trim) is match('^https://')
+      - "'openid' in (hermes_oidc_scopes | default('', true)).split()"
+      - (hermes_oidc_client_id | trim) is not search('\\s')
+    fail_msg: >-
+      SSOの宣言が不正です。issuerはIdPのissuer識別子(https://…/application/o/<app>/ など)、
+      scopesは空白区切りで openid を含める必要があります
+      (指定値: issuer={{ hermes_oidc_issuer }} / scopes={{ hermes_oidc_scopes }})。
+    quiet: true
+  when: hermes_oidc_enabled
+
+# 文字種を限るのは、認証情報をsystemdの環境ファイル経由で渡すため
+# (空白や引用符が入ると環境ファイルの解釈で値が壊れる)。値はログへ出さない。
+- name: SSOのclient secretの文字種を検証する
+  ansible.builtin.assert:
+    that:
+      - (hermes_oidc_client_secret | trim) is match('^[A-Za-z0-9._~+/=-]+$')
+    fail_msg: >-
+      hermes_oidc_client_secret に使えるのは英数字と - . _ ~ + / = です
+      (実値は vault/hermes.yml の vault_hermes_oidc_client_secret)。
+      public clientなら設定不要です(PKCEのみで認証します)。
+    quiet: true
+  no_log: true
+  when: (hermes_oidc_client_secret | default('', true)) | trim | length > 0
+
+# 文字種を限る理由は上と同じ。値はログへ出さない。
+- name: dashboardの認証情報が渡されていることを検証する
+  ansible.builtin.assert:
+    that:
+      - (hermes_dashboard_username | default('', true)) | trim | length > 0
+      - (hermes_dashboard_password | default('', true)) | trim | length >= 16
+      - (hermes_dashboard_password | default('', true)) | trim is match('^[A-Za-z0-9._~+/=-]+$')
+      - (hermes_dashboard_secret | default('', true)) | trim | length >= 32
+      - (hermes_dashboard_secret | default('', true)) | trim is match('^[A-Za-z0-9._~+/=-]+$')
+    fail_msg: >-
+      dashboardの管理者パスワード(16文字以上)とセッション署名鍵(32文字以上)が
+      必要です(使えるのは英数字と - . _ ~ + / = )。
+      vault/hermes.yml の vault_hermes_dashboard_password /
+      vault_hermes_dashboard_secret を設定してください
+      (確認: ansible-vault view vault/hermes.yml)。
+      (SSOだけで運用するなら hermes_dashboard_enable_basic_auth: false)。
+    quiet: true
+  no_log: true
+  when: hermes_dashboard_enable_basic_auth | bool
+
+# -e で渡すとリストが文字列になりやすい('[...]' はYAMLとして解釈されない)。
+# そのまま進むとconfig書き込みで分かりにくいエラーになるため先に止める。
+- name: リストで渡すべき宣言が実際にリストであることを検証する
+  ansible.builtin.assert:
+    that:
+      - hermes_trusted_proxies is sequence
+      - hermes_trusted_proxies is not string
+      - hermes_agent_packages is sequence
+      - hermes_agent_packages is not string
+    fail_msg: >-
+      hermes_trusted_proxies / hermes_agent_packages はリストで指定してください。
+      コマンドラインから渡す場合は -e '{"hermes_trusted_proxies": ["172.16.12.0/24"]}'
+      のようにJSON全体を渡します(-e key='[...]' は文字列として届きます)。
+    quiet: true
+
+- name: 構築する内容を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ ansible_host }} に Hermes Agent {{ hermes_version }} を構築します
+      / 導入先 {{ hermes_install_dir }}(HERMES_HOME {{ hermes_home }})
+      / dashboard {{ hermes_dashboard_host }}:{{ hermes_dashboard_port }}
+      / 認証 {{ ((['username/password'] if hermes_dashboard_enable_basic_auth | bool else [])
+                 + (['SSO(' ~ hermes_oidc_issuer ~ ')'] if hermes_oidc_enabled else []))
+                | join(' + ') }}
+      {{ '(公開URL ' ~ hermes_public_url ~ ')'
+         if (hermes_public_url | default('', true)) | length > 0 else '(IP直打ちのみ)' }}
+      / メッセージングGateway {{ '常駐させる' if hermes_enable_gateway | bool else '常駐させない' }}
+      / Docker {{ 'あり(Agent Sandbox用)' if hermes_install_docker | bool else 'なし' }}
+      / モデルの認証情報とチャネル設定は構築後にdashboard/CLIで行います

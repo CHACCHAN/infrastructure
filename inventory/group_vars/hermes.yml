@@ -1,0 +1,35 @@
+# Hermes Agent VMのProxmox VMプロファイル。
+# セルフホストAIエージェント専用のVM(NICは1枚。推論は外部APIへ投げるため
+# GPUは不要。Python+Node+依存一式を置くのでディスクは余裕を持たせる)。
+---
+# 全体既定のssd01ではなく、このノードで使うストレージを明示する
+pve_storage: local-lvm
+pve_vm_cores: 8
+pve_vm_cpu_type: x86-64-v2-AES
+pve_vm_memory: 8192
+pve_vm_disk_size: 128
+pve_ssh_user: hermes
+pve_ssh_pubkey_file: ~/.ssh/id_ed25519_hermes.pub
+pve_ssh_prikey_file: ~/.ssh/id_ed25519_hermes
+
+# --- Hermes Agentの設定 ---
+# サービス固有の既定値の正は roles/vm_hermes/defaults/main.yml
+# (版の固定は hermes_version、dashboardの待受は hermes_dashboard_host / _port)。
+# ここでは差分が出たときだけ上書きする。
+
+# 公開経路。メインクラスタのTraefikがTLS終端し、HTTPでVMの:9119へ転送する
+# (経路の宣言は inventory/group_vars/all/k8s.yml の k8s_external_routes)。
+# この値がdashboardのpublic_url(Host/Originの許可とコールバックの基準)になる
+hermes_public_url: "https://hermes.{{ k8s_domain }}"
+# X-Forwarded-* を信頼する上流。Traefikのリクエストはk3sノード
+# (vmbr2側の172.16.12.0/24)から届く
+hermes_trusted_proxies:
+  - 172.16.12.0/24
+
+# dashboardのSSO(AuthentikのOIDCプロバイダ "hermes-agent")。
+# Authentik側はpublic client(PKCEのみ)のため client_secret は使わない。
+# Authentikのプロバイダに <hermes_public_url>/auth/callback を
+# リダイレクトURIとして登録しておく必要がある(docs/vm/hermes.md)
+hermes_oidc_issuer: https://auth.cc-chacchan.com/application/o/hermes-agent/
+hermes_oidc_client_id: SAW74MbXOOR11pVxBReL70Krhjr0s9ZfFcqsA6K0
+hermes_oidc_scopes: openid profile email

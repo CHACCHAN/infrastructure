@@ -1,14 +1,17 @@
 # 公式ドキュメント(https://helm.sh/docs/intro/install/)のget-helm-4便利
 # スクリプトを使う。
 # スクリプトは誰でも書き込める/tmpではなく/usr/local/srcに置き、実行後は残さない。
+#
+# 複数のロール(vm_dev / vm_hermes)がHelmを使うため、ベースロール側の共有タスクと
+# して置いている。呼び出しは import_role(tasks_from: install_helm)。受け取る変数は無い。
 ---
 - name: Helmが導入済みか確認する
   ansible.builtin.stat:
     path: /usr/local/bin/helm
-  register: development_helm_bin
+  register: vm_helm_bin
 
 - name: Helmをインストールする
-  when: not development_helm_bin.stat.exists
+  when: not vm_helm_bin.stat.exists
   block:
     - name: Helm公式インストールスクリプトを取得する
       ansible.builtin.get_url:

@@ -92,6 +92,22 @@ k8s_external_routes:
         entrypoints: "web,websecure"
         forwarded_https: true
 
+  - name: hermes
+    backend_ip: 172.16.11.31
+    scheme: http
+    # Hermes Agentのweb dashboard(管理UI + ブラウザ内チャット)。TLS終端はここ
+    # (メインクラスタのTraefik)で完結し、VMの:9119へHTTPで転送する。チャットは
+    # WebSocket(/api/ws・/api/pty)だがTraefikがUpgradeをそのまま通すため追加設定は不要
+    # (VM側のpublic_url・trusted_proxiesはvm_hermesロールが設定する。docs/vm/hermes.md)
+    ports: [{ name: http, port: 9119 }]
+    ingresses:
+      # 管理UI(LAN内限定)。X-Forwarded-Proto: https が無いと、Cookieのsecure属性と
+      # OAuthコールバックの組み立てが実際の公開URLとずれる
+      - name: hermes
+        host: "hermes.{{ k8s_domain }}"
+        port: http
+        forwarded_https: true
+
   - name: portainer
     backend_ip: 172.16.11.9
     scheme: http

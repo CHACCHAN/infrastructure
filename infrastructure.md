@@ -52,8 +52,9 @@ flowchart TB
     vm_service04["WG-Easy<br>vmbr0: 172.16.11.5"]
     vm_service05["Coolify<br>vmbr0: 172.16.11.6"]
     vm_service06["Proxmox Backup Server<br>vmbr0: 172.16.11.7<br>vmbr1: 10.10.10.7"]
+    vm_service07["Hermes Agent<br>vmbr0: 172.16.11.31"]
 
-    vm_service01 ~~~ vm_service04
+    vm_service01 ~~~ vm_service04 ~~~ vm_service07
     vm_service02 ~~~ vm_service05
     vm_service03 ~~~ vm_service06
   end
@@ -129,7 +130,7 @@ flowchart TB
 
   subgraph lan_ext["LAN内のみ: クラスタ外サービス(k8s_external)"]
     E_FWD["ddns. → 172.16.11.4:8080<br>Authentik forwardAuth Middleware を通す"]
-    E_NET["dns. → 172.16.11.3:5380<br>doh. → 172.16.11.3:8053<br>wgui. → 172.16.11.5:51821<br>coolify. → 172.16.11.6:80"]
+    E_NET["dns. → 172.16.11.3:5380<br>doh. → 172.16.11.3:8053<br>wgui. → 172.16.11.5:51821<br>coolify. → 172.16.11.6:80<br>hermes. → 172.16.11.31:9119(Authentik OIDC)"]
     E_INFRA["pve01.〜pve10. → 172.16.11.11〜.20:8006<br>pbs. → 172.16.11.7:8007<br>nas. → 172.16.11.10:443<br>自己署名HTTPS(insecureSkipVerify)"]
   end
 

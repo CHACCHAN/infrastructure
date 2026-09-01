@@ -1,0 +1,94 @@
+# 公開経路(メインクラスタのTraefik)と対応するdashboardの設定を収束させる。
+#
+# ここは「毎回」収束させる。公開URLと信頼する上流プロキシは、Ansibleが管理している
+# Traefikの経路(inventory/group_vars/all/k8s.yml の k8s_external_routes)と
+# 一対で意味を持つため。モデル・プロバイダの認証情報・チャネル・スキル・メモリには
+# 一切触れない(それらはHermes側=dashboard/CLIの持ち物)。
+#
+# 認証情報(username/password)はconfig.yamlへ書かず、systemdの環境ファイル経由で渡す
+# (config.yamlに平文を残さないため。configure_services.yml)。
+---
+- name: dashboardの公開URLの現在値を取得する
+  ansible.builtin.command:
+    argv:
+      - "{{ hermes_bin }}"
+      - config
+      - get
+      - dashboard.public_url
+      - --json
+  become: false
+  changed_when: false
+  # 未設定のキーは非0で返ることがある(その場合は現在値なしとして扱う)
+  failed_when: false
+  register: hermes_public_url_get
+  when: (hermes_public_url | default('', true)) | trim | length > 0
+
+- name: dashboardの公開URLを設定する
+  ansible.builtin.command:
+    argv:
+      - "{{ hermes_bin }}"
+      - config
+      - set
+      - dashboard.public_url
+      - "{{ hermes_public_url | trim }}"
+  become: false
+  changed_when: true
+  register: hermes_public_url_set
+  when:
+    - (hermes_public_url | default('', true)) | trim | length > 0
+    - >-
+      hermes_public_url_get.rc != 0
+      or (hermes_public_url_get.stdout | default('') | trim
+          | regex_replace('^"|"$', '')) != (hermes_public_url | trim)
+
+- name: 信頼する上流プロキシの現在値を取得する
+  ansible.builtin.command:
+    argv:
+      - "{{ hermes_bin }}"
+      - config
+      - get
+      - dashboard.trusted_proxies
+      - --json
+  become: false
+  changed_when: false
+  failed_when: false
+  register: hermes_trusted_proxies_get
+  when: hermes_trusted_proxies | length > 0
+
+# 値はJSON/YAMLのフロー形式で渡せる(上流仕様: config setはインラインの
+# リスト/マッピングリテラルも解釈する)。
+- name: 信頼する上流プロキシを設定する
+  ansible.builtin.command:
+    argv:
+      - "{{ hermes_bin }}"
+      - config
+      - set
+      - dashboard.trusted_proxies
+      - "{{ hermes_trusted_proxies | to_json }}"
+  become: false
+  changed_when: true
+  register: hermes_trusted_proxies_set
+  when:
+    - hermes_trusted_proxies | length > 0
+    - hermes_trusted_proxies_current != hermes_trusted_proxies
+  vars:
+    # JSON配列に見えるときだけデコードする(未設定・別形式は「現在値なし」扱い)
+    hermes_trusted_proxies_current: >-
+      {{ (hermes_trusted_proxies_get.stdout | from_json)
+         if (hermes_trusted_proxies_get.rc | default(1)) == 0
+            and (hermes_trusted_proxies_get.stdout | default('') | trim) is match('^\[.*\]$')
+         else [] }}
+
+# 設定を書き換えた実行だけdashboardを再起動する(configure_services.ymlが判断する)
+- name: dashboard設定の変更有無を後続へ渡す
+  ansible.builtin.set_fact:
+    hermes_config_changed: >-
+      {{ ((hermes_public_url_set | default({}, true)) is changed)
+         or ((hermes_trusted_proxies_set | default({}, true)) is changed) }}
+
+- name: dashboardの公開設定を表示する
+  ansible.builtin.debug:
+    msg: >-
+      公開URL: {{ hermes_public_url | default('(なし。IP直打ちのみ)', true) }}
+      / 信頼する上流: {{ hermes_trusted_proxies | join(', ') | default('(なし)', true) }}
+      / 認証: username/password({{ hermes_dashboard_username }})

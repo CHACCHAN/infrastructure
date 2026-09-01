@@ -1,0 +1,200 @@
+# Hermes Agent本体を公式インストーラで導入する。
+#
+# Hermesはgitチェックアウト + uvの仮想環境という配布形態のため、版の固定は
+# 「リリースタグ → コミットSHA」を解決してインストーラの --commit へ渡す
+# (インストーラはタグ名や短縮SHAを受け付けず、40文字のSHAのみ)。
+#
+# upstreamのリリースタグは**注釈付きタグ**のため、`refs/tags/<タグ>` が指すのは
+# タグオブジェクトで、コミットは peel 済みの `refs/tags/<タグ>^{}` 側にある。
+# ls-remoteに両方のパターンを渡し、peel行があればそちらを採る
+# (タグオブジェクトのSHAを渡してもgitはcheckout時に自動でpeelするため導入自体は
+#  成功するが、その後のHEADとの突き合わせが噛み合わなくなる)。
+# インストーラを使うのは、Python/uv/Nodeの用意・venv・extras(uv.lockのハッシュ検証)
+# まで面倒を見る唯一の公式経路のため。--non-interactive と --skip-setup で
+# 対話ウィザードを動かさず、モデルやチャネルの設定は利用者に委ねる。
+#
+# 実行はHermes専用ユーザー(=ansible_user)自身で行う。上流のper-userレイアウトになり、
+# コード({{ hermes_install_dir }})とデータ({{ hermes_home }})が同じHOME配下に入る。
+---
+- name: 宣言した版のコミットSHAをupstreamから解決する
+  ansible.builtin.command:
+    argv:
+      - git
+      - ls-remote
+      - --tags
+      - "{{ hermes_repo_url }}"
+      - "refs/tags/{{ hermes_version }}"
+      - "refs/tags/{{ hermes_version }}^{}"
+  become: false
+  changed_when: false
+  register: hermes_tag_lookup
+
+- name: 解決したコミットSHAを取り出す
+  ansible.builtin.set_fact:
+    # peel行(末尾が } )があればコミット、無ければタグ=コミット(軽量タグ)
+    hermes_target_commit: >-
+      {{ ((hermes_tag_peeled_lines + hermes_tag_plain_lines) | first | default('', true))
+         | regex_search('[0-9a-f]{40}') | default('', true) }}
+  vars:
+    hermes_tag_peeled_lines: >-
+      {{ hermes_tag_lookup.stdout_lines | default([], true) | select('search', '\}$') | list }}
+    hermes_tag_plain_lines: >-
+      {{ hermes_tag_lookup.stdout_lines | default([], true) | reject('search', '\}$') | list }}
+
+- name: 宣言した版がupstreamに存在することを確認する
+  ansible.builtin.assert:
+    that:
+      - hermes_target_commit is match('^[0-9a-f]{40}$')
+    fail_msg: >-
+      タグ {{ hermes_version }} を {{ hermes_repo_url }} で解決できませんでした。
+      リリース一覧(https://github.com/NousResearch/hermes-agent/tags)にある
+      タグ名を hermes_version へ指定してください。
+    quiet: true
+
+- name: 導入済みのチェックアウトを確認する
+  ansible.builtin.stat:
+    path: "{{ hermes_install_dir }}/.git"
+  become: false
+  register: hermes_checkout
+
+- name: 導入済みのコミットと宣言値をローカルで突き合わせる
+  ansible.builtin.command:
+    argv: "{{ item.argv }}"
+  become: false
+  changed_when: false
+  # 宣言値のオブジェクトがまだ手元に無い場合は解決に失敗する(=版が違う)。
+  # 注釈付きタグでもコミットへ解決させるため ^{commit} を付けている
+  failed_when: false
+  register: hermes_commit_probe
+  loop:
+    - name: head
+      argv: [git, -C, "{{ hermes_install_dir }}", rev-parse, HEAD]
+    - name: target
+      argv: [git, -C, "{{ hermes_install_dir }}", rev-parse, "{{ hermes_target_commit }}^{commit}"]
+  loop_control:
+    label: "{{ item.name }}"
+  when: hermes_checkout.stat.exists
+
+- name: インストールが必要か判定する
+  ansible.builtin.set_fact:
+    hermes_installed_commit: "{{ hermes_probe_head }}"
+    hermes_install_required: >-
+      {{ not hermes_checkout.stat.exists
+         or hermes_probe_head | length == 0
+         or hermes_probe_head != (hermes_probe_target | default(hermes_target_commit, true)) }}
+  vars:
+    hermes_probe_head: >-
+      {{ (hermes_commit_probe.results | default([])
+          | selectattr('item.name', 'equalto', 'head')
+          | selectattr('rc', 'equalto', 0)
+          | map(attribute='stdout') | first | default('', true)) | trim }}
+    hermes_probe_target: >-
+      {{ (hermes_commit_probe.results | default([])
+          | selectattr('item.name', 'equalto', 'target')
+          | selectattr('rc', 'equalto', 0)
+          | map(attribute='stdout') | first | default('', true)) | trim }}
+
+- name: 現在の状態を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ ('導入済み: ' ~ hermes_installed_commit[:12])
+         if hermes_installed_commit | length > 0 else 'Hermesは未導入です' }}
+      → {{ ('宣言値 ' ~ hermes_version ~ '(' ~ hermes_target_commit[:12] ~ ')を導入します')
+            if (hermes_install_required | bool) else '版は宣言どおりのため何もしません' }}
+
+- name: Hermes Agentをインストールする
+  when: hermes_install_required | bool
+  block:
+    # スクリプトは誰でも書き込める/tmpではなく/usr/local/srcに置き、実行後は残さない
+    # (rootが配置し、Hermes専用ユーザーが実行する)。
+    - name: 公式インストールスクリプトを取得する
+      ansible.builtin.get_url:
+        url: "{{ hermes_installer_url }}"
+        dest: /usr/local/src/install-hermes.sh
+        owner: root
+        group: root
+        mode: "0755"
+      become: true
+
+    # --force-commit は「宣言した版へ必ず合わせる」ため
+    # (既定では新しいチェックアウトを古いコミットへ戻さない安全策が働く)。
+    - name: インストールスクリプトを実行する
+      ansible.builtin.command:
+        argv: >-
+          {{ ['bash', '/usr/local/src/install-hermes.sh',
+              '--non-interactive', '--skip-setup',
+              '--commit', hermes_target_commit, '--force-commit',
+              '--dir', hermes_install_dir,
+              '--hermes-home', hermes_home]
+             + (['--skip-browser'] if hermes_skip_browser | bool else [])
+             + (['--skip-computer-use'] if hermes_skip_computer_use | bool else []) }}
+      become: false
+      changed_when: true
+      register: hermes_installer_run
+
+  always:
+    - name: インストールスクリプトを削除する
+      ansible.builtin.file:
+        path: /usr/local/src/install-hermes.sh
+        state: absent
+      become: true
+
+- name: 導入後のコミットを確認する
+  ansible.builtin.command:
+    argv: [git, -C, "{{ hermes_install_dir }}", rev-parse, "HEAD"]
+  become: false
+  changed_when: false
+  register: hermes_commit_after
+
+- name: 実行ファイルを確認する
+  ansible.builtin.stat:
+    path: "{{ hermes_bin }}"
+  become: false
+  register: hermes_bin_stat
+
+- name: 宣言した版が導入されたことを確認する
+  ansible.builtin.assert:
+    that:
+      - (hermes_commit_after.stdout | trim) == hermes_target_commit
+      - hermes_bin_stat.stat.exists
+    fail_msg: >-
+      Hermes {{ hermes_version }}({{ hermes_target_commit[:12] }})の導入を確認できません
+      (現在のHEAD: {{ hermes_commit_after.stdout | default('(不明)') | trim }} /
+      実行ファイル {{ hermes_bin }}:
+      {{ 'あり' if hermes_bin_stat.stat.exists else 'なし' }})。
+      チェックアウト先で `git reflog -5` を見ると、どこへ移動したか分かります
+      (注釈付きタグのタグオブジェクトSHAとコミットSHAの取り違えが典型)。
+    quiet: true
+
+# web dashboardはFastAPI/Uvicorn(web extra)、ブラウザ内チャットはptyprocess
+# (pty extra)を要求する。上流のextras構成は版で変わりうるため、実際にimportできるかで
+# 判定してから足す(入っていれば何もしない)。
+- name: dashboardに必要な追加依存を確認する
+  ansible.builtin.command:
+    argv:
+      - "{{ hermes_venv_python }}"
+      - -c
+      - import fastapi, uvicorn, ptyprocess
+  become: false
+  changed_when: false
+  failed_when: false
+  register: hermes_web_extras
+
+- name: dashboardに必要な追加依存をインストールする
+  ansible.builtin.command:
+    argv:
+      - "{{ hermes_uv_bin }}"
+      - pip
+      - install
+      - --python
+      - "{{ hermes_venv_python }}"
+      - -e
+      - ".[web,pty]"
+    chdir: "{{ hermes_install_dir }}"
+  become: false
+  environment:
+    # インストーラと同じ指定。他ユーザーのuv設定を拾わせない
+    UV_NO_CONFIG: "1"
+  changed_when: true
+  register: hermes_web_extras_install
+  when: hermes_web_extras.rc != 0

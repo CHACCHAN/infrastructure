@@ -1,0 +1,97 @@
+# dashboardが応答し、認証ゲートが有効になっていることを確認する。
+# /api/status は認証不要の公開エンドポイント(上流仕様)。
+# 初回起動時はWeb UIのビルドが走るため、既定で最大10分待つ。
+#
+# 宛先にVMのLAN側IPを使うのは、dashboardがHostヘッダを待受アドレスと照合する
+# (DNSリバインディング対策)ため。
+---
+- name: dashboardが応答するまで待つ
+  ansible.builtin.uri:
+    url: "http://{{ ansible_host }}:{{ hermes_dashboard_port }}/api/status"
+    status_code: [200]
+    return_content: true
+  become: false
+  register: hermes_dashboard_status
+  retries: "{{ hermes_ready_retries }}"
+  delay: "{{ hermes_ready_delay }}"
+  until: hermes_dashboard_status is succeeded
+
+# 認証プロバイダが読み込まれていないと、LANへ開いたまま素通しになりかねない。
+# 上流のトラブルシュート手順と同じ確認を構築時に自動で行う。
+# プラグインは設定が欠けていても黙って登録を諦めるため、宣言した分だけ
+# providersに載っていることまで見る(self-hostedはOIDCプラグインの名前)。
+- name: dashboardの認証ゲートが有効なことを確認する
+  ansible.builtin.assert:
+    that:
+      - hermes_dashboard_status.json.auth_required | default(false) | bool
+      - not (hermes_dashboard_enable_basic_auth | bool)
+        or 'basic' in (hermes_dashboard_status.json.auth_providers | default([]))
+      - not hermes_oidc_enabled
+        or 'self-hosted' in (hermes_dashboard_status.json.auth_providers | default([]))
+    fail_msg: >-
+      dashboardの認証ゲートが宣言どおりになっていません
+      (auth_required={{ hermes_dashboard_status.json.auth_required | default('(不明)') }} /
+      providers={{ hermes_dashboard_status.json.auth_providers | default([]) | join(', ') }})。
+      {{ hermes_dashboard_env_file }} の HERMES_DASHBOARD_BASIC_AUTH_* /
+      HERMES_DASHBOARD_OIDC_* が読み込まれているか、
+      サービスのログ(journalctl -u {{ hermes_dashboard_service_name }})を確認してください。
+    quiet: true
+
+# 宣言した値がIdPと噛み合うかは、ログイン開始を1回叩けば分かる
+# (プラグインが .well-known を取得し、PKCE付きの認可URLを組み立てて302を返す)。
+# 認証は完了しないため副作用は無い(state用のCookieが載った応答を捨てるだけ)。
+# 失敗するときは 503(IdPへ到達できない/issuer不一致)になる。
+- name: SSOのログイン開始がIdPへ向くことを確認する
+  ansible.builtin.uri:
+    url: >-
+      http://{{ ansible_host }}:{{ hermes_dashboard_port }}/auth/login?provider=self-hosted
+    follow_redirects: none
+    status_code: [302]
+  become: false
+  register: hermes_oidc_login_start
+  when: hermes_oidc_enabled
+
+# IdP側に登録すべきリダイレクトURIが実際に何になるかは、ここで確定する
+# (public_urlがあればそれが基準。無ければリクエストのHost = IP直打ち)。
+- name: 組み立てられた認可URLを検証する
+  vars:
+    hermes_oidc_expected_redirect: >-
+      {{ ((hermes_public_url | default('', true) | trim)
+          or ('http://' ~ ansible_host ~ ':' ~ hermes_dashboard_port))
+         ~ '/auth/callback' }}
+  ansible.builtin.assert:
+    that:
+      - (hermes_oidc_login_start.location | default('')) is match('^https://')
+      - ('client_id=' ~ (hermes_oidc_client_id | trim)) in (hermes_oidc_login_start.location | default(''))
+      - "'code_challenge_method=S256' in (hermes_oidc_login_start.location | default(''))"
+      # 上流はurllibのurlencode(quote_plus)で組み立てる。Jinjaのurlencodeは
+      # / を残すため、replaceで同じ形へ揃えてから照合する
+      - ('redirect_uri=' ~ (hermes_oidc_expected_redirect | urlencode | replace('/', '%2F')))
+        in (hermes_oidc_login_start.location | default(''))
+    fail_msg: >-
+      SSOの認可URLが期待どおりに組み立てられていません
+      (Location={{ hermes_oidc_login_start.location | default('(なし)') }})。
+      hermes_oidc_client_id と、リダイレクトURIの基準になる hermes_public_url
+      (dashboard.public_url)を確認してください
+      (IdPへ登録するリダイレクトURI: {{ hermes_oidc_expected_redirect }})。
+    quiet: true
+  when: hermes_oidc_enabled
+
+- name: Gatewayが稼働していることを確認する
+  ansible.builtin.systemd:
+    name: "{{ hermes_gateway_service_name }}"
+  become: true
+  register: hermes_gateway_state
+  retries: "{{ hermes_ready_retries }}"
+  delay: "{{ hermes_ready_delay }}"
+  until: hermes_gateway_state.status.ActiveState == 'active'
+  when: hermes_enable_gateway | bool
+
+- name: 稼働状況を表示する
+  ansible.builtin.debug:
+    msg: >-
+      Hermes Agent {{ hermes_version }} のdashboardが応答しました
+      ({{ hermes_public_url | default('http://' ~ ansible_host ~ ':' ~ hermes_dashboard_port, true) }}/
+      / 認証プロバイダ {{ hermes_dashboard_status.json.auth_providers | default([]) | join(', ') }}
+      / メッセージングGateway
+      {{ '稼働中' if hermes_enable_gateway | bool else '未常駐(hermes_enable_gateway=false)' }})

@@ -1,0 +1,97 @@
+# タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
+# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+---
+# Hermes Agentの版。upstream(NousResearch/hermes-agent)のリリースタグを指定する。
+# 実体はgitチェックアウトのため、タグ→コミットSHAを解決してそのSHAへ固定する。
+# 上げるときはこの値を変えて playbooks/vm/hermes.yml を再実行する
+# (同じ版なら再インストールしない。mainへの自動追従はしない)
+hermes_version: "v2026.8.31"
+hermes_repo_url: https://github.com/NousResearch/hermes-agent.git
+# 公式インストーラ(依存のPython/uv/Node・venv・extrasを面倒見る)
+hermes_installer_url: https://hermes-agent.nousresearch.com/install.sh
+
+# --- 導入先(上流のper-userレイアウトそのまま)---
+# 専用VMのため、cloud-initが作ったSSHユーザー(pve_ssh_user=hermes)を
+# そのままHermes専用ユーザーとして使う(リポジトリの規約: VM内のユーザーはansible_user)。
+# 設定・セッション・メモリ・スキルはすべて HERMES_HOME 配下に入り、Ansibleは中身に触らない
+hermes_home: "{{ ansible_env.HOME }}/.hermes"
+hermes_install_dir: "{{ hermes_home }}/hermes-agent"
+hermes_bin: "{{ hermes_install_dir }}/venv/bin/hermes"
+hermes_venv_python: "{{ hermes_install_dir }}/venv/bin/python"
+# インストーラが $HERMES_HOME/bin/uv へ置く専用uv(依存追加もこれを使う)
+hermes_uv_bin: "{{ hermes_home }}/bin/uv"
+hermes_config_file: "{{ hermes_home }}/config.yaml"
+hermes_profile_file: /etc/profile.d/hermes.sh
+
+# ヘッドレスVMのため、ブラウザ自動操作(Playwright/Chromium)とComputer Useは入れない。
+# 必要になったら false にして再実行する(数百MBの追加ダウンロードが発生する)
+hermes_skip_browser: true
+hermes_skip_computer_use: true
+
+# --- web dashboard(公開する管理UI + ブラウザ内チャット)---
+hermes_dashboard_service_name: hermes-dashboard.service
+# Traefikは別ホスト(k3sノード)から来るためloopbackでは受けられない
+hermes_dashboard_host: 0.0.0.0
+hermes_dashboard_port: 9119
+# 認証情報を渡す環境ファイル(root所有・Hermesユーザーのみ読める)。
+# HERMES_HOME配下の.envはHermes自身が書き換えるため、そちらには置かない
+hermes_dashboard_env_file: /etc/hermes/dashboard.env
+# 非loopback待受では認証が必須(上流仕様: プロバイダを1つも登録できないと起動時に落ちる)。
+# プロバイダは併存でき、ログイン画面にはパスワード欄とSSOボタンが並ぶ。
+# どちらもsystemdの環境ファイル(hermes_dashboard_env_file)経由で渡す。
+
+# --- ① 同梱のusername/passwordプロバイダ ---
+# IdPが落ちているときの退避経路として既定は有効。SSOだけにするなら false
+hermes_dashboard_enable_basic_auth: true
+hermes_dashboard_username: admin
+# 実値は vault/hermes.yml(playbookが vault_hermes_dashboard_* から渡す)
+hermes_dashboard_password: ""
+# セッション署名鍵。設定しないと再起動ごとに全員ログアウトになる
+hermes_dashboard_secret: ""
+
+# --- ② SSO(OpenID Connect / 上流同梱の self-hosted プラグイン)---
+# Authentik・Keycloak等の汎用OIDCへ向ける(認可コード + PKCE(S256)、
+# 受け取ったID Tokenを jwks で署名検証し iss/aud を照合する)。
+# issuerとclient_idの**両方**が揃ったときだけプロバイダが登録される(上流仕様)。
+# IdP側に登録するリダイレクトURIは <hermes_public_url>/auth/callback。
+# 環境変数はHermesのconfig.yamlより優先されるため、config.yamlへは書かない
+hermes_oidc_issuer: ""
+hermes_oidc_client_id: ""
+hermes_oidc_scopes: "openid profile email"
+# confidential clientのときだけ設定する(public clientはPKCEのみなので空のまま)。
+# 秘密情報のため実値は vault/hermes.yml の vault_hermes_oidc_client_secret に置く
+hermes_oidc_client_secret: ""
+
+# 公開URL(Traefik経由)。宣言すると dashboard.public_url に収束し、
+# HostヘッダとWebSocket Originの許可値・Cookieの基準になる。空ならIP直打ちのみ
+hermes_public_url: ""
+# X-Forwarded-* の提供を信頼する上流プロキシのCIDR(dashboard.trusted_proxies)。
+# 空なら設定しない(リバースプロキシ経由で公開するときだけ宣言する)
+hermes_trusted_proxies: []
+
+# --- メッセージングGateway(Telegram / Discord / Slack …)---
+# 既定では常駐させない。プラットフォームを1つも設定していない状態で常駐させても
+# 意味がないため、`hermes gateway setup` で設定してから true にする
+hermes_enable_gateway: false
+# 上流の `hermes gateway install --system` が作るunit名(内容も上流が管理する)
+hermes_gateway_service_name: hermes-gateway.service
+# `hermes update` やエージェント自身の /restart がroot昇格なしにGatewayを
+# 再起動できるようにするsudoers(上流ドキュメントの推奨設定)
+hermes_gateway_sudoers_file: /etc/sudoers.d/hermes-gateway
+
+# --- エージェントが使う基盤 ---
+# Agent Sandbox(`hermes config set terminal.backend docker`)用のDockerを入れるか
+hermes_install_docker: true
+# 将来使う運用ツール(ansible-core / kubectl / helm)を入れるか
+hermes_install_agent_tools: true
+hermes_agent_packages:
+  - ansible-core
+  - openssh-client
+
+# 事前チェックの必要空き容量(GiB)。Python・Node・依存一式とエージェントの作業領域ぶん
+hermes_min_free_disk_gb: 20
+
+# サービスの起動待ち(リトライ回数 / 間隔(秒))。
+# dashboardは初回起動時にWeb UIをビルドするため長めに待つ
+hermes_ready_retries: 60
+hermes_ready_delay: 10

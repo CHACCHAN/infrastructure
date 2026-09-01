@@ -1,0 +1,26 @@
+# Hermes Agentが自宅ラボを操作するときに使う運用ツール。
+# 「将来使う可能性がある」ものに限定し、それ以上は入れない
+# (git / curl / nfs-common などは全VM共通の install_base_packages.yml で入る。
+#  Dockerは vm_docker ロール、Python/Node/uvはHermesのインストーラが用意する)。
+#
+# ansible-coreだけを入れてコレクションは入れない。必要なコレクションは操作対象の
+# リポジトリ側の宣言(このリポジトリなら ee/requirements.yml)から
+# ansible-galaxy で入れるのが正のため、ここで版を二重管理しない。
+---
+- name: 運用ツールのパッケージをインストールする
+  ansible.builtin.apt:
+    name: "{{ hermes_agent_packages }}"
+    state: present
+    lock_timeout: 300
+  become: true
+
+# kubectl / Helm はベースロール(roles/vm)の共有タスクで導入する(vm_devと同じ手順)
+- name: Kubernetes CLI(kubectl)をインストールする
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: install_kubectl
+
+- name: Helmをインストールする
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: install_helm

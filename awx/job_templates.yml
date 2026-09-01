@@ -322,6 +322,29 @@ awx_job_templates:
         type: password
         required: false
 
+  - name: vm-hermes
+    description: Hermes Agent(セルフホストAIエージェント)を一気通貫構築
+    playbook: playbooks/vm/hermes.yml
+    use_common_survey: true
+    survey_extra:
+      - question_name: Hermes Agentの版(hermes_version)
+        question_description: >-
+          未回答なら宣言値(roles/vm_hermes/defaults/main.yml)。
+          upstreamのリリースタグを指定する(例 v2026.8.31)
+        variable: hermes_version
+        type: text
+        required: false
+      - question_name: メッセージングGatewayを常駐させる(hermes_enable_gateway)
+        question_description: >-
+          Telegram/Discord等を設定済みのときだけ true。
+          未回答なら宣言値(既定はfalse=dashboardのみ常駐)
+        variable: hermes_enable_gateway
+        type: multiplechoice
+        choices:
+          - "true"
+          - "false"
+        required: false
+
   - name: vm-pbs
     description: Proxmox Backup Serverを一気通貫構築
     playbook: playbooks/vm/pbs.yml

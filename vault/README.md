@@ -12,6 +12,7 @@
 | `awx_api.yml` | AWXのURL・OAuthトークン・Project同期用SSH鍵(`vault_awx_host` / `vault_awx_oauthtoken` / `vault_awx_scm_prikey`) | `playbooks/utils/awx/*.yml` |
 | `authentik.yml` | Authentik APIの接続先とトークン(`vault_authentik_host` / `vault_authentik_api_token`) | `playbooks/utils/authentik/users.yml` |
 | `rancher.yml` | Rancherの初期管理者パスワード(`vault_rancher_bootstrap_password`) | `playbooks/vm/rancher.yml` |
+| `hermes.yml` | Hermes Agentのweb dashboardの管理者パスワードとセッション署名鍵(`vault_hermes_dashboard_password` / `vault_hermes_dashboard_secret`)。SSOをconfidential clientで組む場合のみ `vault_hermes_oidc_client_secret` も置く | `playbooks/vm/hermes.yml` |
 
 > **注意**: `k8s_secrets.yml` 内のSecretの**内部キー名**は、pgadminだけ大文字スネークケース(`PGADMIN_OAUTH2_CLIENT_ID` 等)で書く。pgadminはチャートの `envVarsFromSecrets`(キー名がそのまま環境変数名になる)方式のため。他アプリは `db-password` のようなケバブケース + マニフェスト側の `secretKeyRef.key` 明示。
 

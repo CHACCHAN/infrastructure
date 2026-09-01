@@ -35,4 +35,4 @@ Job Template **`vm-authentik`**(定義: [awx/job_templates.yml](../../awx/job_te
 
 - **パスワード類は自動生成される** → 明示指定しなくてよい。値はVM上の `.env` にある(再実行しても変わらない)
 - **`authentik_bootstrap_*` は初回起動時のみ効く** → 2回目以降に変えたい場合はAuthentik UI側で操作する
-- **他サービスのOIDC連携より先に構築する** → wg-easyやk8sアプリ群(pgAdmin等)のSSOはAuthentikを参照する
+- **他サービスのOIDC連携より先に構築する** → wg-easy・Hermes Agentやk8sアプリ群(pgAdmin等)のSSOはAuthentikを参照する

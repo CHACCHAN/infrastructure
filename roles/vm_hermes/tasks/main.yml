@@ -1,0 +1,68 @@
+# Hermes Agent(Nous ResearchのセルフホストAIエージェント)を専用VMへ構築する。
+# Debian 13(cloud image)専用。全VM共通の処理は vm / vm_docker ロールと共有している。
+#
+# 役割分担(docs/vm/hermes.md):
+#   Ansible … 再構築できる基盤と「使い始められる初期状態」まで
+#             (OS・専用ユーザー・Hermes本体の版・systemd・Docker・運用ツール・
+#              dashboardの待受と認証・公開URL)
+#   Hermes  … 導入後の実運用設定(モデル/プロバイダの認証情報・ツール・チャネル・
+#             スキル・メモリ・セッション)はweb dashboardかCLIで変更する。
+#             AnsibleはHERMES_HOME配下(config.yaml・.env・状態)を上書きしない
+#
+# LLM推論はこのVMで行わない。外部のOpenAI互換API・Gemini等へ接続する前提のため、
+# GPUや推論用パッケージは入れない。
+---
+- name: 対象OSを確認する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: assert_debian
+
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: ディスクの空き容量を確認する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: check_disk_space
+  vars:
+    svc_name: Hermes Agent
+    svc_min_free_gb: "{{ hermes_min_free_disk_gb }}"
+    svc_min_free_var: hermes_min_free_disk_gb
+
+- name: VM共通の初期セットアップを実行する
+  ansible.builtin.import_role:
+    name: vm
+
+# Hermesのterminal backendにdockerを選べるようにする(Agent Sandbox用途)。
+# SSHユーザー=Hermes専用ユーザーがdockerグループへ入る(vm_dockerロール側で実施)
+- name: Dockerをセットアップする
+  ansible.builtin.import_role:
+    name: vm_docker
+  when: hermes_install_docker | bool
+
+- name: エージェントが使う運用ツールをインストールする
+  ansible.builtin.import_tasks: install_agent_tools.yml
+  when: hermes_install_agent_tools | bool
+
+- name: Hermes Agent本体をインストールする
+  ansible.builtin.import_tasks: install_hermes.yml
+
+# 公開経路(Traefik)と対応する設定はここで毎回収束させる(初回限定ではない)
+- name: dashboardの公開設定を収束させる
+  ansible.builtin.import_tasks: configure_config.yml
+
+- name: systemdサービスを設定する
+  ansible.builtin.import_tasks: configure_services.yml
+
+# web dashboard(管理UI)のポート。GatewayのOpenAI互換APIサーバー(:8642)は公開しない。
+# Debianのcloud imageはufw未導入のため通常はスキップされる(roles/vm側の共通タスク)
+- name: Hermesが使うポートを開放する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports:
+      - {port: "{{ hermes_dashboard_port }}", proto: tcp}
+
+- name: サービスの起動を確認する
+  ansible.builtin.import_tasks: verify_service.yml
