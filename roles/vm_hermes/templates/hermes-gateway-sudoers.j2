@@ -1,4 +1,0 @@
-# Ansible(roles/vm_hermes)が生成。手動編集は次回実行で上書きされます。
-# system scopeのGatewayを、Hermes自身(hermes update / エージェントの/restart)が
-# root昇格の対話なしに再起動できるようにする(上流ドキュメントの推奨設定)。
-{{ ansible_user }} ALL=(root) NOPASSWD: /usr/bin/systemctl --no-ask-password reset-failed {{ hermes_gateway_service_name | regex_replace('\.service$', '') }}*, /usr/bin/systemctl --no-ask-password start {{ hermes_gateway_service_name | regex_replace('\.service$', '') }}*, /usr/bin/systemctl --no-ask-password restart {{ hermes_gateway_service_name | regex_replace('\.service$', '') }}*

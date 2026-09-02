@@ -73,14 +73,19 @@ hermes_trusted_proxies: []
 # 既定では常駐させない。プラットフォームを1つも設定していない状態で常駐させても
 # 意味がないため、`hermes gateway setup` で設定してから true にする
 hermes_enable_gateway: false
-# 上流の `hermes gateway install --system` が作るunit名(内容も上流が管理する)
+# 上流の `hermes gateway install` が作るunit名(内容も上流が管理する)
 hermes_gateway_service_name: hermes-gateway.service
 # LINEプラットフォームがwebhookを受けるポート(上流の既定 8646。
 # 待受パスは /line/webhook と /line/media で、Traefikはこのパスのまま転送する)。
 # Hermes側で変えたときはこの値も合わせる(ufwの開放と経路の宣言に使う)
 hermes_line_webhook_port: 8646
-# `hermes update` やエージェント自身の /restart がroot昇格なしにGatewayを
-# 再起動できるようにするsudoers(上流ドキュメントの推奨設定)
+# Gatewayはユーザースコープのsystemdサービスとして常駐させる(headlessホストへの
+# 上流推奨)。root権限が要らないため、dashboardの「ゲートウェイを再起動」や
+# `hermes update` がそのまま再起動できる。ログアウト後も動き続けるようlingerを有効にする
+hermes_gateway_user_unit: "{{ ansible_env.HOME }}/.config/systemd/user/{{ hermes_gateway_service_name }}"
+hermes_gateway_linger_marker: "/var/lib/systemd/linger/{{ ansible_user }}"
+# system scopeのunitとsudoersが残っていると:8646を奪い合うため、収束時に消す
+hermes_gateway_system_unit: "/etc/systemd/system/{{ hermes_gateway_service_name }}"
 hermes_gateway_sudoers_file: /etc/sudoers.d/hermes-gateway
 
 # --- エージェントが使う基盤 ---

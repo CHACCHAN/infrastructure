@@ -80,7 +80,10 @@
 - name: Gatewayが稼働していることを確認する
   ansible.builtin.systemd:
     name: "{{ hermes_gateway_service_name }}"
-  become: true
+    scope: user
+  become: false
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
   register: hermes_gateway_state
   retries: "{{ hermes_ready_retries }}"
   delay: "{{ hermes_ready_delay }}"

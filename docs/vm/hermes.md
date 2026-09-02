@@ -2,7 +2,7 @@
 
 Nous Researchの[Hermes Agent](https://hermes-agent.nousresearch.com/)を専用VMごと一気通貫で構築する。配布形態はPython(uvの仮想環境)+ gitチェックアウトのため、**版はupstreamのリリースタグで固定**し、タグ→コミットSHAを解決して公式インストーラの `--commit` へ渡す(`--non-interactive --skip-setup` で対話ウィザードは動かさない)。ヘッドレスVMなのでブラウザ自動操作(Playwright/Chromium)とComputer Useは既定で入れない。LLM推論はこのVMで行わず、外部のOpenAI互換API・Gemini等へ接続する前提。
 
-常駐させるのは**web dashboard**(管理UI + ブラウザ内チャット)で、これをTraefikで公開する。上流にはdashboardをサービス化するコマンドが無いため、systemd unitはこのロールが持つ。メッセージングGateway(Telegram/Discord等)は上流の `hermes gateway install --system` に任せ、**既定では常駐させない**(チャネルを1つも設定していない状態で常駐させても意味がないため)。エージェントの実行環境としてDocker(`terminal.backend: docker` 用)と `ansible-core` / kubectl / Helm を入れる。kubectl・Helmの導入は `roles/vm` の共通タスクで、`vm_dev` と同じ手順を共有する。
+常駐させるのは**web dashboard**(管理UI + ブラウザ内チャット)で、これをTraefikで公開する。上流にはdashboardをサービス化するコマンドが無いため、systemd unitはこのロールが持つ。メッセージングGateway(Telegram/Discord/LINE等)は上流の `hermes gateway install` に任せ、**ユーザースコープのsystemdサービス**(`~/.config/systemd/user/hermes-gateway.service` + linger)として常駐させる。root権限を介さないため、dashboardの「ゲートウェイを再起動」や `hermes update` がそのまま再起動できる。ロールの既定は常駐なしで、チャネルを設定してから `hermes_enable_gateway: true` にする。エージェントの実行環境としてDocker(`terminal.backend: docker` 用)と `ansible-core` / kubectl / Helm を入れる。kubectl・Helmの導入は `roles/vm` の共通タスクで、`vm_dev` と同じ手順を共有する。
 
 ## 役割分担(Ansible / Hermes / PBS)
 
@@ -99,7 +99,7 @@ ansible-playbook playbooks/vm/hermes.yml -e hermes_version=v2026.9.7
 | `hermes_oidc_client_secret` | str | | なし | confidential clientのときだけ設定する。playbookが `vault_hermes_oidc_client_secret` から渡す |
 | `hermes_public_url` | str | | `https://hermes.{{ k8s_domain }}`(group_vars) | 公開URL。空にすると公開向けの設定を書かない |
 | `hermes_trusted_proxies` | list | | `["172.16.12.0/24"]`(group_vars) | X-Forwarded-* を信頼する上流のCIDR |
-| `hermes_enable_gateway` | bool | | `false` | メッセージングGatewayをsystemサービスとして常駐させるか |
+| `hermes_enable_gateway` | bool | | `true`(group_vars) | メッセージングGatewayをユーザースコープのsystemdサービスとして常駐させるか。有効にするとlingerも有効化し、system scopeのunitとsudoersが残っていれば取り除く |
 | `hermes_line_webhook_port` | int | | `8646` | LINEのwebhook待受ポート。ufwの開放と `k8s_external_routes` の転送先の宣言に使う |
 | `hermes_skip_browser` / `_skip_computer_use` | bool | | `true` / `true` | ヘッドレス前提で省く重い依存(Chromium・cua-driver) |
 | `hermes_install_docker` / `_install_agent_tools` | bool | | `true` / `true` | Docker(Agent Sandbox)と運用ツール(ansible-core / kubectl / Helm) |
@@ -129,6 +129,8 @@ Job Template **`vm-hermes`**(定義: [awx/job_templates.yml](../../awx/job_templ
 - **初回起動直後だけ502/接続できない** → dashboardが初回にWeb UI(npm)をビルドしている。`sudo journalctl -u hermes-dashboard -f` で進行を確認する(playbookは既定で最大10分待つ)
 - **版を変えたのに更新されない** → 指定タグがupstreamに存在しない、または既にそのコミット。タグ一覧は [releases](https://github.com/NousResearch/hermes-agent/tags)、`-e hermes_version=<タグ>` で明示する
 - **LINEのwebhookが届かない(LINE Developersの「検証」が失敗する)** → 順に確認する: ①Gatewayが動いているか(`curl -s http://172.16.11.31:9119/api/status` の `gateway_running`)②`hermes gateway setup` でLINEを設定したか ③経路が反映済みか(LAN内から `curl -i https://hermes.cc-chacchan.com/line/webhook/health` が200。未反映なら `deploy.yml -e app=external`)④Cloudflare側のTunnel経路に `hermes.cc-chacchan.com` があるか(宅外からの到達はここで決まる)
-- **Gatewayを二重に起動しない** → dashboardのUIから起動したGateway(dashboardプロセスの子)と `hermes_enable_gateway: true` のsystemd unitは、同じ:8646を掴むため同時に動かせない。前者はunitが無いぶんVM再起動後の復帰がHermes側の挙動任せになるので、常駐させるならsystemd側(`hermes_enable_gateway: true`)に寄せる
+- **dashboardの「ゲートウェイを再起動」が `System gateway restart requires root. Re-run with sudo.` で失敗する** → system scopeのunit(`/etc/systemd/system/hermes-gateway.service`)で常駐している。ユーザースコープなら root を介さないので失敗しない。playbookを再実行すればsystem scopeのunitは停止・削除され、ユーザースコープへ置き換わる
+- **Gatewayを二重に起動しない** → dashboardのUIから起動したGateway(dashboardプロセスの子)とsystemdのunitは同じ:8646を掴むため同時に動かせない。常駐はsystemd側(`hermes_enable_gateway: true`)に寄せ、dashboardからは再起動だけを行う
+- **再起動後にGatewayが上がらない** → lingerが無効だとユーザーのsystemdインスタンスが起動せず、ユーザースコープのunitも動かない。`loginctl show-user hermes -p Linger` が `Linger=yes` か確認する(playbookが有効化する)
 - **Gatewayが起動しない/落ち続ける** → チャネル未設定のまま常駐させていないか(`hermes_enable_gateway: false` に戻し、`hermes gateway setup` を先に済ませる)。ログは `sudo journalctl -u hermes-gateway -f`
 - **エージェントは強い権限を持つ** → `hermes` ユーザーは `sudo` と `docker` グループに属する。専用VM・LAN内限定が前提の構成のため、公開範囲を広げるときは権限設計から見直す

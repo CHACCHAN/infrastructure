@@ -72,72 +72,90 @@
 - name: メッセージングGatewayを常駐させる
   when: hermes_enable_gateway | bool
   block:
-    # system scopeのunitはrootでしか再起動できない。`hermes update` や
-    # エージェント自身の /restart がroot昇格なしに再起動できるよう、
-    # 上流ドキュメントの推奨sudoersを置く(visudoで構文検証してから反映)。
-    - name: Gateway再起動用のsudoersを配置する
-      ansible.builtin.template:
-        src: hermes-gateway-sudoers.j2
-        dest: "{{ hermes_gateway_sudoers_file }}"
-        owner: root
-        group: root
-        mode: "0440"
-        validate: /usr/sbin/visudo -cf %s
+    # ログアウト後もユーザーのsystemdインスタンスを動かし続ける。
+    # systemctl --user が使う /run/user/<uid> の常設もこれで担保される。
+    - name: ユーザーのlingerを有効にする
+      ansible.builtin.command:
+        cmd: loginctl enable-linger {{ ansible_user }}
+        creates: "{{ hermes_gateway_linger_marker }}"
       become: true
 
-    # sudo経由で実行するのは上流の想定(docs: `sudo hermes gateway install --system`)。
-    # 呼び出し元ユーザーの導入(HERMES_HOME)を見てunitを組み立てるため、
-    # become: true でrootとして直接叩くのではなく、Hermesユーザーからsudoする。
-    #
-    # 起動・自動起動・実行ユーザーはすべてフラグで明示する。上流CLIは指定が無いと
-    # stdinがttyのとき対話プロンプトを出し、sudoが疑似端末を割り当てる環境
-    # (Debian既定のuse_pty)では応答が無いまま待ち続けるため。
+    # system scopeのunitが残っていると同じ:8646を奪い合う。
+    - name: system scopeのGatewayのunitを確認する
+      ansible.builtin.stat:
+        path: "{{ hermes_gateway_system_unit }}"
+      become: true
+      register: hermes_gateway_system_unit_stat
+
+    - name: system scopeのGatewayを取り除く
+      when: hermes_gateway_system_unit_stat.stat.exists
+      become: true
+      block:
+        - name: system scopeのサービスを停止・自動起動解除する
+          ansible.builtin.systemd:
+            name: "{{ hermes_gateway_service_name }}"
+            enabled: false
+            state: stopped
+
+        - name: system scopeのunitを削除する
+          ansible.builtin.file:
+            path: "{{ hermes_gateway_system_unit }}"
+            state: absent
+
+        - name: unitの削除をsystemdへ反映する
+          ansible.builtin.systemd:
+            daemon_reload: true
+
+    # ユーザースコープではrootを介さないため、再起動用のsudoersは要らない。
+    - name: Gateway再起動用のsudoersを削除する
+      ansible.builtin.file:
+        path: "{{ hermes_gateway_sudoers_file }}"
+        state: absent
+      become: true
+
+    # 呼び出し元ユーザーの導入(HERMES_HOME)を見てunitを組み立てるため、Hermesユーザーで実行する。
+    # 起動と自動起動はフラグで明示する(上流CLIは指定が無いとstdinがttyのとき対話プロンプトを出す)。
     # 起動は次のsystemdタスクが行う(unitの内容を検証してから起動する)。
-    - name: GatewayのsystemdサービスをHermesにインストールさせる
+    - name: Gatewayのsystemdサービスをユーザースコープでインストールさせる
       ansible.builtin.command:
         argv:
-          - sudo
-          - --preserve-env=HERMES_HOME
           - "{{ hermes_bin }}"
           - gateway
           - install
-          - --system
-          - --run-as-user
-          - "{{ ansible_user }}"
           - --start-on-login
           - --no-start-now
-        creates: "/etc/systemd/system/{{ hermes_gateway_service_name }}"
+        creates: "{{ hermes_gateway_user_unit }}"
       become: false
       environment:
         HERMES_HOME: "{{ hermes_home }}"
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
 
     - name: 生成されたGatewayのunitを読み取る
       ansible.builtin.slurp:
-        src: "/etc/systemd/system/{{ hermes_gateway_service_name }}"
-      become: true
+        src: "{{ hermes_gateway_user_unit }}"
+      become: false
       register: hermes_gateway_unit_content
 
-    # rootで動くunitになっていると状態が /root/.hermes へ分裂し、dashboardからも
-    # 見えなくなる。宣言したユーザーで動くことを確かめてから起動する。
-    - name: GatewayがHermesユーザーで動く設定になっていることを確認する
+    # 別のHERMES_HOMEを見るunitができていると、dashboardから状態が見えなくなる。
+    - name: Gatewayが宣言した導入先で動く設定になっていることを確認する
       ansible.builtin.assert:
         that:
-          - ('User=' ~ ansible_user) in (hermes_gateway_unit_content.content | b64decode)
+          - hermes_install_dir in (hermes_gateway_unit_content.content | b64decode)
         fail_msg: >-
-          /etc/systemd/system/{{ hermes_gateway_service_name }} が
-          User={{ ansible_user }} で動く設定になっていません。
-          rootで常駐すると状態が /root/.hermes へ分かれてしまいます。
-          unitを削除(sudo hermes gateway uninstall --system)してから、
-          Hermesユーザーで再実行してください。
+          {{ hermes_gateway_user_unit }} が {{ hermes_install_dir }} を
+          指していません。unitを削除(hermes gateway uninstall)してから再実行してください。
         quiet: true
 
     - name: Gatewayのサービスを有効化・起動する
       ansible.builtin.systemd:
         name: "{{ hermes_gateway_service_name }}"
+        scope: user
         enabled: true
         state: started
         daemon_reload: true
-      become: true
+      become: false
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
 
 # 宣言をfalseへ戻したときに常駐したままにしない(unitは残すが停止・自動起動解除)。
 - name: 常駐させない宣言のときはGatewayを停止する
@@ -145,14 +163,17 @@
   block:
     - name: Gatewayのunitの有無を確認する
       ansible.builtin.stat:
-        path: "/etc/systemd/system/{{ hermes_gateway_service_name }}"
-      become: true
+        path: "{{ hermes_gateway_user_unit }}"
+      become: false
       register: hermes_gateway_unit_stat
 
     - name: Gatewayのサービスを停止・自動起動解除する
       ansible.builtin.systemd:
         name: "{{ hermes_gateway_service_name }}"
+        scope: user
         enabled: false
         state: stopped
-      become: true
+      become: false
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
       when: hermes_gateway_unit_stat.stat.exists
