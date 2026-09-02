@@ -36,4 +36,5 @@ hermes_enable_gateway: true
 # リダイレクトURIとして登録しておく必要がある(docs/vm/hermes.md)
 hermes_oidc_issuer: https://auth.cc-chacchan.com/application/o/hermes-agent/
 hermes_oidc_client_id: SAW74MbXOOR11pVxBReL70Krhjr0s9ZfFcqsA6K0
-hermes_oidc_scopes: openid profile email
+# offline_access はAuthentikにrefresh tokenを発行させるため(プロバイダ側にも同名のスコープを含める)
+hermes_oidc_scopes: openid profile email offline_access

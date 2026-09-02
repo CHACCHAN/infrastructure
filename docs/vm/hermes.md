@@ -49,7 +49,7 @@ flowchart LR
 - **Authentik側の設定はこのリポジトリの管理外**(Authentik UIで1回。ユーザー作成だけは [utils/authentik/users.md](../utils/authentik/users.md) にある):
   - OAuth2/OpenID ProviderのRedirect URIsに `https://hermes.cc-chacchan.com/auth/callback` を登録する(Strict match。**未登録だとAuthentikが400を返す**)
   - client typeは **public**(PKCEのみ)。confidentialにする場合は `vault/hermes.yml` に `vault_hermes_oidc_client_secret` を追加する(playbookが `hermes_oidc_client_secret` へ渡す)
-  - スコープは `openid profile email`(`sub` / `email` / `name` をセッションの識別情報に使う)
+  - スコープは `openid profile email offline_access`(`sub` / `email` / `name` をセッションの識別情報に使う。`offline_access` でrefresh tokenを受け取るため、プロバイダのスコープに `offline_access` のマッピングを含める)
 - ⚠ **誰がログインできるかはAuthentik側でしか絞れない**。Hermesは認証が通った利用者を区別せず、エージェント(sudo・docker権限つき)をそのまま操作できる。Authentikのアプリケーションにポリシー/グループのバインドを設定する
 - 同梱のusername/passwordゲートは**IdPが落ちたときの退避経路として併用**する(ログイン画面にパスワード欄とSSOボタンが並ぶ)。SSOだけにするなら `hermes_dashboard_enable_basic_auth: false`
 
@@ -85,7 +85,7 @@ ansible-playbook playbooks/vm/hermes.yml -e hermes_version=v2026.9.7
 | `hermes_dashboard_password` / `_secret` | str | ✔ | なし | パスワード(16文字以上)とセッション署名鍵(32文字以上)。playbookが `vault_hermes_dashboard_*` から渡す |
 | `hermes_dashboard_enable_basic_auth` | bool | | `true` | username/passwordゲートを使うか。`false` にするならSSOの宣言が必須 |
 | `hermes_oidc_issuer` / `_client_id` | str | | Authentikの `hermes-agent`(group_vars) | SSOのissuer識別子とclient ID。**両方そろって初めて有効**になる |
-| `hermes_oidc_scopes` | str | | `openid profile email` | 要求するスコープ(空白区切り。`openid` は必須) |
+| `hermes_oidc_scopes` | str | | `openid profile email offline_access`(group_vars) | 要求するスコープ(空白区切り。`openid` は必須。`offline_access` はrefresh tokenの発行に必要) |
 | `hermes_oidc_client_secret` | str | | なし | confidential clientのときだけ設定する。playbookが `vault_hermes_oidc_client_secret` から渡す |
 | `hermes_public_url` | str | | `https://hermes.{{ k8s_domain }}`(group_vars) | 公開URL。空にすると公開向けの設定を書かない |
 | `hermes_trusted_proxies` | list | | `["172.16.12.0/24"]`(group_vars) | X-Forwarded-* を信頼する上流のCIDR |
