@@ -12,9 +12,8 @@
 #   4. ProjectのGit同期はSSH。鍵は vault/awx_api.yml の vault_awx_scm_prikey
 #      (ansible-vault edit で設定)を Source Control credential として登録する
 #
-# 倣ったプラクティス: redhat-cop/controller_configuration の
-# 「接続情報のmodule_defaults一元化」と「定義YAML(awx/)の分離」。
-# 実装は依存を増やさず awx.awx コレクションのモジュールを直接使う。
+# 構成は redhat-cop/controller_configuration に倣う(接続情報のmodule_defaults一元化・定義YAMLの分離)。
+# 実装は awx.awx コレクションのモジュールを直接使う。
 ---
 - name: AWXの構成をコードから収束させる
   hosts: localhost
@@ -57,6 +56,13 @@
       validate_certs: "{{ awx_validate_certs | default(true) }}"
 
   tasks:
+    - name: チェックモードに対応していないことを通知する
+      ansible.builtin.assert:
+        that:
+          - not ansible_check_mode
+        fail_msg: このplaybookはAPI呼び出しのみのため --check には対応していません。
+        quiet: true
+
     - name: AWXの認証情報が設定されていることを確認する
       ansible.builtin.assert:
         that:
@@ -105,6 +111,40 @@
           全Job Templateがこの名前を参照するため、このまま進むと後半の
           Job Template収束が失敗します。DevContainerでは ANSIBLE_VAULT_PASSWORD_FILE
           から自動供給されます。手動実行では -e awx_vault_password=... で実値を渡してください。
+        quiet: true
+
+    # k8s-deploy が名前でkubeconfig credentialを参照するため、内容を渡さない実行では登録済みかを先に確認する。
+    - name: kubeconfig credentialの登録状況を確認する(内容を渡さない実行のみ)
+      ansible.builtin.uri:
+        url: >-
+          {{ (vault_awx_host
+              if vault_awx_host is match('^https?://')
+              else 'https://' ~ vault_awx_host)
+             ~ '/api/v2/credentials/?name='
+             ~ (awx_credential_kubeconfig_name | urlencode) }}
+        headers: >-
+          {{ {'Authorization': 'Bearer ' ~ vault_awx_oauthtoken}
+             if awx_token_configured else {} }}
+        url_username: "{{ omit if awx_token_configured else awx_admin_user }}"
+        url_password: "{{ omit if awx_token_configured else awx_admin_password }}"
+        force_basic_auth: "{{ not awx_token_configured }}"
+        validate_certs: "{{ awx_validate_certs | default(true) }}"
+        return_content: true
+      register: awx_kubeconfig_credential_lookup
+      failed_when: false
+      no_log: true
+      when: awx_kubeconfig_content | length == 0
+
+    - name: kubeconfig credentialが利用可能であることを確認する
+      ansible.builtin.assert:
+        that:
+          - awx_kubeconfig_content | length > 0
+            or (awx_kubeconfig_credential_lookup.json.count | default(0) | int) > 0
+        fail_msg: >-
+          kubeconfigが供給されておらず、AWX上にもCredential
+          「{{ awx_credential_kubeconfig_name }}」が登録されていません。
+          k8s-deploy がこの名前を参照するため、初回は
+          -e awx_kubeconfig_content="$(cat ~/.kube/config)" で内容を渡してください。
         quiet: true
 
     # --- Credential(Job Templateより先に作る。JTが名前で参照するため) ---
@@ -179,6 +219,10 @@
           {{ awx_project_scm_credential_name
              if vault_awx_scm_prikey | default('') | length > 0 else omit }}
         state: present
+        # Job Templateのplaybookパスは同期済みリビジョンで検証されるため、先にGitの最新へ同期して完了を待つ
+        update_project: true
+        wait: true
+        timeout: "{{ awx_project_sync_timeout | default(300) }}"
 
     - name: Inventoryを収束させる
       awx.awx.inventory:
@@ -236,11 +280,8 @@
         awx_jt_survey_spec_raw: >-
           {{ (awx_survey_common if item.use_common_survey | default(false) else [])
              + (item.survey_extra | default([])) }}
-        # AWXのWeb UIは選択式質問の編集画面で default キーの存在を前提に
-        # .split() する(無い質問を開くとTypeErrorで画面が壊れる)ため、
-        # default未定義の質問へ空文字を補う。空文字defaultでも「未回答の
-        # 任意質問は変数を送らない」挙動は変わらないことを実機確認済み。
-        # zipで {'default': ''} を各質問の前へ置き、combineで質問側を優先する。
+        # AWXのWeb UIは選択式質問の編集画面で default キーを前提にするため、
+        # 未定義の質問へ空文字を補う(空文字defaultでも未回答の任意質問は変数を送らない)。
         awx_jt_survey_spec: >-
           {{ ([{'default': ''}] * (awx_jt_survey_spec_raw | length))
              | zip(awx_jt_survey_spec_raw) | map('ansible.builtin.combine') | list }}

@@ -13,7 +13,7 @@
 # 指すため。このファイル内でlookupするとベースロール側を探してしまう。
 #
 # field_managerをkubectlに固定し、kubectl --server-side との併用でも
-# フィールド所有権が分裂しないようにする(K1で確立した方式)。
+# フィールド所有権が分裂しないようにする。
 ---
 - name: マニフェストをServer-Side Applyする
   kubernetes.core.k8s:

@@ -37,7 +37,7 @@
   roles:
     - vm_coolify
   post_tasks:
-    # dockerグループへの追加とカーネル更新を反映してから外部疎通を確認する。
+    # カーネル更新などの再起動要求があるときだけ再起動し、その後に外部疎通を確認する。
     - name: 構成を反映するためVMを再起動する
       ansible.builtin.import_role:
         name: vm
@@ -59,10 +59,10 @@
         msg:
           - "Coolify {{ coolify_version }} を構築しました: http://{{ ansible_host }}:{{ coolify_ui_port | default(8000) }}/"
           - "初回アクセスで管理者を作成してください(変数で事前作成した場合はそのままログイン)"
-          - "UIをドメインで使う: Settings → URL へ https://coolify.{{ k8s_domain | default('cc-chacchan.com') }} を設定し、Redirect HTTP to HTTPS は必ずDisabledにする"
+          - "UIをドメインで使う: Settings → URL へ https://coolify.{{ k8s_domain }} を設定し、Redirect HTTP to HTTPS は必ずDisabledにする"
           - "(TLSは手前のk3s Traefikが終端し:80へHTTPで届くため、Enabledだと無限リダイレクトループになる。docs/vm/coolify.md)"
           - "デプロイ公開用ドメイン: Servers → localhost → Wildcard Domain へ
-             http://web.{{ k8s_domain | default('cc-chacchan.com') }} を設定すると、
-             新規アプリへ <名前>.web.{{ k8s_domain | default('cc-chacchan.com') }}
+             http://web.{{ k8s_domain }} を設定すると、
+             新規アプリへ <名前>.web.{{ k8s_domain }}
              が自動割当される"
           - "経路の反映: ansible-playbook playbooks/k8s/deploy.yml -e app=certificates && ansible-playbook playbooks/k8s/deploy.yml -e app=external (証明書とTraefikルート)"

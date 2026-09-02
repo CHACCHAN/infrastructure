@@ -17,8 +17,8 @@ ansible-playbook playbooks/pve/template.yml -e os=debian -e version=13 -e target
 | `os` | str | ✔ | - | `debian` / `ubuntu` / `rocky` / `almalinux`(カタログは [README.md](README.md#テンプレートの仕組み)) |
 | `version` | str | ✔ | - | OSのバージョン(カタログに存在するもの。例 `13`) |
 | `target_node` | str | ✔ | - | 構築先PVEノード(例 `pve01`) |
-| `pve_storage` | str | ✔ | `ssd01`(宣言値) | テンプレート用ストレージ(group_vars/allから読込。`-e pve_storage=` や `pve_template_storage` で上書き可) |
-| `pve_bridge` | str | ✔ | `vmbr0` | テンプレートNICのブリッジ(同上) |
+| `pve_storage` | str | | group_vars/all | テンプレート用ストレージ(`-e pve_storage=` や `pve_template_storage` で上書き可) |
+| `pve_bridge` | str | | group_vars/all | テンプレートNICのブリッジ(同上) |
 | `pve_template_image_storage` | str | | `local` | cloud-image置き場 |
 | `pve_template_download_timeout` | int | | `300` | イメージダウンロード上限(秒) |
 | `pve_template_disk_import_timeout` | int | | `600` | ディスク取り込み上限(秒) |

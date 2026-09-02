@@ -3,7 +3,7 @@
 pve_storage: ssd01
 pve_bridge: vmbr0
 
-# 旧インベントリはDNSを明示せずPVEホストの設定を継承していたため、pve_nameserverは未指定にする。
+# pve_nameserver は未指定(VMはPVEホストのDNS設定を継承する)。
 pve_ipv4_prefix: 24
 pve_ipv4_gw: 172.16.11.1
 
@@ -27,7 +27,7 @@ pve_ssh_prikey_resolved: >-
      if pve_ssh_prikey_value | default('') | trim | length > 0
      else pve_ssh_prikey_file }}
 
-# 全役割で同一だったVM設定をベースに集約する。
+# 全役割共通のVM設定。
 pve_vm_bios: seabios
 pve_vm_machine: q35
 pve_vm_vga: std

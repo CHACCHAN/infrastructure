@@ -7,9 +7,6 @@ coolify_version: "4.3.9"
 # 本体の自動アップデート機能は止め、版の管理をこのリポジトリの宣言へ寄せる
 coolify_autoupdate: false
 
-# データと設定の置き場(上流install.shの固定パス。変更できないため参照用)
-coolify_data_dir: /data/coolify
-
 # --- ポート(上流docker-compose.prod.ymlの既定) ---
 # Web UI(初回セットアップとLAN内からの直接アクセス用)
 coolify_ui_port: 8000

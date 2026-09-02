@@ -11,17 +11,17 @@
     url: https://api.github.com/repos/45Drives/cockpit-navigator/releases
     return_content: true
     timeout: 30
-  register: development_navigator_releases
+  register: dev_navigator_releases
   changed_when: false
   retries: 3
   delay: 5
-  until: development_navigator_releases is succeeded
+  until: dev_navigator_releases is succeeded
 
 # リリースは新しい順に返るため、平坦化した時点で新しい順が保たれる
 - name: 配布されている.debアセットを抽出する
   ansible.builtin.set_fact:
-    development_navigator_debs: >-
-      {{ development_navigator_releases.json
+    dev_navigator_debs: >-
+      {{ dev_navigator_releases.json
          | map(attribute='assets') | flatten
          | selectattr('name', 'search', '[.]deb$')
          | list }}
@@ -29,23 +29,23 @@
 # 対象OSに近いコードネームを優先する(trixie版が出ればそちらへ自動で切り替わる)
 - name: インストール対象の.debを決定する
   ansible.builtin.set_fact:
-    development_navigator_deb: >-
-      {{ ((development_navigator_debs | selectattr('name', 'search', 'trixie') | list)
-          or (development_navigator_debs | selectattr('name', 'search', 'bookworm') | list)
-          or development_navigator_debs)
+    dev_navigator_deb: >-
+      {{ ((dev_navigator_debs | selectattr('name', 'search', 'trixie') | list)
+          or (dev_navigator_debs | selectattr('name', 'search', 'bookworm') | list)
+          or dev_navigator_debs)
          | first | default({}, true) }}
 
 - name: インストール可能な.debが見つかったことを検証する
   ansible.builtin.assert:
     that:
-      - development_navigator_deb.browser_download_url is defined
+      - dev_navigator_deb.browser_download_url is defined
     fail_msg: >-
       Cockpit Navigatorの.debパッケージが見つかりませんでした。
       45DrivesのGitHubリリースの配布形態が変わった可能性があります。
     quiet: true
 
-- name: "Cockpit Navigatorをインストールする({{ development_navigator_deb.name }})"
+- name: "Cockpit Navigatorをインストールする({{ dev_navigator_deb.name }})"
   ansible.builtin.apt:
-    deb: "{{ development_navigator_deb.browser_download_url }}"
+    deb: "{{ dev_navigator_deb.browser_download_url }}"
     state: present
   become: true

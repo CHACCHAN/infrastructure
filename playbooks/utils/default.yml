@@ -5,6 +5,7 @@
 # - <再実行したときに何が起きるか>
 #
 # このディレクトリ(単発ツールドメイン)のplaybookはこの雛形に従う。
+# - playbookは playbooks/utils/<サービス>/ に置く(雛形は playbooks/utils/ に1つだけ)。vars_files の相対パスはその深さで書く
 # - 接続はAPIのみ(hosts: localhost / connection: local)
 # - APIトークンは vault/<名前>.yml。認証ヘッダは module_defaults で供給し、
 #   API呼び出しは no_log にして直後のassertで成否だけを判定する

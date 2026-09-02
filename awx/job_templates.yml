@@ -1,12 +1,10 @@
 # AWXのJob TemplateとSurveyの定義(単一の真実)。
 # playbooks/utils/awx/configure.yml が読み込み、awx.awx.job_template へ渡す。
 #
-# Survey設計の原則(docs/utils/awx/README.md の運用ルールをコード化):
-# - 任意項目は required: false かつ default を持たせない
-#   (AWXは未回答の任意質問を「変数を送らない」扱いにする。空文字の既定値を
-#    持たせると default() で救えない空文字が届いてしまう)
-# - 秘密鍵・パスワードは type: password(暗号化され、画面にも残らない)
-# - 絞り込みは Limit ではなく target 変数で行う(localhost前処理プレイの保護)
+# Survey設計の原則(docs/utils/awx/README.md):
+# - 任意項目は required: false かつ default を持たせない(未回答なら変数を送らせ、既定値は default() 側で決める)
+# - 秘密鍵・パスワードは type: password
+# - 絞り込みは Limit ではなく target 変数で行う(localhost前処理プレイを除外しないため)
 ---
 # --- 共通Survey: VM構築系(provision.ymlをimportする全playbook)が使う ---
 # インベントリ実行では全問未回答でよい(宣言どおりに動く)。
@@ -30,9 +28,7 @@ awx_survey_common:
       インベントリ実行では未回答のまま
     variable: profile
     type: multiplechoice
-    # 選択肢はインベントリの役割グループから実行時に生成される(configure.yml
-    # 実行時点のスナップショット)。グループを増やしたら configure.yml を再実行
-    # して選択肢を更新する。
+    # 選択肢は configure.yml 実行時のインベントリから生成される。グループを増やしたら再実行する。
     choices: >-
       {{ (groups.keys() | reject('in', ['all', 'ungrouped', 'lab'])
           | list | sort) + ['lab'] }}
@@ -101,8 +97,9 @@ awx_survey_common:
     required: false
     min: 8
     max: 4096
-  # --- ハードウェア設定(すべて任意。未回答なら宣言値/既定値) -------------
-  # 対応する既定値は roles/pve_vm/defaults/main.yml と group_vars/all/pve.yml。
+  # --- ハードウェア設定(すべて任意。未回答なら宣言値/既定値) ---
+  # 既定値は roles/pve_vm/defaults/main.yml と group_vars/all/pve.yml。
+  # pve_vm_disk_* の3つはテンプレート作成時のブートディスクにだけ効く(既存VMには反映しない)。
   - question_name: 1枚目NICのブリッジ(pve_bridge)
     question_description: >-
       例 vmbr0 / vmbr1。対象ノードに存在するブリッジ名。
@@ -139,7 +136,7 @@ awx_survey_common:
     type: text
     required: false
   - question_name: SSDエミュレーション(pve_vm_disk_ssd)
-    question_description: ブートディスクをSSDとしてゲストへ見せるか(1=有効 / 0=無効)
+    question_description: テンプレート作成時のブートディスクをSSDとしてゲストへ見せるか(1=有効 / 0=無効)
     variable: pve_vm_disk_ssd
     type: multiplechoice
     choices:
@@ -316,10 +313,11 @@ awx_job_templates:
         variable: kubernetes_server_ssh_user
         type: text
         required: false
-      - question_name: コントロールプレーンのSSH秘密鍵本文(kubernetes_server_ssh_prikey)
-        question_description: 通常は接続鍵と同じものを渡す
+      - question_name: コントロールプレーンのSSH秘密鍵パス(kubernetes_server_ssh_prikey)
+        question_description: >-
+          実行環境上の鍵ファイルパス。未回答なら接続用の鍵(pve_ssh_prikey_value / pve_ssh_prikey_file)を使う
         variable: kubernetes_server_ssh_prikey
-        type: password
+        type: text
         required: false
 
   - name: vm-hermes
@@ -337,7 +335,7 @@ awx_job_templates:
       - question_name: メッセージングGatewayを常駐させる(hermes_enable_gateway)
         question_description: >-
           Telegram/Discord等を設定済みのときだけ true。
-          未回答なら宣言値(既定はfalse=dashboardのみ常駐)
+          未回答なら宣言値(inventory/group_vars/hermes.yml)
         variable: hermes_enable_gateway
         type: multiplechoice
         choices:
@@ -407,8 +405,7 @@ awx_job_templates:
         question_description: 未回答なら登録簿(k8s_apps)の順に全アプリを適用
         variable: app
         type: multiplechoice
-        # choicesは inventory/group_vars/all/k8s.yml の k8s_apps から
-        # configure.yml 実行時に解決される(選択肢の二重管理を避ける)
+        # 選択肢は configure.yml 実行時に k8s_apps(inventory/group_vars/all/k8s.yml)から生成される
         choices: "{{ k8s_apps }}"
         required: false
       - question_name: 所有権の強制移行(force)

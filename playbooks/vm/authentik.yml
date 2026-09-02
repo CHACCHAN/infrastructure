@@ -33,7 +33,7 @@
   roles:
     - vm_authentik
   post_tasks:
-    # dockerグループへの追加とカーネル更新を反映してから外部疎通を確認する。
+    # カーネル更新などの再起動要求があるときだけ再起動し、その後に外部疎通を確認する。
     - name: 構成を反映するためVMを再起動する
       ansible.builtin.import_role:
         name: vm

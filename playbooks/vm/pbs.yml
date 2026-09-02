@@ -22,7 +22,7 @@
     # cloud-init直後はホスト鍵が毎回変わるため検証しない
     ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
     # PVEからのバックアップ通信は2枚目のNICへ寄せる。
-    pbs_cluster_ip: "{{ cluster_ip | regex_replace('/.*$', '') }}"
+    pbs_cluster_ip: "{{ cluster_ip | default('', true) | regex_replace('/.*$', '') }}"
   pre_tasks:
     - name: SSH接続を待つ
       ansible.builtin.wait_for_connection:

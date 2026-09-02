@@ -1,5 +1,6 @@
-# k8sノードのProxmox VMプロファイル。2枚目のNICをクラスタ内通信専用にする。
+# k8sノードの役割プロファイル。2枚目のNICをクラスタ内通信専用にする。
 ---
+# --- ① VMプロファイル(pveドメインが使う) ---
 pve_ipv4_gw: 172.16.12.1
 pve_vm_cores: 8
 pve_vm_cpu_type: x86-64-v3
@@ -8,12 +9,14 @@ pve_vm_disk_size: 128
 pve_vm_nets:
   - bridge: vmbr2
   - bridge: vmbr3
+
+# --- ② SSH接続(cloud-initが作るユーザーと鍵) ---
 pve_ssh_user: k3s
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_k3s.pub
 pve_ssh_prikey_file: ~/.ssh/id_ed25519_k3s
 
-# --- k3sの設定 ---
-# 明示されたserverを優先し、移行途中の旧inventoryだけ先頭ホストへフォールバックする。
+# --- ③ サービス設定(vm_k3sロールが使う) ---
+# k3s_role: server を明示したホストをコントロールプレーンとする(無ければ先頭ホスト)。
 kubernetes_server_inventory_host: >-
   {{ (groups['k8s'] | map('extract', hostvars)
       | selectattr('k3s_role', 'defined')

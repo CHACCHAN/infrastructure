@@ -34,19 +34,19 @@
   ansible.builtin.command:
     cmd: virsh net-info default
   become: true
-  register: development_libvirt_default_net
+  register: dev_libvirt_default_net
   changed_when: false
   failed_when: false
-  when: development_libvirt_default_network_autostart | bool
+  when: dev_libvirt_default_network_autostart | bool
 
 - name: 既定ネットワーク(default)を自動起動するよう設定する
   ansible.builtin.command:
     cmd: virsh net-autostart default
   become: true
   when:
-    - development_libvirt_default_network_autostart | bool
-    - development_libvirt_default_net.rc | default(1) == 0
-    - development_libvirt_default_net.stdout | default('') is search('Autostart:\s+no')
+    - dev_libvirt_default_network_autostart | bool
+    - dev_libvirt_default_net.rc | default(1) == 0
+    - dev_libvirt_default_net.stdout | default('') is search('Autostart:\s+no')
   changed_when: true
 
 - name: 既定ネットワーク(default)を起動する
@@ -54,9 +54,9 @@
     cmd: virsh net-start default
   become: true
   when:
-    - development_libvirt_default_network_autostart | bool
-    - development_libvirt_default_net.rc | default(1) == 0
-    - development_libvirt_default_net.stdout | default('') is search('Active:\s+no')
+    - dev_libvirt_default_network_autostart | bool
+    - dev_libvirt_default_net.rc | default(1) == 0
+    - dev_libvirt_default_net.stdout | default('') is search('Active:\s+no')
   changed_when: true
 
 # ネストした仮想化が無効だと /dev/kvm が無い。ホスト側の設定が未了でも
@@ -64,7 +64,7 @@
 - name: KVMが利用可能か確認する
   ansible.builtin.stat:
     path: /dev/kvm
-  register: development_kvm_device
+  register: dev_kvm_device
 
 - name: ホスト側でネストした仮想化の有効化が必要な旨を表示する
   ansible.builtin.debug:
@@ -73,4 +73,4 @@
       ハードウェア支援が無いため仮想マシンはTCG(ソフトウェアエミュレーション)で
       動作し著しく低速です。インベントリでこのVMに pve_vm_cpu_type: host を宣言して
       playbooks/pve/provision.yml を再実行し、ネストした仮想化を有効化してください。
-  when: not development_kvm_device.stat.exists
+  when: not dev_kvm_device.stat.exists

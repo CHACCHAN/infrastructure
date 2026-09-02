@@ -1,18 +1,10 @@
 # 既存Proxmox VMのユーザー・公開鍵・IP・DNSをcloud-init宣言へ収束させる。
-# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
-# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
-# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: cloud-initの宣言値を組み立てる
   ansible.builtin.set_fact:
-    # 鍵は本文(pve_ssh_pubkey_value)を優先し、無ければファイルから読む
-    # (AWXのSurveyなどファイルを置けない経路のため。詳細は docs/vm/ssh_key.md)。
-    # どちらも未定義のホスト(役割プロファイルを持たない検証VM等)では
-    # ユーザー・鍵の設定をスキップするため空文字にする。
-    # noneを使うと、ansible-core 2.19より前では文字列 "None" になり
-    # (理由は roles/pve/tasks/find_vm.yml の冒頭コメント)、鍵として
-    # そのままcloud-initへ書き込まれてしまう。公開鍵は空にならないため
-    # 「空文字=未指定」で取り違えは起きない。
+    # 鍵は本文(pve_ssh_pubkey_value)を優先し、無ければファイルから読む(docs/vm/ssh_key.md)。
+    # どちらも未定義なら空文字にしてユーザー・鍵の設定をスキップする
+    # (未指定の目印にnoneは使わない。roles/pve/tasks/find_vm.yml)。
     pve_cloudinit_sshkeys: >-
       {{ pve_ssh_pubkey_value | trim
          if pve_ssh_pubkey_value | default('') | trim | length > 0

@@ -2,8 +2,9 @@
 
 <!--
 このディレクトリ(単発ツールドメイン)のページはこのテンプレートに従う。
-- 1ページ = 1playbook。ファイル名はplaybookと同名
-- 見出しは下記の順序・名称を変えない。該当しない節だけ丸ごと削除する
+- 1ページ = 1playbook。ファイル名はplaybookと同名。ページは docs/utils/<サービス>/ に置く(この雛形は docs/utils/ に1つだけ)
+- 相対リンクは docs/utils/<サービス>/ からの深さ(../../../)で書く
+- `##` 見出しは下記の名称・順序のまま使う。該当しない節だけ丸ごと削除し、固有の話題は該当する `##` の下に `###` で書く
 - 文章もコメントも「説明」だけを書く。判断の経緯・変更の過程は書かない
 - APIトークン等の実値は vault/ の暗号化ファイル。値そのものはドキュメントに書かない
 - 新規追加時は docs/utils/README.md のplaybook一覧にも1行足す
@@ -34,7 +35,7 @@ ansible-playbook playbooks/utils/<パス>/<playbook名>.yml -e <変数>=<値>
 
 ## AWXでの実行
 
-Job Template **`utils-<名前>`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。<Surveyの構成と注意点。>
+Job Template **`utils-<名前>`**(定義: [awx/job_templates.yml](../../../awx/job_templates.yml))。<Surveyの構成と注意点。>
 
 ## つまずきやすいポイント
 

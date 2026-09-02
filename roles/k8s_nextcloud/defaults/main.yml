@@ -1,13 +1,11 @@
-# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+# 上流チャートの固定バージョンと values。
 ---
 k8s_nextcloud_helm_version: "9.2.5"
 k8s_nextcloud_values:
   fullnameOverride: nextcloud
 
   image:
-    # チャートは未指定だと appVersion からタグを組み立てる (34.0.2-apache)。
-    # 結果は同じだが、**チャートのバージョンとアプリのバージョンは別物**
-    # なので明示的に固定する。上げるときは README.md の表も直すこと。
+    # チャートのバージョンとアプリのバージョンは別物なので明示的に固定する。
     tag: "34.0.2-apache"
     # nginx + php-fpm の 2 コンテナ構成 (flavor: fpm) にもできるが、
     # apache 単体のほうが構成要素が少ない。nginx: enabled は既定の false。
@@ -28,7 +26,7 @@ k8s_nextcloud_values:
     # ここで作るローカル管理者は **Authentik が落ちたときの退避経路** で、
     # 他のアプリ (homarr / pgAdmin) と同じ考え方。
     #
-    # パスワードは values.yaml に書かない。Secret から読ませる。
+    # パスワードは values に書かない。Secret から読ませる。
     # 既定のまま (username / password) にすると平文が Deployment に埋まる。
     #
     # **この 2 つは初回セットアップ時にしか読まれない。** アカウントが
@@ -83,30 +81,9 @@ k8s_nextcloud_values:
 
     ## データディレクトリのパーミッションを直す
     #
-    # **これが無いと occ が一切動かない。**
-    #
-    # Nextcloud は data ディレクトリの "other" のビットが立っていると
-    # 起動を拒否する。
-    #
-    #   Your data directory is readable by other people.
-    #   Please change the permissions to 0770 ...
-    #   Exception: Environment not properly prepared. (Console/Application.php:160)
-    #
-    # ところが nfs-subdir-external-provisioner が NFS 共有の下に作る
-    # ディレクトリは **0777 root:root**。subPath でマウントされる
-    # /var/www/html/data もそのままなので、条件に引っかかる。
-    # (../postgresql/values.yaml の PGDATA の話と同じ性質の問題)
-    #
-    # 実害は「Nextcloud が入らない」では済まない。entrypoint は
-    # インストールの最後に occ で trusted_domains を設定するので、
-    # そこで異常終了し、**コンテナが exit 1 で落ちて起動ループになる。**
-    # 下の before-starting フック (OIDC 設定) も同じ理由で失敗する。
-    #
-    # **initContainer にしている理由。** hooks でも直せるが、occ が走る
-    # タイミングが 3 つ (インストール / アップグレード / before-starting) あり、
-    # pre-installation・pre-upgrade・before-starting の 3 か所に同じ処理を
-    # 書く必要が出る。initContainer なら本体コンテナより前に必ず 1 回走るので、
-    # どの経路でも取りこぼさない。
+    # Nextcloud は data ディレクトリが 0770 でないと occ を拒否し、entrypoint が
+    # 異常終了して起動ループになる。NFS プロビジョナが作るディレクトリは 0777 root:root
+    # なので、本体コンテナより前に必ず 1 回走る initContainer で直す。
     extraInitContainers:
       - name: fix-datadir-permissions
         # **image.tag と同じものを指定すること。** 既にノードに落ちている
@@ -221,8 +198,7 @@ k8s_nextcloud_values:
 
         # **失敗しても起動は止めない。** アプリストアに繋がらない、Authentik が
         # 落ちている、といった一時的な理由で Nextcloud 全体が CrashLoopBackOff に
-        # なるほうが困る。失敗してもローカル管理者では入れるので、
-        # ログを見て occ を手で叩けばよい (README.md)。
+        # なるほうが困る。失敗してもローカル管理者では入れる。
         if configure_local_access; then
           log "allow_local_remote_servers is set."
         else
@@ -251,7 +227,7 @@ k8s_nextcloud_values:
     #
     # apcu.config.php が memcache.local を APCu にする。
     # **memcache.locking (ファイルロック) は設定されない。** Redis が無いので
-    # DB ベースのロックにフォールバックする (README.md「気をつけること」)。
+    # DB ベースのロックにフォールバックする。
 
   # TLS 終端は Traefik。Pod には平文で届くので、Nextcloud に
   # 「外から見たときのプロトコルは https」と教える。
@@ -262,9 +238,7 @@ k8s_nextcloud_values:
   ## DB — platform namespace 共用の PostgreSQL を使う
   #
   # 同梱の PostgreSQL / MariaDB (どちらも bitnami のサブチャート) は使わない。
-  # bitnami は 2025 年 8 月に無償カタログが latest タグだけになり、
-  # チャート側も bitnamilegacy/ の凍結イメージを指すようになったため、
-  # このリポジトリの方針 (../postgresql/README.md) と両立しない。
+  # bitnami の無償カタログは latest タグだけで、バージョン固定の方針と両立しない。
   #
   # internalDatabase は SQLite。DB ファイルが NFS 上に載ることになり、
   # SQLite のファイルロックが NFS で正しく効かないので使わない。
@@ -278,9 +252,9 @@ k8s_nextcloud_values:
     # host も Secret に入れているのは、パスワードだけ別扱いにすると
     # 接続情報が values と vault の 2 か所に散るため。
     #
-    # DB (nextcloud) は ../postgresql/ 側に用意する。
+    # DB (nextcloud) は roles/k8s_postgresql 側に用意する。
     # **初回起動スクリプトは 2 回目以降実行されない**ので、
-    # 既に PostgreSQL が動いている場合は psql で作ること (README.md)。
+    # 既に PostgreSQL が動いている場合は psql で作る (docs/k8s/README.md)。
     existingSecret:
       enabled: true
       secretName: nextcloud-db
@@ -295,7 +269,7 @@ k8s_nextcloud_values:
   # 外部 Redis も今は無いので externalRedis も無効のまま。
   #
   # 影響は「ファイルロックが DB ベースになる」ことだけ。
-  # 利用者 1 人規模なら問題にならない。詳細は README.md。
+  # 利用者 1 人規模なら問題にならない。
   redis:
     enabled: false
     # **チャートの不具合への対処。** REDIS_URL を出すブロックが
@@ -372,34 +346,11 @@ k8s_nextcloud_values:
 
   ## 起動プローブ
   #
-  # **NFS では必須。しかも猶予をかなり大きく取る必要がある。**
-  #
-  # Nextcloud の entrypoint は起動のたびに本体一式を rsync で
-  # /var/www/html へ展開する。rsync が終わるまで Apache は起動しないので、
-  # その間 :80 は connection refused になる。
-  #
-  #   rsync -rlDog --chown www-data:www-data --delete \
-  #     --exclude-from=/upgrade.exclude /usr/src/nextcloud/ /var/www/html/
-  #
-  # **この構成での実測値 (k3s-worker04 → TrueNAS 10.10.20.10, nfs4.2)。**
-  #
-  #   小さいファイルの作成:  NFS 41 files/s / コンテナのローカル 21051 files/s
-  #   Nextcloud 34.0.2 の本体: 30214 ファイル / 868 MB
-  #
-  # 作成だけで 30214 / 41 = 約 12 分。rsync は 1 ファイルにつき
-  # open(O_CREAT|O_EXCL) → write → fchmodat → lchown → rename と
-  # 4〜5 回 RPC を往復するので、実際には **50〜100 分**かかる。
-  #
-  # failureThreshold が小さいと初回同期の途中で kubelet がコンテナを殺し、
-  # 再起動 → rsync が最初からやり直し、を繰り返す
-  # (「Initializing nextcloud ...」で止まって見える)。
-  #
-  # 10s × 720 = 2 時間の猶予にしてある。正常なら Apache が応答した
+  # entrypoint は起動のたびに本体一式 (約 3 万ファイル) を rsync で NFS 上の
+  # /var/www/html へ展開し、終わるまで Apache は起動しない。NFS では初回同期に
+  # 1 時間以上かかるため、猶予を 10s × 720 = 2 時間にしてある。Apache が応答した
   # 時点で成功するので、2 回目以降の起動が遅くなることはない。
-  #
-  # 進み具合はこれで見られる (数が 30214 に近づいていけば正常):
-  #   kubectl -n platform exec deploy/nextcloud -c nextcloud -- \
-  #     sh -c 'find /var/www/html | wc -l'
+  # 進み具合: kubectl -n platform exec deploy/nextcloud -c nextcloud -- sh -c 'find /var/www/html | wc -l'
   startupProbe:
     enabled: true
     initialDelaySeconds: 30

@@ -1,5 +1,6 @@
-# Proxmox Backup Server VMのプロファイル。バックアップデータをOSとは別のHDDへ置く。
+# Proxmox Backup Server VMの役割プロファイル。バックアップデータはOSとは別のHDDへ置く。
 ---
+# --- ① VMプロファイル(pveドメインが使う) ---
 pve_vm_cores: 12
 pve_vm_cpu_type: x86-64-v3
 pve_vm_memory: 8192
@@ -15,6 +16,12 @@ pve_vm_disks:
     discard: "on"
     ssd: 0
     iothread: 1
+
+# --- ② SSH接続(cloud-initが作るユーザーと鍵) ---
 pve_ssh_user: pbs
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_pbs.pub
 pve_ssh_prikey_file: ~/.ssh/id_ed25519_pbs
+
+# --- ③ サービス設定(vm_pbsロールが使う) ---
+# pve_vm_disks の scsi index 1 をゲストから見た永続名(QEMUのシリアルは drive-scsi<index>)
+pbs_data_disk_device: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1

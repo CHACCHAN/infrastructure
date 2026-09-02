@@ -3,7 +3,7 @@
 <!--
 このディレクトリ(②VMセットアップドメイン)のページはこのテンプレートに従う。
 - 1ページ = 1playbook。ファイル名はplaybookと同名(拡張子を .md に置き換える)
-- 見出しは下記の順序・名称を変えない。該当しない節だけ丸ごと削除する
+- `##` 見出しは下記の名称・順序のまま使う。該当しない節だけ丸ごと削除し、固有の話題は該当する `##` の下に `###` で書く
 - 文章もコメントも「説明」だけを書く。判断の経緯・変更の過程は書かない
 - 変数の既定値の正は roles/<ロール名>/defaults/main.yml。表には主要なものだけ載せる
 - 新規追加時は docs/vm/README.md のplaybook一覧にも1行足す
@@ -13,7 +13,7 @@
 
 ## 公開経路(このリポジトリでの扱い)
 
-<!-- Traefikで公開しないサービスはこの節ごと削除する -->
+<!-- inventory/group_vars/all/k8s.yml の k8s_external_routes に宣言があるサービスは必ず書く。公開しないサービスは節ごと削除する -->
 
 <TLS終端の位置と転送先。`k8s_external_routes` の宣言先に触れる。>
 
@@ -43,9 +43,9 @@ ansible-playbook playbooks/vm/<playbook名>.yml \
 1. <手順>
 2. <手順>
 
-## 変数一覧(サービス固有の主要なもの)
+## 変数一覧
 
-接続系の共通変数は [README.md](README.md#共通の変数全サービスplaybook)。全既定値の正は [roles/vm_<サービス>/defaults/main.yml](../../roles/vm_<サービス>/defaults/main.yml)。
+接続系の共通変数は [README.md](README.md#共通の変数)。全既定値の正は [roles/vm_<サービス>/defaults/main.yml](../../roles/vm_<サービス>/defaults/main.yml)。
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |

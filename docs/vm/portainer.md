@@ -1,6 +1,6 @@
 # portainer.yml — Portainer(DockerのWeb UI管理)を構築する
 
-Portainer Business EditionをVMごと一気通貫で構築する。用途は**このVMのDocker単体管理に限定**し、Kubernetesクラスタ管理はRancher([rancher.md](rancher.md))の担当とする。かつてメインクラスタ上で動かしていたPortainer(`roles/k8s_portainer`)の置き換え(2026-08-19移行)。
+Portainer Business EditionをVMごと一気通貫で構築する。用途は**このVMのDocker単体管理に限定**し、Kubernetesクラスタ管理はRancher([rancher.md](rancher.md))の担当とする。
 
 構成はwg-easyと同じ「`vm_docker`でDocker導入 → composeテンプレート配置 → `docker_compose_v2`で起動」パターン。Portainer経由でデプロイするコンテナもこのVMに同居する。
 
@@ -33,19 +33,25 @@ ansible-playbook playbooks/k8s/deploy.yml -e app=external
 2. ライセンスキーを入力する([portainer.io](https://www.portainer.io/)で無料発行。**3ノードまで無料枠**なので1ノード構成の本環境では課金なし)
 3. 環境は「Get Started」→ local(docker.sock経由でこのVMのDockerを管理)を選ぶ
 
-## 変数一覧(サービス固有の主要なもの)
+## 変数一覧
 
-| 変数 | 既定値 | 意味 |
-| --- | --- | --- |
-| `portainer_version` | `2.39.6` | イメージタグ(LTS系を固定。2.44系はSTS)。更新はこの値を上げて再実行 |
-| `portainer_image` | `portainer/portainer-ee` | Business Edition。`-ce`(Community)ではない |
-| `portainer_http_port` | `9000` | Web UI(HTTP)の公開ポート。`k8s_external_routes` の転送先と揃える |
-| `portainer_install_dir` | `/opt/portainer` | compose定義とデータ(`data/`=**バックアップ対象**)の設置先 |
+接続系の共通変数は [README.md](README.md#共通の変数)。全既定値の正は [roles/vm_portainer/defaults/main.yml](../../roles/vm_portainer/defaults/main.yml)。
+
+| 変数 | 型 | 必須 | 既定値 | 説明 |
+| --- | --- | :-: | --- | --- |
+| `portainer_version` | str | | `2.39.6` | イメージタグ(LTS系を固定。2.44系はSTS)。更新はこの値を上げて再実行 |
+| `portainer_image` | str | | `portainer/portainer-ee` | Business Edition。`-ce`(Community)ではない |
+| `portainer_http_port` | int | | `9000` | Web UI(HTTP)の公開ポート。`k8s_external_routes` の転送先と揃える |
+| `portainer_install_dir` | str | | `/opt/portainer` | compose定義とデータ(`data/`=**バックアップ対象**)の設置先 |
 
 ## 冪等性・更新
 
 - 再実行するとcompose定義の差分だけコンテナが再作成される(データは `data/` バインドマウントで永続)
 - バージョン更新: `portainer_version` を上げて再実行(`pull: missing` のため新タグは自動取得)
+
+## AWXでの実行
+
+Job Template **`vm-portainer`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通セット。
 
 ## つまずきやすいポイント
 

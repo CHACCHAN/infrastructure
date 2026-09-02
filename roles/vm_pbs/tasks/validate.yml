@@ -55,8 +55,8 @@
       - (pbs_data_disk_device | default('', true) | length) > 0
       - pbs_data_disk_device is match('^/dev/.+')
     fail_msg: >-
-      pbs_data_disk_device が未指定または不正です。
-      自動選択は安全のため廃止しました。
+      pbs_data_disk_device が未指定または不正です
+      (誤ったディスクを初期化しないため、明示指定が必須です)。
       検出した未初期化候補: {{ pbs_data_disk_candidates | join(', ') | default('なし', true) }}。
       lsblkで対象を確認し、可能なら永続名を使って
       -e "pbs_data_disk_device=/dev/disk/by-id/<デバイスID>" のように指定してください。

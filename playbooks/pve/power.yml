@@ -1,11 +1,8 @@
 # 宣言済みVMの電源状態を冪等に収束させるPlaybook。
-# 実行例: ansible-playbook playbooks/pve/power.yml -l migration-test -e state=started
+# 実行例: ansible-playbook playbooks/pve/power.yml -l k3s-worker03 -e state=started
 # 実行例: ansible-playbook playbooks/pve/power.yml -l k8s -e state=stopped
-# 注意: stopped はゲストOSへの正常シャットダウン要求。起動直後などゲストが
-# 応答できない間は失敗する。応答しないVMを強制停止するには -e pve_power_force=true
-# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
-# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
-# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
+# stopped はゲストOSへの正常シャットダウン要求。ゲストが応答できない間は失敗するため、
+# 強制停止は -e pve_power_force=true で行う。
 ---
 # -e profile= を指定したときだけ、インベントリ外のVMを一時ホストとして宣言する。
 - name: インベントリ外のVMを一時ホストとして宣言する
@@ -16,8 +13,7 @@
   connection: local
   gather_facts: false
   vars:
-    # connection: local のインタープリタ自動発見はproxmoxerが無いシステムPythonを
-    # 選ぶため、コントローラ(ansible本体のvenv)のPythonに固定する
+    # connection: localでproxmoxerを利用できるコントローラ側Pythonへ固定する。
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   vars_files:
     - "{{ playbook_dir }}/../../vault/proxmox_api.yml"
@@ -37,6 +33,26 @@
         fail_msg: >-
           state が未指定または不正です。
           -e state=started または -e state=stopped を指定してください。
+        quiet: true
+
+    - name: ホスト固有の必須変数が届いていることを確認する
+      ansible.builtin.assert:
+        that:
+          - pve_power_missing_host_vars | length == 0
+        fail_msg: >-
+          {{ inventory_hostname }}: {{ pve_power_missing_host_vars | join(' / ') }}
+          が未定義または空です。インベントリ実行では inventory/hosts.yml のホスト定義を、
+          インベントリ外のVMでは -e profile= とあわせて -e vmid= -e node= -e ip= の指定を
+          確認してください(docs/pve/adhoc.md)。
+        quiet: true
+      vars:
+        pve_power_required_host_vars:
+          vmid: "{{ vmid | default('', true) }}"
+          node: "{{ node | default('', true) }}"
+        pve_power_missing_host_vars: >-
+          {{ pve_power_required_host_vars | dict2items
+             | selectattr('value', 'eq', '')
+             | map(attribute='key') | list }}
 
     - name: 対象VMを検索する
       ansible.builtin.import_role:

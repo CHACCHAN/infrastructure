@@ -1,5 +1,6 @@
-# 全アプリの差分確認: ansible-playbook playbooks/k8s/deploy.yml --check --diff
-# 単一アプリの収束: ansible-playbook playbooks/k8s/deploy.yml -e app=homarr
+# k3sクラスタ上の全アプリを登録簿(k8s_apps)の順に収束させるPlaybook。
+# 実行例: ansible-playbook playbooks/k8s/deploy.yml --check --diff
+# 実行例: ansible-playbook playbooks/k8s/deploy.yml -e app=homarr
 # 所有権衝突の初回移行のみ: ansible-playbook playbooks/k8s/deploy.yml -e force=true
 ---
 - name: Kubernetesアプリを宣言順に収束させる
@@ -29,6 +30,16 @@
           接続先 {{ k8s_preflight_info.connection.host }} が宣言
           {{ k8s_api_server }} と一致しません。kubeconfigのcurrent-contextを確認してください。
         quiet: true
+
+    - name: 指定されたアプリが登録簿にあることを確認する
+      ansible.builtin.assert:
+        that:
+          - app in k8s_apps
+        fail_msg: >-
+          app={{ app }} は登録簿 k8s_apps にありません。
+          inventory/group_vars/all/k8s.yml の k8s_apps にある名前を指定してください。
+        quiet: true
+      when: app is defined
 
     # app指定時は1ロールだけ、未指定時は登録簿の順序ですべてを実行する。
     - name: Kubernetesアプリロールを実行する

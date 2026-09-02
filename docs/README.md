@@ -35,12 +35,17 @@ extra vars(`-e` / AWX Survey / Job Templateの変数欄)はAnsibleの変数優�
 
 | 置き場所 | 雛形 | 使うとき |
 | --- | --- | --- |
-| `docs/<ドメイン>/` | `default.md` | playbookのページを追加する |
+| `docs/<ドメイン>/` | `default.md` | playbookのページを追加する(utils は `docs/utils/default.md` を `utils/<サービス>/` のページに使う) |
 | `docs/` | [default.md](default.md) | ドメインの入口ページ(README.md)を追加する |
-| `playbooks/<ドメイン>/` | `default.yml` | playbookを追加する |
+| `playbooks/<ドメイン>/` | `default.yml` | playbookを追加する(utils は `playbooks/utils/default.yml` を `utils/<サービス>/` に使う) |
 | `roles/` | [default.yml](../roles/default.yml) | ロールを追加する(ディレクトリ構成と命名も記載) |
 | `inventory/group_vars/` | [default.yml](../inventory/group_vars/default.yml) | 役割グループのプロファイルを追加する |
 | `awx/` | [default.yml](../awx/default.yml) | Job Template等の定義を追加する |
 | `vault/` | [default.yml](../vault/default.yml) | 暗号化ファイルを追加する(コピー後に暗号化する) |
 
-共通の決まり: **文章もコメントも説明だけを書く**(判断の経緯・変更の過程は書かない)。既定値はコードが正で、ドキュメントへ書き写さない。
+共通の決まり:
+
+- **文章もコメントも説明だけを書く**(判断の経緯・変更の過程は書かない)
+- `##` 見出しは雛形の名称・順序のまま使い、固有の話題は `###` で書く
+- 既定値はコードが正で、ドキュメントへ書き写さない
+- 雛形はプレースホルダを含むため `.ansible-lint` の `exclude_paths` に登録する

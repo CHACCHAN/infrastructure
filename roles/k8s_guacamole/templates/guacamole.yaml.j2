@@ -104,10 +104,9 @@ spec:
 # Apache Guacamole の WebUI (Tomcat)。
 #
 # 上流に公式の Helm チャートが無いので、Deployment / Service を直接書く。
-# ひな形は ../_example/ 。
 #
 # **PVC を持たない。** ユーザ・接続定義・履歴はすべて PostgreSQL 側にある
-# (platform/apps/postgresql/ の guacamole DB)。この Pod は使い捨てでよい。
+# (roles/k8s_postgresql の guacamole DB)。この Pod は使い捨てでよい。
 #
 # 設定はすべて環境変数。1.6.0 のイメージは entrypoint が
 # guacamole.properties を組み立てるようになっていて、
@@ -187,7 +186,7 @@ spec:
             # ここに POSTGRESQL_ で始まる変数があること自体が
             # 「JDBC (PostgreSQL) 認証拡張を入れる」という指示になる。
             #
-            # スキーマは自動では作られない。initdb.sh で流し込む (README.md)。
+            # スキーマは自動では作られない。initdb.sh で流し込む (docs/k8s/README.md)。
             - name: POSTGRESQL_HOSTNAME
               value: postgresql.platform.svc.cluster.local
             - name: POSTGRESQL_PORT
@@ -196,7 +195,7 @@ spec:
               value: guacamole
             - name: POSTGRESQL_USERNAME
               value: postgres
-            # パスワードはマニフェストに書かない。実体は vault/apache-guacamole.yaml。
+            # パスワードはマニフェストに書かない。実体は vault/k8s_secrets.yml。
             - name: POSTGRESQL_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -218,7 +217,7 @@ spec:
             #
             # **Guacamole の OIDC は implicit flow で、クライアント
             # シークレットを使わない。** id_token を JWKS で検証するだけなので、
-            # Authentik 側は Client type: Public で作ること (README.md)。
+            # Authentik 側は Client type: Public で作ること。
             # そのため secret に入れるのは client-id だけ。
             - name: OPENID_ENABLED
               # **Authentik が落ちたときの退避スイッチ。**

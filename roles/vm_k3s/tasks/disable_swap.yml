@@ -37,5 +37,5 @@
   ansible.builtin.replace:
     path: /etc/fstab
     regexp: '^(\s*[^#\s]\S*\s+\S+\s+swap\s+.*)$'
-    replace: '# \1  # Ansible(kubernetesロール)が無効化'
+    replace: '# \1  # Ansible(roles/vm_k3s)が無効化'
   become: true

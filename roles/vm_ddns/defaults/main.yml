@@ -1,15 +1,17 @@
 # タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
 # 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
 #
-# APIトークン・ゾーンID・更新するレコードには既定値を置かない。
-# 何を更新するかはこのplaybookの目的そのもので、既定値を持たせる意味が無いため
-# 必ず -e(または proxmox/ のvault)で指定させる。
+# APIトークン・ゾーンID・更新するレコードには既定値を置かない
+# (playbooks/vm/ddns.yml が vault/cloudflare.yml の値を変数で渡す)。
 ---
 cloudflare_ddns_ui_install_dir: /opt/cloudflare-ddns-ui
 cloudflare_ddns_ui_container_name: cloudflare-ddns-ui
 
 cloudflare_ddns_ui_image: docker.io/martijnf/cloudflare-ddns-ui
 cloudflare_ddns_ui_version: v1.0.2
+
+# イメージ取得前に必要とする空き容量(GiB)
+cloudflare_ddns_ui_min_free_disk_gb: 2
 
 # --- Web UI(コンテナ内は8080で固定。VM側のポートだけを変えられる) ---
 cloudflare_ddns_ui_http_port: 8080

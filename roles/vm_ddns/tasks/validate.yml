@@ -47,7 +47,7 @@
       CloudflareのAPIトークンが指定されていません。
       -e "cloudflare_ddns_ui_api_token=<トークン>" で指定してください
       (Zone → DNS → Edit 権限。対象ゾーンだけに絞れます)。
-      proxmox/ から構築する場合は vault/cloudflare.yml の値が自動で渡ります。
+      playbooks/vm/ddns.yml から実行すると vault/cloudflare.yml の値が自動で渡ります。
     quiet: true
 
 - name: 更新するレコードが指定されていることを検証する

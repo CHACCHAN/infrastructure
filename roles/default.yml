@@ -5,7 +5,8 @@
 #     defaults/main.yml    変数の既定値。ここが既定値の単一の真実
 #     tasks/main.yml       段階ごとのimportを並べるだけにする(このファイル)
 #     tasks/<段階>.yml     validate / install_* / configure_* / verify_service
-#     templates/*.j2       設定ファイル・systemd unit。冒頭に「Ansibleが生成」と書く
+#     templates/*.j2       設定ファイル・systemd unit。冒頭は
+#                          「# Ansible(roles/<ロール名>)が生成。手動編集は次回実行で上書きされる。」
 #     handlers/main.yml    使う場合のみ
 #
 # 命名:
@@ -13,7 +14,9 @@
 #   (role vm_foo → foo_*)。共有ロール(vm / vm_docker)へ渡す引数は svc_* を使う
 #
 # 決まりごと:
-#   - 既定値は defaults/main.yml にだけ置き、tasks側にリテラルを散らさない
+#   - 既定値は defaults/main.yml にだけ置き、tasks側にリテラルや default() の即値を散らさない
+#   - ディスク容量の確認(check_disk_space)は全ロールで行う
+#   - verify_service はVM内(127.0.0.1)から確認する。実行元からの到達確認はplaybookの post_tasks が行う
 #   - shell / command は最終手段。creates・changed_when・状態確認とセットで使う
 #   - 秘密情報はplaybookから変数で受け取り、no_log を付けて扱う
 #   - サービスの再起動は差分があったときだけ行う

@@ -27,9 +27,7 @@
     ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
     # このplaybookはコントロールプレーン単体の構築専用(ワーカー参加は扱わない)
     kubernetes_node_role: server
-    # 「自分自身=クラスタの1台目」の明示(roles/vm_k3s/tasks/validate.ymlの規約)。
-    # 空のままだとansible-core 2.21ではfetch_tokenのdelegate_to解決がwhen評価より
-    # 先に走り、スキップされるべきタスクが「委譲先が空」のfatal→rescueになる
+    # 自分自身=クラスタの1台目の明示(roles/vm_k3s/tasks/validate.yml の規約)
     kubernetes_server_ip: "{{ ansible_host }}"
     # 公開FQDN。メインクラスタのTraefikがこのHostでTLS終端して転送してくる
     rancher_hostname: "rancher.{{ k8s_domain }}"

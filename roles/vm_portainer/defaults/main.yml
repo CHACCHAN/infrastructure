@@ -13,10 +13,9 @@ portainer_version: "2.39.6"
 # HTTP待受(:9000)を有効化して使う。既定のHTTPS(:9443)は公開しない
 portainer_http_port: 9000
 
+# イメージ取得前に必要とする空き容量(GiB)
+portainer_min_free_disk_gb: 3
+
 # Web UIの起動待ち(リトライ回数 / 間隔(秒))
 portainer_ready_retries: 30
 portainer_ready_delay: 5
-
-# 将来的にPortainerの初期admin作成をAPI経由で自動化する場合に使用(現状未使用。
-# 使うときは vault/portainer.yml を作り vault_portainer_admin_password から渡す)
-# portainer_admin_password: ""

@@ -1,12 +1,6 @@
-# Cloudflare Tunnel コネクタ
-#
-# 前提: cloudflare namespace に Secret tunnel-token が存在すること
-#   kubectl -n cloudflare create secret generic tunnel-token \
-#     --from-literal=token='<Cloudflare ダッシュボードで発行したトークン>'
-#
-# トンネルの経路 (どのホスト名をどのオリジンへ送るか) は Cloudflare 側で
-# 管理されており、このリポジトリには含まれない。現在の設定:
-#   auth.{{ k8s_domain }} -> http://traefik.kube-system.svc.cluster.local:80
+# Cloudflare Tunnel コネクタ。
+# Secret tunnel-token は roles/k8s_cloudflared が vault/k8s_secrets.yml から作る。
+# トンネルの経路表 (ホスト名 -> オリジン) は Cloudflare 側にあり、このリポジトリでは管理しない。
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,7 +9,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cloudflared
 spec:
-  replicas: 1
+  replicas: 2
   strategy:
     type: RollingUpdate
     rollingUpdate:

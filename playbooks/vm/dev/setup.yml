@@ -36,18 +36,14 @@
   roles:
     - vm_dev
   post_tasks:
-    # dockerグループへの追加とカーネル更新を反映する。
+    # カーネル更新などの再起動要求があるときだけ再起動する。
     - name: 構成を反映するためVMを再起動する
       ansible.builtin.import_role:
         name: vm
         tasks_from: reboot_vm
 
 # 3. ログインパスワード(Cockpit・xrdpのPAM認証用。-e pve_ssh_password= 指定時のみ動く)
-#
-# **VM内部のセットアップより後に置くこと。** password.ymlはcloud-initドライブを
-# 作り直すためPVE側からVMを停止するが、VM設定は pve_vm_agent: 1 のためPVEは停止要求を
-# QEMUゲストエージェント経由で出す。エージェントを入れるのは上の vm_dev
-# (→ roles/vm 内の install_qemu_guest_agent.yml)なので、これより前に置くと
-# 新規VMの初回構築でだけ正常シャットダウンが応答せずタイムアウトする。
+# password.ymlはQEMUゲストエージェント経由でVMを停止するため、
+# エージェントを入れるVM内部のセットアップより後に置く。
 - name: ログインパスワードを設定する
   ansible.builtin.import_playbook: password.yml

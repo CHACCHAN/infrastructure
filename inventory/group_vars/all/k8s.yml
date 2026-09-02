@@ -2,6 +2,8 @@
 ---
 k8s_domain: cc-chacchan.com
 k8s_tls_secret: cc-chacchan-wildcard-tls
+# ACMEアカウントとアプリの管理者連絡先に使うメールアドレス
+k8s_admin_email: chacchan.info@gmail.com
 # deploy.ymlのpreflightが照合する接続先(k3s APIサーバー=k3s-master01の占有網IP)。
 # kubeconfigの取り違えによる別クラスタへの適用を防ぐ
 k8s_api_server: https://10.10.20.11:6443
@@ -74,18 +76,15 @@ k8s_external_routes:
   - name: coolify
     backend_ip: 172.16.11.6
     scheme: http
-    # すべて内蔵プロキシ(:80)へHostヘッダ付きで渡す。UI(:8000)を直接経由しないのは、
-    # リアルタイム通知/Webターミナル(6001/6002)を内蔵プロキシが集約するため
-    # (Coolify側の設定: Instance Domain / Wildcard Domain。docs/vm/coolify.md)
+    # 内蔵プロキシ(:80)がUI・通知・Webターミナルを集約するため、UI(:8000)へは直接転送しない(docs/vm/coolify.md)
     ports: [{ name: http, port: 80 }]
     ingresses:
-      # 管理UI(LAN内限定)。X-Forwarded-Proto: https が無いとログインが壊れるため必須
+      # 管理UI(LAN内限定)。forwarded_https が無いとログインが壊れる
       - name: coolify
         host: "coolify.{{ k8s_domain }}"
         port: http
         forwarded_https: true
-      # デプロイしたアプリの公開用ワイルドカード。Cloudflare Tunnel(HTTP :80)からも
-      # 到達できるようentrypointsへwebを含める(公開の可否はCloudflare側の経路表で決まる)
+      # デプロイしたアプリの公開用。entrypoint web はCloudflare Tunnel(HTTP :80)からの到達用
       - name: coolify-apps
         host: "*.web.{{ k8s_domain }}"
         port: http
@@ -95,31 +94,19 @@ k8s_external_routes:
   - name: hermes
     backend_ip: 172.16.11.31
     scheme: http
-    # Hermes Agentのweb dashboard(管理UI + ブラウザ内チャット)。TLS終端はここ
-    # (メインクラスタのTraefik)で完結し、VMの:9119へHTTPで転送する。チャットは
-    # WebSocket(/api/ws・/api/pty)だがTraefikがUpgradeをそのまま通すため追加設定は不要
-    # (VM側のpublic_url・trusted_proxiesはvm_hermesロールが設定する。docs/vm/hermes.md)
+    # Hermes Agentのweb dashboard(:9119)とLINE webhook(:8646)。TLS終端はメインクラスタのTraefik(docs/vm/hermes.md)
     ports:
       - { name: http, port: 9119 }
-      # メッセージングGateway(LINE)のwebhook待受。上流の既定ポート
       - { name: line, port: 8646 }
     ingresses:
-      # 管理UI。hermes.{{ k8s_domain }} はCloudflare Tunnelで公開しているため、
-      # 到達経路はTunnel(HTTP :80 = entrypoint web)とLAN内の直接アクセス
-      # (websecure)の両方になる。認証はHermes側のAuthentik SSO / パスワード。
-      # X-Forwarded-Proto: https が無いと、Cookieのsecure属性と
-      # OAuthコールバックの組み立てが実際の公開URLとずれる
+      # 管理UI。Cloudflare Tunnel(entrypoint web)とLAN(websecure)の両方から到達する。
+      # forwarded_https が無いとCookieのsecure属性とOAuthコールバックURLが公開URLとずれる
       - name: hermes
         host: "hermes.{{ k8s_domain }}"
         port: http
         entrypoints: "web,websecure"
         forwarded_https: true
-      # LINEのwebhook(/line/webhook)とメディア配信(/line/media)。上流のLINE
-      # プラットフォームが :8646 でこのパスのまま待ち受けるため、プレフィックスは剥がさない。
-      # Traefikはルールが長いほうを優先するので、上の管理UI(/)より先にこちらへ一致する。
-      # LINEのサーバーは宅外から来るため、Cloudflare Tunnel(HTTP :80)が使う
-      # entrypoint web も許可する(公開の可否はCloudflare側の経路表で決まる。
-      # 管理UIのIngressはwebsecureのみのため、公開されるのはこのパスだけ)
+      # LINE webhook(/line/*)。宅外のLINEサーバーから来るため管理UIと同じく web も許可する
       - name: hermes-line
         host: "hermes.{{ k8s_domain }}"
         path: /line
@@ -129,8 +116,7 @@ k8s_external_routes:
   - name: portainer
     backend_ip: 172.16.11.9
     scheme: http
-    # Portainer VM(Docker単体運用)のWeb UI。--http-enabled のHTTP待受(:9000)へ転送する。
-    # TLS終端はここ(メインクラスタのTraefik)で完結する(docs/vm/portainer.md)
+    # Portainer VMのHTTP待受(:9000)。TLS終端はメインクラスタのTraefik(docs/vm/portainer.md)
     ports: [{ name: http, port: 9000 }]
     ingresses:
       - name: portainer
@@ -141,9 +127,7 @@ k8s_external_routes:
   - name: rancher
     backend_ip: 172.16.11.8
     scheme: http
-    # Rancher VM(単体k3s・Traefik無効)のServiceLBが:80で受ける。TLS終端はここ
-    # (メインクラスタのTraefik)で完結し、Rancher側は tls=external で
-    # X-Forwarded-Proto: https を信頼する(docs/vm/rancher.md)
+    # Rancher VMのServiceLB(:80)。TLS終端はメインクラスタのTraefikで、Rancher側は tls=external(docs/vm/rancher.md)
     ports: [{ name: http, port: 80 }]
     ingresses:
       - name: rancher

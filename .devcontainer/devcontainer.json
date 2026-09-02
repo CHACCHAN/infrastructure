@@ -31,7 +31,7 @@
         "ghcr.io/thediveo/devcontainer-features/lazygit:0": {},
         "ghcr.io/schlich/devcontainer-features/helmfile:1": {}
     },
-    "postCreateCommand": "curl -fsSL https://antigravity.google/cli/install.sh | bash",
+    "postCreateCommand": "curl -fsSL https://antigravity.google/cli/install.sh | bash && ansible-galaxy collection install -r ee/requirements.yml",
     "workspaceFolder": "/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder},target=/${localWorkspaceFolderBasename},type=bind,consistency=cached",
     "mounts": [

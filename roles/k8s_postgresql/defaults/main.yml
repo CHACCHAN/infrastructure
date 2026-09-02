@@ -1,4 +1,4 @@
-# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+# 上流チャートの固定バージョンと values。
 ---
 k8s_postgresql_helm_version: "1.6.7"
 k8s_postgresql_values:
@@ -30,7 +30,7 @@ k8s_postgresql_values:
     tag: "0.8.6-pg16-trixie"
 
   settings:
-    # superuser のパスワードを読む Secret。中身は vault/postgresql.yaml。
+    # superuser のパスワードを読む Secret。実値は vault/k8s_secrets.yml。
     existingSecret: postgresql-superuser
     superuserPassword:
       secretKey: postgres-password
@@ -51,7 +51,7 @@ k8s_postgresql_values:
   # 「アプリ側の接続情報」の 2 か所に書くことになり、事故のほうが大きい。
   #
   # **2 回目以降は実行されない。** DB や拡張を後から足す場合は
-  # psql で手動で作ること (README.md に手順がある)。
+  # psql で手動で作ること (docs/k8s/README.md)。
   customScripts:
     10-create-databases.sh: |
       #!/bin/sh

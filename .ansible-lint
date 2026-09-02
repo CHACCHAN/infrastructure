@@ -1,32 +1,21 @@
 # ansible-lint 設定。VSCode の Ansible 拡張(redhat.ansible)もこのファイルを読む。
+# production profile で 0 failure を維持する。
 ---
 skip_list:
-  # var-naming[no-role-prefix]
-  #   ロール名は「層(pve_/vm_/k8s_)+サービス名」、変数名は層を落とした
-  #   サービス名で揃える規約を採っている(role vm_authentik -> authentik_*、
-  #   role pve_vm -> pve_*)。層は配置場所で既に判別できるため、変数名にまで
-  #   重ねると vm_authentik_install_dir のように冗長になる。
-  #   加えて svc_* は roles/vm・roles/vm_docker が「呼び出し元から受け取る
-  #   引数」として文書化している共有インターフェース
-  #   (svc_name / svc_install_dir / svc_ufw_ports / svc_env_path /
-  #    svc_min_free_gb など)。呼び出し元のロール名を冠すると共有ロール側が
-  #   受け取れなくなり、設計そのものが成立しない。
+  # 変数名は層(pve_/vm_/k8s_)を落としたサービス名で揃える(role vm_authentik -> authentik_*)。
+  # 共有ロール roles/vm・roles/vm_docker が受け取る引数は svc_*。
   - var-naming[no-role-prefix]
-
-  # name[casing]
-  #   タスク名は日本語で書いており、大文字/小文字の概念が無い。
-  #   文頭に来るのは cert-manager / cloud-init / k3s / nfs / kubectl など
-  #   公式表記が小文字で固定された製品名で、大文字化は誤記になる。
+  # タスク名は日本語。文頭の製品名(cert-manager / k3s 等)は公式表記の小文字を使う。
   - name[casing]
 
-# 各ディレクトリに置く雛形。プレースホルダを含むため実行・検証の対象にしない。
+# community.proxmox のAPI認証は module_defaults(group/community.proxmox.proxmox)で供給する。
+# args ルールは action group を解決できないため、該当タスクに `# noqa: args[module]` を付けている。
+
+# 各ディレクトリに置く雛形。プレースホルダを含むため検証の対象にしない。
 exclude_paths:
-  - default.yml
   - playbooks/k8s/default.yml
   - playbooks/pve/default.yml
   - playbooks/utils/default.yml
-  - playbooks/utils/authentik/default.yml
-  - playbooks/utils/awx/default.yml
   - playbooks/vm/default.yml
   - playbooks/vm/dev/default.yml
   - roles/default.yml

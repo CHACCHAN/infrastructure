@@ -28,12 +28,12 @@ ansible-playbook playbooks/vm/k3s.yml
 # 直接実行(ワーカーを1台だけ追加。参加先はインベントリの宣言から自動解決)
 ansible-playbook playbooks/vm/k3s.yml \
   -e target=k3s-worker05 -e profile=k8s \
-  -e vmid=801 -e node=pve08 -e ip=172.16.12.19 -e ip2=10.10.20.19/24
+  -e vmid=1001 -e node=pve10 -e ip=172.16.12.19 -e ip2=10.10.20.19/24
 ```
 
-## 変数一覧(サービス固有の主要なもの)
+## 変数一覧
 
-接続系の共通変数は [README.md](README.md#共通の変数全サービスplaybook)。全既定値の正は [roles/vm_k3s/defaults/main.yml](../../roles/vm_k3s/defaults/main.yml) と [inventory/group_vars/k8s.yml](../../inventory/group_vars/k8s.yml)。
+接続系の共通変数は [README.md](README.md#共通の変数)。全既定値の正は [roles/vm_k3s/defaults/main.yml](../../roles/vm_k3s/defaults/main.yml) と [inventory/group_vars/k8s.yml](../../inventory/group_vars/k8s.yml)。
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |
@@ -42,7 +42,7 @@ ansible-playbook playbooks/vm/k3s.yml \
 | `kubernetes_version` | str | | group_vars/k8s.yml | k3sバージョン(クラスタ内で揃える。更新はgroup_varsを上げてから順に再構築) |
 | `kubernetes_server_ip` | str | △ | 宣言から自動導出 | コントロールプレーンの管理IP。**k8sグループが届かない実行では `-e` で必須** |
 | `kubernetes_server_ssh_user` | str | △ | 同上 | コントロールプレーンのSSHユーザー(同上) |
-| `kubernetes_server_ssh_prikey` | str | △ | 同上 | コントロールプレーンの秘密鍵パス(同上) |
+| `kubernetes_server_ssh_prikey` | str | | 接続に使う鍵と同じ | コントロールプレーンの秘密鍵(実行環境上のファイルパス)。別の鍵でしか入れないときだけ指定する |
 | `kubernetes_server_port` | int | | `6443` | APIサーバーポート |
 | `kubernetes_node_labels` / `kubernetes_node_taints` | list | | `[]` | ノードのラベル/taint |
 
@@ -50,9 +50,10 @@ ansible-playbook playbooks/vm/k3s.yml \
 
 ## AWXでの実行
 
-Job Template **`vm-k3s`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通セット+k3s固有の質問(`k3s_role` / `kubernetes_server_ip` / `kubernetes_server_ssh_user` / `kubernetes_server_ssh_prikey`)。
+Job Template **`vm-k3s`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。Surveyは共通セット+k3s固有の質問(`k3s_role` / `kubernetes_server_ip` / `kubernetes_server_ssh_user`)。
 
 - インベントリをProjectから同期していれば、固有の質問は未回答でよい(宣言から自動解決)
+- コントロールプレーンへの接続鍵は共通Surveyの `pve_ssh_prikey_value` をそのまま使う(別の鍵を渡す経路は無い)
 - **初回のクラスタ構築は宣言順に依存する**。AWX生成インベントリの並びがコントロールプレーン先頭でない場合、ワーカーがトークン取得に失敗する(現在のホスト名は `k3s-master01` がどう並べても先頭になるため顕在化しない)
 
 ## つまずきやすいポイント

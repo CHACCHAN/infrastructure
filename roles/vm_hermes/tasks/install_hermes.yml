@@ -4,14 +4,10 @@
 # 「リリースタグ → コミットSHA」を解決してインストーラの --commit へ渡す
 # (インストーラはタグ名や短縮SHAを受け付けず、40文字のSHAのみ)。
 #
-# upstreamのリリースタグは**注釈付きタグ**のため、`refs/tags/<タグ>` が指すのは
-# タグオブジェクトで、コミットは peel 済みの `refs/tags/<タグ>^{}` 側にある。
-# ls-remoteに両方のパターンを渡し、peel行があればそちらを採る
-# (タグオブジェクトのSHAを渡してもgitはcheckout時に自動でpeelするため導入自体は
-#  成功するが、その後のHEADとの突き合わせが噛み合わなくなる)。
-# インストーラを使うのは、Python/uv/Nodeの用意・venv・extras(uv.lockのハッシュ検証)
-# まで面倒を見る唯一の公式経路のため。--non-interactive と --skip-setup で
-# 対話ウィザードを動かさず、モデルやチャネルの設定は利用者に委ねる。
+# upstreamのリリースタグは注釈付きタグのため、ls-remoteに `refs/tags/<タグ>` と
+# peel済みの `refs/tags/<タグ>^{}` の両方を渡し、peel行(コミットSHA)があればそちらを採る。
+# インストーラはPython/uv/Node・venv・extras(uv.lockのハッシュ検証)まで扱う唯一の公式経路。
+# --non-interactive と --skip-setup で対話ウィザードを動かさず、モデル・チャネルの設定は利用者に委ねる。
 #
 # 実行はHermes専用ユーザー(=ansible_user)自身で行う。上流のper-userレイアウトになり、
 # コード({{ hermes_install_dir }})とデータ({{ hermes_home }})が同じHOME配下に入る。

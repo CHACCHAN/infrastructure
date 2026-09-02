@@ -113,7 +113,7 @@ sequenceDiagram
     P->>V: 起動(cloud-initが初期設定)
 ```
 
-- 全タスクが**冪等**: 収束済みなら `changed=0`
+- 全タスクが**冪等**: 収束済みなら `changed=0`(②のOSパッケージ更新など、上流の更新に追従するものを除く)
 - テンプレートは **(OS, ノード)ごと** に VMID `9XXNN`(XX=OSカタログ番号, NN=ノード番号)で管理する。全ストレージがノードローカルであり、クロスノードのクローンができないため
 - NICの更新時は既存MACアドレスを引き継ぐ(意図しないMAC再生成を防ぐ)
 
@@ -132,6 +132,7 @@ sequenceDiagram
 │   ├── k8s/             # ③ deploy(全アプリ or -e app=X)
 │   └── utils/           # APIを叩く単発ツール(awx/=AWX設定収束・Job操作, authentik/=ユーザー管理)
 ├── roles/               # ドメイン別: pve* / vm* / k8s*
+├── awx/                 # AWXの定義(Job Template / Survey / Credential 等)。utils/awx/configure.yml が収束させる
 ├── vault/               # Ansible Vault(全ファイル暗号化済み)
 ├── collections/         # requirements.yml → ee/ へのsymlink(AWX互換の標準位置)
 ├── ee/                  # AWXカスタム実行環境(ansible-builder)。コレクション定義の実体

@@ -1,4 +1,4 @@
-# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+# 上流チャートの固定バージョンと values。
 ---
 k8s_awx_helm_version: "3.2.1"
 k8s_awx_values:
@@ -25,7 +25,7 @@ k8s_awx_values:
     spec:
       admin_user: admin
       # admin のパスワードは書かない。指定しなければ Operator が
-      # Secret awx-admin-password を生成する (取り出し方は README.md)。
+      # Secret awx-admin-password を生成する (バックアップは vault/k8s_secrets.yml の k8s_backup_*)。
 
       # ingress_type: none なので Operator は Ingress を作らない。
       # それでも hostname が要るのは、AWX が自分の URL を組み立てる
@@ -58,10 +58,10 @@ k8s_awx_values:
         # SAMLバックエンド(python-social-auth)はSPメタデータ用の連絡先を
         # 必須とする。表示用メタデータで機密ではない。
         - setting: SOCIAL_AUTH_SAML_TECHNICAL_CONTACT
-          value: "{'givenName': 'CHACCHAN', 'emailAddress': 'chacchan.info@gmail.com'}"
+          value: "{'givenName': 'CHACCHAN', 'emailAddress': '{{ k8s_admin_email }}'}"
 
         - setting: SOCIAL_AUTH_SAML_SUPPORT_CONTACT
-          value: "{'givenName': 'CHACCHAN', 'emailAddress': 'chacchan.info@gmail.com'}"
+          value: "{'givenName': 'CHACCHAN', 'emailAddress': '{{ k8s_admin_email }}'}"
 
         # 値はPythonリテラルとして評価されるため、真偽値は true ではなく True。
         # また、値に改行が入るとOperatorのリソース適用(reconcile)が壊れるため
@@ -76,16 +76,16 @@ k8s_awx_values:
             key: saml.py
 
       # DB は platform namespace 共用の PostgreSQL を使う。
-      # (platform/apps/postgresql/。接続先は postgresql.platform.svc:5432)
+      # (roles/k8s_postgresql。接続先は postgresql.platform.svc:5432)
       #
       # この行があると Operator は postgres の StatefulSet を作らず、
       # Secret に書かれた外部 DB へ接続する。Secret には
       # host / port / database / username / password / sslmode / type の
       # 7 つのキーが要り、type は必ず "unmanaged" にする。
-      # 作り方は ../postgresql/README.md にまとめてある。
+      # Secret の実値は vault/k8s_secrets.yml。
       #
       # **後から managed <-> unmanaged を切り替えると DB が引き継がれない。**
-      # 移行する場合は pg_dump / pg_restore が要る (README.md 参照)。
+      # 移行する場合は pg_dump / pg_restore が要る。
       postgres_configuration_secret: awx-postgres-configuration
 
       # 上流の既定 (web 1000m/2Gi, task 500m/1Gi, ee 500m/1Gi) は
@@ -105,4 +105,4 @@ k8s_awx_values:
           cpu: 100m
           memory: 256Mi
       # postgres_* の項目は書かない。Operator が DB を管理していないので
-      # 効かない。DB 側のリソースは platform/apps/postgresql/values.yaml。
+      # 効かない。DB 側のリソースは roles/k8s_postgresql の defaults。

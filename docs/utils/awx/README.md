@@ -1,7 +1,5 @@
 # AWX — Web UIからの実行と、その設定のコード管理
 
-(旧 docs/awx/README.md。playbooks/awx/ が playbooks/utils/awx/ へ統合されたのに合わせて移設)
-
 このリポジトリはAWX(クラスタ上の `ansible.cc-chacchan.com`)からも実行できる。**AWX側の設定(Project / Inventory / Credential / EE / Job Template+Survey)はすべてコードで管理**しており、手動でJob Templateを作る必要はない。
 
 | 何を | どこで |
@@ -105,7 +103,7 @@ AWXは未回答の質問を**空文字**で渡すことがある。空文字は�
 
 ## SAMLログイン(Authentik連携)
 
-AWXへのログインはAuthentikの**SAML**連携(旧OIDCから移行済み)。設定は3段構え:
+AWXへのログインはAuthentikの**SAML**連携。設定は3段構え:
 
 | 何が | どこに |
 | --- | --- |
@@ -113,7 +111,7 @@ AWXへのログインはAuthentikの**SAML**連携(旧OIDCから移行済み)。
 | 機密のsettings断片 `saml.py`(SP証明書・秘密鍵・Authentik側IdP定義) | vault の `k8s_secret_awx_saml` → Secret `awx-saml`(roles/k8s_awxが適用)→ AWX Operator の `extra_settings_files` が読み込む |
 | Authentik側のSAMLプロバイダ定義 | Authentik UI(このリポジトリの管理外) |
 
-`extra_settings` に設定を足すときの注意(実際に踏んだ落とし穴):
+`extra_settings` に設定を足すときの注意:
 
 - 値は**Pythonリテラル**として設定ファイルへ書かれる。真偽値は `true` ではなく `True`(間違えるとAWX Podが起動しない)
 - 値は**必ず1行**で書く。改行が入るとOperatorのreconcile(Apply Resources)が失敗し、CRが `Failure=True` のまま設定が反映されなくなる(YAMLの `>-` は深いインデント行の改行を保持するため見た目の整形に使えない)
@@ -139,6 +137,6 @@ ansible-playbook playbooks/k8s/deploy.yml -e app=awx
 | Job Template | playbook | ドキュメント |
 | --- | --- | --- |
 | pve-provision / pve-power / pve-destroy / pve-template | playbooks/pve/*.yml | [docs/pve/](../../pve/README.md) |
-| vm-authentik / vm-coolify / vm-ddns / vm-k3s / vm-pbs / vm-portainer / vm-rancher / vm-technitium / vm-wg-easy / vm-dev-setup / vm-dev-password | playbooks/vm/*.yml | [docs/vm/](../../vm/README.md) |
+| vm-authentik / vm-coolify / vm-ddns / vm-hermes / vm-k3s / vm-pbs / vm-portainer / vm-rancher / vm-technitium / vm-wg-easy / vm-dev-setup / vm-dev-password | playbooks/vm/*.yml | [docs/vm/](../../vm/README.md) |
 | k8s-deploy | playbooks/k8s/deploy.yml | [docs/k8s/deploy.md](../../k8s/deploy.md) |
 | utils-awx-job-launch / utils-awx-job-status / utils-awx-inventory-sync / utils-authentik-users | playbooks/utils/awx/*.yml / playbooks/utils/authentik/users.yml | [docs/utils/](../README.md) |

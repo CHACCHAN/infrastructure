@@ -1,4 +1,4 @@
-# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+# 上流チャートの固定バージョンと values。
 ---
 k8s_pgadmin_helm_version: "1.66.0"
 k8s_pgadmin_values:
@@ -11,14 +11,14 @@ k8s_pgadmin_values:
 
   ## 初期管理者
   #
-  # パスワードは values.yaml に書かない。Secret から読ませる。
+  # パスワードは values に書かない。Secret から読ませる。
   # 既定値のまま (env.password) にすると平文が Deployment に埋まる。
   existingSecret: "pgadmin-admin"
   secretKeys:
     pgadminPasswordKey: "password"
 
   env:
-    email: chacchan.info@gmail.com
+    email: "{{ k8s_admin_email }}"
 
     ## Traefik の裏にいるので、クライアント IP でセッションを縛らない。
     ## True にすると Cloudflare Tunnel 経由と LAN 直の間でセッションが切れる。
@@ -30,7 +30,7 @@ k8s_pgadmin_values:
   ##   pgadmin-db   : PGADMIN_DB_URI (設定 DB の接続 URL。パスワードを含む)
   ##
   ## envFrom なので、Secret のキー名がそのまま環境変数名になる。
-  ## 作り方は README.md と ../postgresql/README.md を参照。
+  ## 実値は vault/k8s_secrets.yml。
   envVarsFromSecrets:
     - pgadmin-oidc
     - pgadmin-db
@@ -57,7 +57,7 @@ k8s_pgadmin_values:
   ## という作りなので、ファイルを 1 枚書いて食わせている。
   ##
   ## extraDeploy はチャートがそのまま出力する追加マニフェスト。
-  ## ここに置くことで、このアプリの設定が values.yaml に閉じる。
+  ## ここに置くことで、このアプリの設定が values に閉じる。
   ##
   ## **秘密情報はここに書かない。** クライアントシークレットと DB の
   ## パスワードは Secret から環境変数で渡し、os.environ で読む

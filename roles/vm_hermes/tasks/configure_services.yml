@@ -2,11 +2,10 @@
 #
 # 2つのプロセスがある(上流の設計):
 #   web dashboard … 管理UI + ブラウザ内チャット。上流にサービス化コマンドが無いため
-#                   (公式ドキュメントも「systemd等で常駐させる」としている)
-#                   このロールがunitを持つ。Traefikで公開するのはこちら
-#   Gateway       … Telegram/Discord等のメッセージング常駐プロセス。上流の
-#                   `hermes gateway install --system` がsystem scopeのunitを作る
-#                   (unitの内容は上流が管理する。既定では常駐させない)
+#                   このロールがsystem scopeのunitを持つ。Traefikで公開するのはこちら
+#   Gateway       … Telegram/Discord/LINE等のメッセージング常駐プロセス。上流の
+#                   `hermes gateway install` がユーザースコープのunit(+linger)を作る
+#                   (unitの内容は上流が管理する。常駐の有無は hermes_enable_gateway)
 ---
 - name: 認証情報を置くディレクトリを作成する
   ansible.builtin.file:
@@ -49,11 +48,9 @@
   become: true
   register: hermes_dashboard_unit
 
-# 変更が無ければ started(=何もしない)。unit・認証情報・本体の版・公開設定の
-# いずれかが変わったときだけ restarted で反映する(差分が無いのに再起動しない)。
-# 条件は中間変数を置かずこの場で組み立てる(変数に入れると値そのものが
-# テンプレート文字列のまま評価される経路があり、真偽判定を誤りうるため)。
-# default({})は、対応するタスクがスキップされた実行でも評価できるようにするため。
+# unit・認証情報・本体の版・公開設定のいずれかが変わったときだけ restarted にする。
+# 条件は中間変数に置かずこの場で組み立てる(変数経由だと真偽判定を誤る経路がある)。
+# default({}) はスキップされたタスクの register でも評価できるようにするため。
 - name: dashboardのサービスを有効化・起動する
   ansible.builtin.systemd:
     name: "{{ hermes_dashboard_service_name }}"

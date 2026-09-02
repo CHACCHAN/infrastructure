@@ -4,16 +4,6 @@ Nous Researchの[Hermes Agent](https://hermes-agent.nousresearch.com/)を専用V
 
 常駐させるのは**web dashboard**(管理UI + ブラウザ内チャット)で、これをTraefikで公開する。上流にはdashboardをサービス化するコマンドが無いため、systemd unitはこのロールが持つ。メッセージングGateway(Telegram/Discord/LINE等)は上流の `hermes gateway install` に任せ、**ユーザースコープのsystemdサービス**(`~/.config/systemd/user/hermes-gateway.service` + linger)として常駐させる。root権限を介さないため、dashboardの「ゲートウェイを再起動」や `hermes update` がそのまま再起動できる。ロールの既定は常駐なしで、チャネルを設定してから `hermes_enable_gateway: true` にする。エージェントの実行環境としてDocker(`terminal.backend: docker` 用)と `ansible-core` / kubectl / Helm を入れる。kubectl・Helmの導入は `roles/vm` の共通タスクで、`vm_dev` と同じ手順を共有する。
 
-## 役割分担(Ansible / Hermes / PBS)
-
-| 誰が | 何を持つか |
-| --- | --- |
-| Ansible | 再構築できる基盤と初期状態: VM・cloud-init・OS設定・専用ユーザー・**Hermes本体の版**・systemd・Docker・運用ツール・dashboardの待受と認証(SSO含む)・公開URL |
-| Hermes(dashboard / CLI) | 実運用設定: モデルとプロバイダの認証情報・ツール・チャネル・スキル・メモリ・セッション(実体はVM上の `~/.hermes/`) |
-| PBS | VM全体と実運用状態のバックアップ |
-
-Ansibleは `HERMES_HOME`(`~/.hermes/`)配下の `config.yaml` / `.env` / 状態ファイルを**上書きしない**。例外は公開経路と対になる2つのキー(`dashboard.public_url` / `dashboard.trusted_proxies`)だけで、それ以外はHermes側の持ち物。
-
 ## 公開経路(このリポジトリでの扱い)
 
 `hermes.cc-chacchan.com` は**Cloudflare Tunnelで公開**している。DNSはこのホスト名だけTunnel向けの個別レコードを持ち、ワイルドカード `*.cc-chacchan.com` → 172.16.12.11 より優先されるため、**宅内からのアクセスもTunnel経由**になる。TLSはCloudflareのエッジで終端し、TunnelからTraefikの `web`(HTTP :80)へ入る。VMの:9119へはHTTPで転送し、`forwarded_https` Middlewareで X-Forwarded-Proto: https を付ける。ブラウザ内チャットはWebSocket(`/api/ws`・`/api/pty`)だが、TraefikがUpgradeをそのまま通すため追加設定は不要。
@@ -42,7 +32,7 @@ flowchart LR
 
 - さらに絞る場合: Ingressに `middlewares: [authentik-forward-auth]` を足してAuthentik認証を前段に置く(ddnsの実例)、または `hermes_public_url: ""` + `hermes_dashboard_host: 127.0.0.1` にしてSSHトンネル経由だけにする(上流推奨)
 
-## SSO(Authentik OIDC)
+### SSO(Authentik OIDC)
 
 ログインは上流同梱の**self-hosted OIDCプラグイン**でAuthentikへ委譲できる(認可コード + PKCE(S256)。受け取ったID Tokenを `jwks` で署名検証し `iss` / `aud` を照合する)。`hermes_oidc_issuer` と `hermes_oidc_client_id` の**両方**を宣言したときだけ有効になる(片方だけだとプラグインは黙って登録を諦めるため、playbookが先に止める)。
 
@@ -81,11 +71,11 @@ ansible-playbook playbooks/vm/hermes.yml -e hermes_version=v2026.9.7
 1. `https://hermes.cc-chacchan.com/` を開き、**Sign in with Self-Hosted OIDC**(Authentik)か `admin` + Vaultのパスワードでログインする(初回起動はWeb UIのビルドが走るため数分かかることがある)
 2. モデルとプロバイダの認証情報を設定する。SSHからなら `hermes setup --portal`(Nous Portal)/ `hermes model` / `hermes tools`
 3. Agent Sandboxを使うなら `hermes config set terminal.backend docker`(Dockerは導入済み)
-4. メッセージングを使うなら `hermes gateway setup` で設定し、`hermes_enable_gateway: true` にしてplaybookを再実行する(systemサービスとして常駐する)
+4. メッセージングを使うなら `hermes gateway setup` で設定し、`hermes_enable_gateway: true` にしてplaybookを再実行する(ユーザースコープのsystemdサービスとして常駐する)
 
-## 変数一覧(サービス固有の主要なもの)
+## 変数一覧
 
-接続系の共通変数は [README.md](README.md#共通の変数全サービスplaybook)。全既定値の正は [roles/vm_hermes/defaults/main.yml](../../roles/vm_hermes/defaults/main.yml)。
+接続系の共通変数は [README.md](README.md#共通の変数)。全既定値の正は [roles/vm_hermes/defaults/main.yml](../../roles/vm_hermes/defaults/main.yml)。
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |
@@ -106,6 +96,16 @@ ansible-playbook playbooks/vm/hermes.yml -e hermes_version=v2026.9.7
 | `hermes_min_free_disk_gb` | int | | `20` | 事前チェックの必要空き容量 |
 
 ## 冪等性・更新
+
+### 役割分担(Ansible / Hermes / PBS)
+
+| 誰が | 何を持つか |
+| --- | --- |
+| Ansible | 再構築できる基盤と初期状態: VM・cloud-init・OS設定・専用ユーザー・**Hermes本体の版**・systemd・Docker・運用ツール・dashboardの待受と認証(SSO含む)・公開URL |
+| Hermes(dashboard / CLI) | 実運用設定: モデルとプロバイダの認証情報・ツール・チャネル・スキル・メモリ・セッション(実体はVM上の `~/.hermes/`) |
+| PBS | VM全体と実運用状態のバックアップ |
+
+Ansibleは `HERMES_HOME`(`~/.hermes/`)配下の `config.yaml` / `.env` / 状態ファイルを**上書きしない**。例外は公開経路と対になる2つのキー(`dashboard.public_url` / `dashboard.trusted_proxies`)だけで、それ以外はHermes側の持ち物。
 
 - 版の判定は「宣言タグのコミットSHA」と「チェックアウトのHEAD」の比較。一致していればインストーラを実行しない
 - 更新は `hermes_version` を変えて再実行する。**`hermes update` やdashboardのUpdateボタンは `main` へ進めてしまう**ため使わない(使った場合、次回のAnsible実行で宣言タグへ引き戻される)
@@ -132,5 +132,5 @@ Job Template **`vm-hermes`**(定義: [awx/job_templates.yml](../../awx/job_templ
 - **dashboardの「ゲートウェイを再起動」が `System gateway restart requires root. Re-run with sudo.` で失敗する** → system scopeのunit(`/etc/systemd/system/hermes-gateway.service`)で常駐している。ユーザースコープなら root を介さないので失敗しない。playbookを再実行すればsystem scopeのunitは停止・削除され、ユーザースコープへ置き換わる
 - **Gatewayを二重に起動しない** → dashboardのUIから起動したGateway(dashboardプロセスの子)とsystemdのunitは同じ:8646を掴むため同時に動かせない。常駐はsystemd側(`hermes_enable_gateway: true`)に寄せ、dashboardからは再起動だけを行う
 - **再起動後にGatewayが上がらない** → lingerが無効だとユーザーのsystemdインスタンスが起動せず、ユーザースコープのunitも動かない。`loginctl show-user hermes -p Linger` が `Linger=yes` か確認する(playbookが有効化する)
-- **Gatewayが起動しない/落ち続ける** → チャネル未設定のまま常駐させていないか(`hermes_enable_gateway: false` に戻し、`hermes gateway setup` を先に済ませる)。ログは `sudo journalctl -u hermes-gateway -f`
+- **Gatewayが起動しない/落ち続ける** → チャネル未設定のまま常駐させていないか(`hermes_enable_gateway: false` に戻し、`hermes gateway setup` を先に済ませる)。ログは `hermes` ユーザーで `journalctl --user -u hermes-gateway -f`
 - **エージェントは強い権限を持つ** → `hermes` ユーザーは `sudo` と `docker` グループに属する。専用VM・LAN内限定が前提の構成のため、公開範囲を広げるときは権限設計から見直す

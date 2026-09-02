@@ -3,7 +3,7 @@
 <!--
 このディレクトリ(①Proxmox APIドメイン)のページはこのテンプレートに従う。
 - 1ページ = 1playbook。ファイル名はplaybookと同名
-- 見出しは下記の順序・名称を変えない。該当しない節だけ丸ごと削除する
+- `##` 見出しは下記の名称・順序のまま使う。該当しない節だけ丸ごと削除し、固有の話題は該当する `##` の下に `###` で書く
 - 文章もコメントも「説明」だけを書く。判断の経緯・変更の過程は書かない
 - 変数の既定値の正は roles/pve*/defaults/main.yml と inventory/group_vars/
 - 新規追加時は docs/pve/README.md のplaybook一覧にも1行足す
@@ -13,14 +13,14 @@
 
 ## 実行方法
 
-### インベントリ実行(宣言どおりの再現)
+### インベントリ実行
 
 ```sh
 ansible-playbook playbooks/pve/<playbook名>.yml
 ansible-playbook playbooks/pve/<playbook名>.yml -l <ホスト名>
 ```
 
-### 直接実行(インベントリに無いVMを変数だけで指定)
+### 直接実行(インベントリ外VM)
 
 ```sh
 ansible-playbook playbooks/pve/<playbook名>.yml \
@@ -28,6 +28,8 @@ ansible-playbook playbooks/pve/<playbook名>.yml \
 ```
 
 ## 変数一覧
+
+<!-- 変数が少ないplaybookは小節を作らず表1つにする -->
 
 ### 必須(ホストごと)
 

@@ -2,6 +2,23 @@
 
 Technitium DNSをVMごと一気通貫で構築する。DNS(:53)とWebコンソール(:5380)。ホスト側のstub resolverがポート53を塞いでいる場合は自動で退かせる。LAN内の名前解決(`*.cc-chacchan.com` の内部解決)を担うため、**停止すると影響が広い**。
 
+## 公開経路(このリポジトリでの扱い)
+
+Webコンソールと DNS-over-HTTPS のTLSは**メインクラスタのTraefikで終端**し、VMへHTTPで転送する。経路の宣言は [inventory/group_vars/all/k8s.yml](../../inventory/group_vars/all/k8s.yml) の `k8s_external_routes`(`technitium-dns`)。DNS本体(:53)はTraefikを通らず、クライアントがVMのIPへ直接問い合わせる。
+
+```mermaid
+flowchart LR
+    C[クライアント] -->|"https://dns.cc-chacchan.com"| T["メインk3sのTraefik<br>(TLS終端 + X-Forwarded-Proto: https)"]
+    C -->|"https://doh.cc-chacchan.com"| T
+    T -->|"HTTP :5380"| W["Webコンソール<br>Technitium VM 172.16.11.3"]
+    T -->|"HTTP :8053"| D["DNS-over-HTTPS<br>Technitium VM 172.16.11.3"]
+    C -->|"DNS :53"| N["DNS<br>Technitium VM 172.16.11.3"]
+```
+
+- 公開範囲: どちらも `entrypoints` は `websecure` のみ = **LAN内限定**
+- 証明書: `*.cc-chacchan.com` のワイルドカード(cert-manager)でカバーされる
+- VM側の設定: `doh.` の転送先 :8053 はコンテナ側でDoHを有効化したうえで、VM側の公開ポートを `technitium_extra_ports` で宣言する
+
 ## 実行方法
 
 ```sh
@@ -11,12 +28,12 @@ ansible-playbook playbooks/vm/technitium.yml
 # 直接実行(2台目を検証用に)
 ansible-playbook playbooks/vm/technitium.yml \
   -e target=technitium-dns02 -e profile=technitium \
-  -e vmid=605 -e node=pve06 -e ip=172.16.11.31
+  -e vmid=605 -e node=pve06 -e ip=172.16.11.91
 ```
 
-## 変数一覧(サービス固有の主要なもの)
+## 変数一覧
 
-接続系の共通変数は [README.md](README.md#共通の変数全サービスplaybook)。全既定値の正は [roles/vm_technitium/defaults/main.yml](../../roles/vm_technitium/defaults/main.yml)。
+接続系の共通変数は [README.md](README.md#共通の変数)。全既定値の正は [roles/vm_technitium/defaults/main.yml](../../roles/vm_technitium/defaults/main.yml)。
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |

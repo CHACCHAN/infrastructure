@@ -4,7 +4,7 @@
 
 ## 実行方法
 
-### インベントリ実行(宣言どおりの再現)
+### インベントリ実行
 
 ```sh
 ansible-playbook playbooks/pve/provision.yml              # lab全体
@@ -12,7 +12,7 @@ ansible-playbook playbooks/pve/provision.yml -l k8s       # 役割ごと
 ansible-playbook playbooks/pve/provision.yml -l yuya-dev  # 1台
 ```
 
-### 直接実行(インベントリに無いVMを変数だけで構築)
+### 直接実行(インベントリ外VM)
 
 ```sh
 # devプロファイルを継承(CPU/メモリ/鍵は group_vars/dev.yml から)
@@ -37,21 +37,15 @@ ansible-playbook playbooks/pve/provision.yml \
 | `node` | str | 配置先PVEノード名 | hosts.yml | `-e node=` |
 | `ansible_host` | str | 1枚目NICのIP | hosts.yml | `-e ip=`(adhocがホスト変数化する) |
 
-### 必須(クラスタ共通)
-
-| 変数 | 型 | 既定値 | 説明 |
-| --- | --- | --- | --- |
-| `pve_storage` | str | `ssd01`(宣言値) | ブートディスクのストレージ。**固定ではない**: 役割・個体・`-e`/Surveyで `ssd02` / `local-lvm` 等へ上書きできる(実例: authentik=local-lvm、coolify=ssd02) |
-| `pve_bridge` | str | `vmbr0` | 1枚目NICのブリッジ(NIC構成ごと変えるなら `pve_vm_nets`) |
-| `pve_ipv4_prefix` | int | `24` | IPv4プレフィックス長 |
-| `pve_ipv4_gw` | str | `172.16.11.1` | デフォルトゲートウェイ |
-
-供給元は [inventory/group_vars/all/pve.yml](../../inventory/group_vars/all/pve.yml)。インベントリが届かない実行では `-e` で渡す。
-
 ### 主な任意(既定値はrole defaultsまたはプロファイル)
 
+クラスタ共通の4変数(`pve_storage` / `pve_bridge` / `pve_ipv4_prefix` / `pve_ipv4_gw`)は [inventory/group_vars/all/pve.yml](../../inventory/group_vars/all/pve.yml) が供給する。インベントリが届かない実行環境では `-e` で渡す(不足すると実行前に名前ごと列挙して止まる)。
+
 | 変数 | 型 | 既定値 | 説明 |
 | --- | --- | --- | --- |
+| `pve_storage` | str | group_vars/all | ブートディスクのストレージ。役割・個体・`-e`/Surveyで上書きできる(役割ごとの値は `group_vars/<役割>.yml`) |
+| `pve_bridge` | str | group_vars/all | 1枚目NICのブリッジ(NIC構成ごと変えるなら `pve_vm_nets`) |
+| `pve_ipv4_prefix` / `pve_ipv4_gw` | int / str | group_vars/all | IPv4プレフィックス長 / デフォルトゲートウェイ |
 | `target` | str | `lab` | 対象のホスト/グループ(直接実行では新ホスト名) |
 | `profile` | str | なし | 直接実行で継承する役割グループ(継承なしは `lab`) |
 | `pve_os` / `pve_os_version` | str | `debian` / `13` | クローン元OS(カタログは [README.md](README.md#テンプレートの仕組み)) |
@@ -64,7 +58,8 @@ ansible-playbook playbooks/pve/provision.yml \
 | `cluster_ip` | str | なし | 2枚目NICのCIDR(直接実行では `-e ip2=`) |
 | `pve_ssh_user` | str | プロファイル | cloud-initが作るユーザー(未定義ならユーザー/鍵設定をスキップ) |
 | `pve_ssh_pubkey_value` / `pve_ssh_pubkey_file` | str | なし / プロファイル | 公開鍵の本文/パス(本文が優先) |
-| ハードウェア系(`pve_bridge` / `pve_vm_bios` / `pve_vm_machine` / `pve_vm_vga` / `pve_vm_cpu_type` / `pve_vm_disk_ssd` / `pve_vm_disk_iothread` / `pve_vm_disk_discard` / `pve_vm_onboot` / `pve_vm_agent`) | | 宣言値 | BIOS・SSDエミュレーション等([一覧と選べる値](README.md#ハードウェア設定すべて変数)) |
+| ハードウェア系(`pve_vm_bios` / `pve_vm_machine` / `pve_vm_vga` / `pve_vm_cpu_type` / `pve_vm_onboot` / `pve_vm_agent`) | | 宣言値 | BIOS・CPU種別等([一覧と選べる値](README.md#ハードウェア設定すべて変数)) |
+| `pve_vm_disk_ssd` / `pve_vm_disk_iothread` / `pve_vm_disk_discard` | | 宣言値 | scsi0のディスクオプション。**テンプレート作成時にだけ使い、既存VMには反映しない** |
 
 全既定値の正は [roles/pve_vm/defaults/main.yml](../../roles/pve_vm/defaults/main.yml) と [roles/pve_template/defaults/main.yml](../../roles/pve_template/defaults/main.yml)。
 

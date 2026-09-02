@@ -17,6 +17,8 @@
       - dashboard.public_url
       - --json
   become: false
+  environment:
+    HERMES_HOME: "{{ hermes_home }}"
   changed_when: false
   # 未設定のキーは非0で返ることがある(その場合は現在値なしとして扱う)
   failed_when: false
@@ -32,6 +34,8 @@
       - dashboard.public_url
       - "{{ hermes_public_url | trim }}"
   become: false
+  environment:
+    HERMES_HOME: "{{ hermes_home }}"
   changed_when: true
   register: hermes_public_url_set
   when:
@@ -50,6 +54,8 @@
       - dashboard.trusted_proxies
       - --json
   become: false
+  environment:
+    HERMES_HOME: "{{ hermes_home }}"
   changed_when: false
   failed_when: false
   register: hermes_trusted_proxies_get
@@ -66,6 +72,8 @@
       - dashboard.trusted_proxies
       - "{{ hermes_trusted_proxies | to_json }}"
   become: false
+  environment:
+    HERMES_HOME: "{{ hermes_home }}"
   changed_when: true
   register: hermes_trusted_proxies_set
   when:

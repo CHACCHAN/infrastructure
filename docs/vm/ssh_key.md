@@ -2,8 +2,6 @@
 
 秘密鍵を**本文**で受け取ったとき(`pve_ssh_prikey_value`)に、SSHが使える0600の一時ファイルへ書き出す部品。各サービスplaybookが先頭でimportするため**単体では実行しない**。
 
-## なぜ必要か
-
 AWXのSurveyはファイル入力に対応していない。鍵をパスで置けない実行環境では、**鍵の本文をそのまま入れる変数**を代わりに使う。
 
 | ファイルで渡す(既定) | 本文で渡す | 中身 |
@@ -40,7 +38,7 @@ ansible-playbook playbooks/vm/wg-easy.yml -e @keys.json
 | `pve_ssh_prikey_value` | str | | なし | 秘密鍵の本文。空なら何もしない |
 | `pve_ssh_prikey_tmpfile` | str | | `~/.ansible/pve_ssh_keys/<SHA1>` | 書き出し先(自動導出。鍵の内容から名前が決まるため並列実行でも衝突しない) |
 
-## AWXでの扱い
+## AWXでの実行
 
 - Surveyの `pve_ssh_prikey_value` は**暗号化された質問(Password型)**として全VM系Job Templateに定義済み([awx/job_templates.yml](../../awx/job_templates.yml))
 - パスフレーズ付きの秘密鍵は非対話で解錠できないため使えない

@@ -3,7 +3,7 @@
 <!--
 このディレクトリ(②VMセットアップドメインの開発VM向け)のページはこのテンプレートに従う。
 - 1ページ = 1playbook。ファイル名はplaybookと同名
-- 見出しは下記の順序・名称を変えない。該当しない節だけ丸ごと削除する
+- `##` 見出しは下記の名称・順序のまま使う。該当しない節だけ丸ごと削除し、固有の話題は該当する `##` の下に `###` で書く
 - 文章もコメントも「説明」だけを書く。判断の経緯・変更の過程は書かない
 - 変数の既定値の正は roles/vm_dev/defaults/main.yml と inventory/group_vars/dev.yml
 - 新規追加時は docs/vm/README.md のplaybook一覧にも1行足す
@@ -21,9 +21,9 @@ ansible-playbook playbooks/vm/dev/<playbook名>.yml
 ansible-playbook playbooks/vm/dev/<playbook名>.yml -l <ホスト名>
 ```
 
-## 変数一覧(このplaybookに固有のもの)
+## 変数一覧
 
-接続系の共通変数は [../README.md](../README.md#共通の変数全サービスplaybook)。全既定値の正は [roles/vm_dev/defaults/main.yml](../../../roles/vm_dev/defaults/main.yml)。
+接続系の共通変数は [../README.md](../README.md#共通の変数)。全既定値の正は [roles/vm_dev/defaults/main.yml](../../../roles/vm_dev/defaults/main.yml)。
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |

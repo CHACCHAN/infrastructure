@@ -1,9 +1,9 @@
-# Ansible管理: roles/vm_dev/templates/vscode-server-cleanup.timer.j2
+# Ansible(roles/vm_dev)が生成。手動編集は次回実行で上書きされる。
 [Unit]
 Description=Periodically clean up old VSCode Server (Remote-SSH) versions
 
 [Timer]
-OnCalendar={{ development_vscode_cleanup_schedule }}
+OnCalendar={{ dev_vscode_cleanup_schedule }}
 Persistent=true
 
 [Install]

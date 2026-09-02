@@ -94,14 +94,13 @@
         apply:
           throttle: 1
       vars:
-        # hostvars[inventory_hostname] は「タスクvarsの同名定義が自分自身を参照する
-        # 再帰」を避けつつホスト解決値を読むためのイディオム。extra vars(-e/Survey)も
-        # hostvars経由で見えるため、直接実行でも同じ変数名で上書きできる。
+        # hostvars[inventory_hostname] 経由で読み、タスクvarsの同名定義が自分自身を参照する
+        # 再帰を避ける(extra varsもhostvars経由で見えるため直接実行でも同じ変数名で上書きできる)。
         pve_os: "{{ hostvars[inventory_hostname].pve_os | default('debian') }}"
         pve_os_version: >-
           {{ hostvars[inventory_hostname].pve_os_version | default('13') | string }}
         node: "{{ hostvars[inventory_hostname].node }}"
-      # 未作成の目印は空辞書(理由は roles/pve/tasks/find_vm.yml の冒頭コメント)。
+      # 未作成の目印は空辞書(roles/pve/tasks/find_vm.yml)。
       when: pve_found_vm | length == 0
 
 - name: Proxmox VMを宣言どおりに収束させる

@@ -1,4 +1,4 @@
-# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+# 上流チャートの固定バージョンと values。
 ---
 k8s_homarr_helm_version: "8.27.0"
 k8s_homarr_values:
@@ -32,21 +32,21 @@ k8s_homarr_values:
     AUTH_OIDC_AUTO_LOGIN: "false"
 
     # groups クレームで Authentik のグループを Homarr のグループに同期する。
-    # Authentik 側に "groups" のスコープマッピングが必要 (README.md 参照)。
+    # Authentik 側に "groups" のスコープマッピングが必要。
     AUTH_OIDC_SCOPE_OVERWRITE: "openid email profile groups"
     AUTH_OIDC_GROUPS_ATTRIBUTE: "groups"
 
   database:
     # sqlite / mysql / postgresql。
     #
-    # platform namespace 共用の PostgreSQL を使う (platform/apps/postgresql/)。
+    # platform namespace 共用の PostgreSQL を使う (roles/k8s_postgresql)。
     # sqlite だと DB ファイルが NFS 上に置かれることになり、
     # SQLite のファイルロックが NFS で正しく効かないため破損の危険がある。
     #
     # 接続 URL は envSecrets.dbCredentials の Secret から読む。
     type: postgresql
 
-  # 秘密情報はマニフェストに書かない。先に Secret を作っておくこと (README.md 参照)。
+  # 秘密情報はマニフェストに書かない。Secret は roles/k8s_homarr が vault/k8s_secrets.yml から作る。
   # 名前は platform namespace に他アプリと同居するため homarr- で始める
   # (上流の既定は auth-oidc-secret / db-encryption という汎用名)。
   envSecrets:
@@ -59,7 +59,7 @@ k8s_homarr_values:
       key: "db-encryption-key"
     # PostgreSQL の接続 URL。
     #   postgresql://postgres:<pw>@postgresql.platform.svc.cluster.local:5432/homarr
-    # DB は platform/apps/postgresql/ の初回起動スクリプトが作る。
+    # DB は roles/k8s_postgresql の初回起動スクリプトが作る。
     dbCredentials:
       existingSecret: "homarr-db"
       dbUrlKey: "db-url"

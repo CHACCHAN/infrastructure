@@ -1,6 +1,6 @@
 # 開発専用VMを構築する。Debian専用。
 # 全VM共通の処理は vm / vm_docker ロールと共有している。
-# vm_gui_required=true のときだけ末尾のGUI関連3つが実行される(既定falseでは入らない)。
+# vm_gui_required=true のときだけ末尾のGUI関連3つが実行される。
 ---
 - name: 対象OSを確認する
   ansible.builtin.import_role:
@@ -50,12 +50,12 @@
 
 - name: デスクトップ環境・xrdp関連パッケージをインストールする
   ansible.builtin.import_tasks: install_desktop_packages.yml
-  when: vm_gui_required | default(false) | bool
+  when: vm_gui_required | bool
 
 - name: RDPサーバー(xrdp)を設定する
   ansible.builtin.import_tasks: configure_xrdp.yml
-  when: vm_gui_required | default(false) | bool
+  when: vm_gui_required | bool
 
 - name: ブラウザをインストールする
   ansible.builtin.import_tasks: install_browsers.yml
-  when: vm_gui_required | default(false) | bool
+  when: vm_gui_required | bool

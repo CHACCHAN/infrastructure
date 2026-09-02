@@ -36,8 +36,11 @@
     # トークン取得用SSHは管理ネットワーク、k3s APIは占有ネットワークを使う。
     kubernetes_node_ip: "{{ cluster_ip | regex_replace('/.*$', '') }}"
     kubernetes_server_ssh_user: "{{ hostvars[kubernetes_server_inventory_host].pve_ssh_user }}"
+    # コントロールプレーンへの接続鍵。k8sグループが届かない実行では自分の接続鍵を使う。
     kubernetes_server_ssh_prikey: >-
-      {{ hostvars[kubernetes_server_inventory_host].pve_ssh_prikey_resolved }}
+      {{ hostvars[kubernetes_server_inventory_host].pve_ssh_prikey_resolved
+         if kubernetes_server_inventory_host is defined
+         else pve_ssh_prikey_resolved }}
   pre_tasks:
     # kubernetes_server_* は inventory/group_vars/k8s.yml が groups/hostvars から
     # 導出する。k8sグループが届かない実行では解決できないが、同じ変数名を
@@ -56,8 +59,9 @@
           inventory/group_vars/k8s.yml を確認してください。インベントリの
           k8sグループが無い実行では -e k3s_role=server|agent に加えて
           -e kubernetes_server_ip=(コントロールプレーンの管理IP)
-          -e kubernetes_server_ssh_user= -e kubernetes_server_ssh_prikey=(鍵パス)
-          を指定し、クラスタ網は -e ip2=<CIDR> で渡します(docs/vm/k3s.md)。
+          -e kubernetes_server_ssh_user= を指定し、クラスタ網は -e ip2=<CIDR> で渡します。
+          秘密鍵は接続に使う鍵と同じものを使い、別の鍵のときだけ
+          -e kubernetes_server_ssh_prikey=(実行環境上の鍵ファイルパス)を指定します(docs/vm/k3s.md)。
         quiet: true
       vars:
         kubernetes_preflight_required_vars:
@@ -132,5 +136,5 @@
              ansible-playbook playbooks/vm/k3s.yml を再実行します"
         kubernetes_summary_agent:
           - "ワーカー {{ kubernetes_node_name_resolved }} ({{ ansible_host }}) を
-             https://{{ kubernetes_server_node_ip }}:{{ kubernetes_server_port }} のクラスタに参加させました"
+             https://{{ kubernetes_server_url_host }}:{{ kubernetes_server_port }} のクラスタに参加させました"
           - "確認: コントロールプレーン {{ kubernetes_server_ip }} で kubectl get nodes -o wide"

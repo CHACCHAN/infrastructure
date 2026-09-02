@@ -1,9 +1,7 @@
 # pgAdmin の公開経路。
 #
-# Deployment / Service / PVC は上流チャート由来。同じディレクトリの values.yaml を
-# 使って helm template -> kubectl apply で入れる (手順は README.md)。
-# ここには Ingress だけを置く。上流チャートの ingress は
-# values.yaml で enabled: false にしてある。
+# Deployment / Service / PVC は上流チャート由来 (values は roles/k8s_pgadmin の defaults)。
+# ここには Ingress だけを置く。上流チャートの ingress は enabled: false にしてある。
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -35,7 +33,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                # values.yaml の fullnameOverride で固定している名前。
+                # defaults の fullnameOverride で固定している名前。
                 name: pgadmin
                 port:
                   # チャートの service.portName。既定は http (:80)。

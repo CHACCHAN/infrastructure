@@ -1,11 +1,11 @@
-# テスト用 (証明書はブラウザに信頼されないが、レート制限が緩い)
+# 切り替え用 (証明書はブラウザに信頼されないが、レート制限が緩い)。Certificate は prod を参照する。
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
   name: letsencrypt-staging
 spec:
   acme:
-    email: chacchan.info@gmail.com
+    email: {{ k8s_admin_email }}
     server: https://acme-staging-v02.api.letsencrypt.org/directory
 
     privateKeySecretRef:
@@ -22,15 +22,14 @@ spec:
             - {{ k8s_domain }}
 
 ---
-# 本番用 (レート制限あり。まず staging で検証すること)
-# 前提: cert-manager namespace に Secret cloudflare-api-token が存在すること
+# 本番用 (レート制限あり)。Secret cloudflare-api-token は roles/k8s_certificates が vault から作る。
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
   name: letsencrypt-prod
 spec:
   acme:
-    email: chacchan.info@gmail.com
+    email: {{ k8s_admin_email }}
     server: https://acme-v02.api.letsencrypt.org/directory
 
     privateKeySecretRef:

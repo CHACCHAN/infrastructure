@@ -35,7 +35,7 @@
 
 - name: テンプレートのVMIDと名前を解決する
   ansible.builtin.set_fact:
-    # VMIDは算術加算ではなく、設計書どおり9 + XX + NNを連結する。
+    # VMIDは 9 + XX + NN の文字列連結(算術加算ではない)。
     pve_template_resolved_vmid: >-
       {{ (pve_template_vmid
           if pve_template_vmid

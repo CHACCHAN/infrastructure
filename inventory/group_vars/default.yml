@@ -5,12 +5,12 @@
 #   inventory/group_vars/<役割>.yml … 役割プロファイル(このファイル)
 #   inventory/hosts.yml         … 1VM固有の値(vmid / node / ansible_host)
 #
-# ファイル名は役割グループ名と一致させる。コメントは説明だけを書く。
+# ファイル名は役割グループ名と一致させる。既定値と同じ値は書かない。
+# コメントは説明だけを書く(旧値の維持や移行日などの経緯は書かない)。
 ---
 # --- ① VMプロファイル(pveドメインが使う) ---
 pve_storage: <ストレージ名>
 pve_vm_cores: <コア数>
-pve_vm_cpu_type: x86-64-v2-AES
 pve_vm_memory: <MiB>
 pve_vm_disk_size: <GiB>
 

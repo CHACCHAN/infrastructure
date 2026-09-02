@@ -7,7 +7,7 @@
 wg_easy_install_dir: /opt/wg-easy
 wg_easy_container_name: wg-easy
 
-# OAuth/OIDCは 15.4.0 で追加された機能(15.4.0-beta.1で先行導入、安定版は2026-08-14リリース)。
+# OAuth/OIDCは 15.4.0 以降で使える。
 # 15.3.0以前ではOAUTH_*が無視され、ログイン画面はユーザー名/パスワードだけになる。
 # masterに追従する edge / nightly タグも指定できる(不安定)
 wg_easy_image: ghcr.io/wg-easy/wg-easy
@@ -101,6 +101,9 @@ wg_easy_network_ipv4_subnet: 10.42.42.0/24
 wg_easy_network_ipv4_address: 10.42.42.42
 wg_easy_network_ipv6_subnet: fdcc:ad94:bacf:61a3::/64
 wg_easy_network_ipv6_address: fdcc:ad94:bacf:61a3::2a
+
+# イメージ取得前に必要とする空き容量(GiB)
+wg_easy_min_free_disk_gb: 2
 
 # Web UIの起動待ち(リトライ回数 / 間隔(秒))
 wg_easy_ready_retries: 30

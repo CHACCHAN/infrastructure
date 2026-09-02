@@ -2,6 +2,22 @@
 
 WAN IPの変動をCloudflareのAレコードへ追従させる cloudflare-ddns-ui をVMごと一気通貫で構築する。ゾーンIDとAPIトークンは [vault/cloudflare.yml](../../vault/cloudflare.yml) から自動で渡る。
 
+## 公開経路(このリポジトリでの扱い)
+
+TLSは**メインクラスタのTraefikで終端**し、Authentikの forwardAuth で認証してからVMの:8080へHTTPで転送する。経路の宣言は [inventory/group_vars/all/k8s.yml](../../inventory/group_vars/all/k8s.yml) の `k8s_external_routes`(`cloudflare-ddns-ui`)。
+
+```mermaid
+flowchart LR
+    C[クライアント] -->|"https://ddns.cc-chacchan.com"| T["メインk3sのTraefik<br>(TLS終端)"]
+    T -->|"Middleware<br>authentik-forward-auth"| A["Authentik outpost<br>(authentik-external :9000)"]
+    A -->|"認証OK"| T
+    T -->|"HTTP :8080"| S["cloudflare-ddns-ui<br>DDNS VM 172.16.11.4"]
+```
+
+- 公開範囲: `entrypoints` は `websecure` のみ = **LAN内限定**
+- 証明書: `*.cc-chacchan.com` のワイルドカード(cert-manager)でカバーされる
+- 認証: Web UI自体に認証が無いため、Ingressに `authentik-forward-auth` Middlewareを付け、`/outpost.goauthentik.io` パスをAuthentikへ向けている(Middlewareは [authentik.md](authentik.md) の経路が生成する)。VMのIPへ直接アクセスすると認証を通らないため、必要なら `cloudflare_ddns_ui_http_bind` で待ち受けを絞る
+
 ## 実行方法
 
 ```sh
@@ -13,9 +29,9 @@ ansible-playbook playbooks/vm/ddns.yml \
   -e target=ddns02 -e profile=ddns -e vmid=903 -e node=pve03 -e ip=172.16.11.93
 ```
 
-## 変数一覧(サービス固有の主要なもの)
+## 変数一覧
 
-接続系の共通変数は [README.md](README.md#共通の変数全サービスplaybook)。全既定値の正は [roles/vm_ddns/defaults/main.yml](../../roles/vm_ddns/defaults/main.yml)。
+接続系の共通変数は [README.md](README.md#共通の変数)。全既定値の正は [roles/vm_ddns/defaults/main.yml](../../roles/vm_ddns/defaults/main.yml)。
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |

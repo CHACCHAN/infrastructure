@@ -4,6 +4,7 @@
 #
 # このディレクトリ(Kubernetesドメイン)のplaybookはこの雛形に従う。
 # - 宣言は inventory/group_vars/all/k8s.yml、Secretの実値は vault/k8s_secrets.yml
+# - アプリは登録簿 k8s_apps の順に include_role する。新アプリの追加は登録簿へ1行足すだけにする
 # - 適用は roles/k8s のSSA(field_manager固定)を通す。kubectlを直接叩かない
 # - 書き込み前に接続先クラスタが宣言と一致することを確認する
 # - Secretを扱うタスクは no_log を付ける
@@ -36,6 +37,15 @@
           {{ k8s_api_server }} と一致しません。kubeconfigのcurrent-contextを確認してください。
         quiet: true
 
-    - name: <アプリ>を適用する
+    - name: 指定されたアプリが登録簿にあることを確認する
+      ansible.builtin.assert:
+        that:
+          - app in k8s_apps
+        fail_msg: app={{ app }} は k8s_apps(inventory/group_vars/all/k8s.yml)にありません。
+        quiet: true
+      when: app is defined
+
+    - name: Kubernetesアプリロールを実行する
       ansible.builtin.include_role:
-        name: k8s_<アプリ>
+        name: "k8s_{{ item }}"
+      loop: "{{ [app] if app is defined else k8s_apps }}"

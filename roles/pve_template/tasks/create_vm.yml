@@ -1,7 +1,4 @@
 # Cloud imageを起動ディスクに取り込んだテンプレート元VMを作成する。
-# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
-# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
-# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: 空のテンプレート元VMを作成する  # noqa: args[module]
   community.proxmox.proxmox_kvm:

@@ -24,7 +24,7 @@
       ansible.builtin.copy:
         dest: /etc/systemd/resolved.conf.d/technitium-dns.conf
         content: |
-          # Ansible(roles/technitium)が生成。
+          # Ansible(roles/vm_technitium)が生成。
           # Technitium DNS Serverが53番を使うため、スタブリゾルバを止める。
           [Resolve]
           DNSStubListener=no

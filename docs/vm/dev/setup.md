@@ -14,16 +14,17 @@ ansible-playbook playbooks/vm/dev/setup.yml \
   -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99
 ```
 
-## 変数一覧(このplaybookに固有のもの)
+## 変数一覧
 
-接続系の共通変数は [../README.md](../README.md#共通の変数全サービスplaybook)。全既定値の正は [roles/vm_dev/defaults/main.yml](../../../roles/vm_dev/defaults/main.yml)。
+接続系の共通変数は [../README.md](../README.md#共通の変数)。全既定値の正は [roles/vm_dev/defaults/main.yml](../../../roles/vm_dev/defaults/main.yml)。
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |
 | `vm_gui_required` | bool | | `false` | XFCE+xrdp+ブラウザまで入れるか |
+| `cockpit_user` | str | | 接続ユーザー | Cockpitからdockerを操作するユーザー(dockerグループに追加する) |
 | `pve_ssh_password` | str | | なし | ログインパスワードの同時設定(内包する [password.md](password.md) が処理) |
-| `development_vscode_cleanup_retention_days` | int | | `14` | VSCode Server旧版の保持日数 |
-| `development_default_browser_bin` | str | | Chrome | GUI時の既定ブラウザ |
+| `dev_vscode_cleanup_retention_days` | int | | `14` | VSCode Server旧版の保持日数 |
+| `dev_default_browser_bin` | str | | Chrome | GUI時の既定ブラウザ |
 
 ## AWXでの実行
 
@@ -31,6 +32,6 @@ Job Template **`vm-dev-setup`**(定義: [awx/job_templates.yml](../../../awx/job
 
 ## つまずきやすいポイント
 
-- **パスワード設定の内包位置はVM構築の後(最終ステップ)** → password.ymlはPVE側からVMを停止するが、停止要求はQEMUゲストエージェント経由で出る。エージェントを入れるのは `roles/vm` なので、それより前に置くと新規VMの初回構築でだけ停止がタイムアウトする(現在の順序はこの問題を回避済み)
+- **パスワード設定はVM構築の後に走る** → password.ymlはQEMUゲストエージェント経由でVMを停止する。エージェントを入れるのは `roles/vm` のため、setup.ymlは最後にpassword.ymlを呼ぶ
 - **GUIは重い** → `vm_gui_required=true` はディスク・メモリを多く使う。プロファイル(group_vars/dev.yml)のスペックを確認
 - **Cockpit/xrdpに入れない** → PAMパスワード未設定。[password.md](password.md) で設定する

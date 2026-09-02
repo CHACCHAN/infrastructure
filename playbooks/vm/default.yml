@@ -6,6 +6,8 @@
 # - プレイは 0.鍵の実体化 → 1.pveドメインのprovision → 2.SSHセットアップ の3段
 # - ロールへ渡す値は inventory/group_vars/<役割>.yml の宣言が正。ここには書かない
 # - 秘密情報は vault/<名前>.yml から vars で渡す(平文で書かない)
+# - 実行例に --ask-vault-pass は付けない(ANSIBLE_VAULT_PASSWORD_FILE で供給する)
+# - 案内文のURLは、公開経路を持つサービスなら k8s_domain のホスト名を出す
 # - コメントは説明だけを書く。判断の経緯・変更の過程は書かない
 ---
 # 0. AWXのSurveyなど、鍵を本文で受け取った場合に一時ファイルへ書き出す
@@ -44,7 +46,7 @@
   roles:
     - vm_<サービス>
   post_tasks:
-    # dockerグループへの追加とカーネル更新を反映する(更新があるときだけ再起動)
+    # カーネル更新などの再起動要求があるときだけ再起動する
     - name: 構成を反映するためVMを再起動する
       ansible.builtin.import_role:
         name: vm

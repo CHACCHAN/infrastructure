@@ -11,16 +11,16 @@ TLSは**k3s側のTraefikで終端**し、VMの:80へHTTPで転送する(Authenti
 | `coolify.cc-chacchan.com` | 管理UI(内蔵プロキシ経由。WebSocketも:80へ集約される) | LAN内のみ |
 | `*.web.cc-chacchan.com` | デプロイしたアプリ | LAN + Cloudflare Tunnel到達可(公開の可否はCloudflare側の経路表) |
 
-- 証明書: `*.web.cc-chacchan.com` は既存の `*.cc-chacchan.com` ではカバーされない(LEワイルドカードは1階層のみ)ため、Certificateへ**SANとして追加済み**(`roles/k8s_certificates`)。DNSレコード(`*.web` → Traefik)は別途設定する
+- 証明書: `*.web.cc-chacchan.com` は `*.cc-chacchan.com` ではカバーされない(LEワイルドカードは1階層のみ)ため、Certificateの**SANに含めている**(`roles/k8s_certificates`)。DNSレコード(`*.web` → Traefik)は別途設定する
 - Coolify側の設定(構築後にWeb UIで1回):
   - Settings → **URL(Instance Domain)** = `https://coolify.cc-chacchan.com`、**Redirect HTTP to HTTPS = 必ずDisabled**。
     TLSは手前のk3sで終端し内蔵プロキシへは常にHTTP(:80)で届くため、Enabledにすると
     302→:80→302…の**無限リダイレクトループ**になる(内蔵Traefikのredirectschemeは
-    X-Forwarded-Protoを見ない。2026-08-19に実機で確認)。URLをhttpsにしておくと
+    X-Forwarded-Protoを見ない)。URLをhttpsにしておくと
     APP_URL・Cookie・WebSocket URLが外側TLSと整合する。/app(リアルタイム)と
     /terminal/ws(ターミナル)のルーターは:80側にも自動生成されるためそのまま動く
   - Servers → localhost → **Wildcard Domain** = `http://web.cc-chacchan.com`(新規アプリへ `<名前>.web.cc-chacchan.com` が自動割当される。アプリ個別のドメインは**httpスキーム**で登録する=アプリごとのLet's Encrypt発行を発生させない)
-  - Servers → localhost → **Proxy → Configuration**(Traefikのcompose定義)の `command:` へ以下の2行を追加してプロキシを再起動する。**これが無いと内蔵TraefikがX-Forwarded-Proto: httpsを破棄して`http`で上書きし、アプリの生成URLが全てhttpになる**(httpsページでCSSがmixed contentブロックされる・リダイレクトがhttpへ飛ぶ。2026-08-19に実機で確認。送信元はk3sノードの172.16.12.0/24=conntrackで実測):
+  - Servers → localhost → **Proxy → Configuration**(Traefikのcompose定義)の `command:` へ以下の2行を追加してプロキシを再起動する。**これが無いと内蔵TraefikがX-Forwarded-Proto: httpsを破棄して`http`で上書きし、アプリの生成URLが全てhttpになる**(httpsページでCSSがmixed contentブロックされる・リダイレクトがhttpへ飛ぶ。送信元はk3sノードの172.16.12.0/24):
 
     ```yaml
           - '--entrypoints.http.forwardedHeaders.trustedIPs=172.16.12.0/24'
@@ -44,9 +44,9 @@ ansible-playbook playbooks/k8s/deploy.yml -e app=certificates
 ansible-playbook playbooks/k8s/deploy.yml -e app=external
 ```
 
-## 変数一覧(サービス固有の主要なもの)
+## 変数一覧
 
-接続系の共通変数は [README.md](README.md#共通の変数全サービスplaybook)。全既定値の正は [roles/vm_coolify/defaults/main.yml](../../roles/vm_coolify/defaults/main.yml)。
+接続系の共通変数は [README.md](README.md#共通の変数)。全既定値の正は [roles/vm_coolify/defaults/main.yml](../../roles/vm_coolify/defaults/main.yml)。
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |
@@ -67,16 +67,3 @@ Job Template **`vm-coolify`**(定義: [awx/job_templates.yml](../../awx/job_temp
 - **CSSが当たらない/httpへリダイレクトされる** → 内蔵TraefikのforwardedHeaders.trustedIPs未設定(上記のProxy設定を追加)。確認は `curl -sk -o /dev/null -w '%{redirect_url}' https://coolify.cc-chacchan.com/` がhttpsのURLを返すこと
 - **アプリのURLがhttpで生成される/ログインループ** → アプリのドメイン登録スキームと、内蔵プロキシがX-Forwarded-Protoを信頼しない点に注意(UIのURL設定をhttpsにしておくのが安全)
 - **`*.web` の証明書エラー** → `deploy.yml -e app=certificates` の適用漏れ、またはDNS-01用の `_acme-challenge.web` がCloudflareで解決できていない
-- **旧supabase01が残っている** → 完全置き換えのため、初回構築の前に旧VMを削除する(旧ホストはインベントリから外れているため、停止はPVE UIか一時ホスト登録で行う):
-
-  ```sh
-  # 1. 旧VMを停止(インベントリ外のため一時ホスト登録で対象化)
-  ansible-playbook playbooks/pve/power.yml -e state=stopped \
-    -e target=old-supabase -e profile=lab -e vmid=402 -e node=pve04 -e ip=172.16.11.6
-
-  # 2. 削除(confirm二重指定。名前の照合も付けるとより安全)
-  ansible-playbook playbooks/pve/destroy.yml -e vmid=402 -e confirm=402 -e expect_name=supabase
-
-  # 3. Coolify VMを構築
-  ansible-playbook playbooks/vm/coolify.yml
-  ```

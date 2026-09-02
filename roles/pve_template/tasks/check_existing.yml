@@ -1,14 +1,11 @@
 # 対象VMIDの衝突と完成済みテンプレートを最初に判定する。
-# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
-# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
-# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: 対象VMIDを検索する  # noqa: args[module]
   community.proxmox.proxmox_vm_info:
     vmid: "{{ pve_template_resolved_vmid }}"
   register: pve_template_vm_info
 
-# 未作成の目印は空辞書(理由は roles/pve/tasks/find_vm.yml の冒頭コメント)。
+# 未作成の目印は空辞書(roles/pve/tasks/find_vm.yml)。
 - name: 既存VMと完成状態を記録する
   ansible.builtin.set_fact:
     pve_template_existing_vm: >-

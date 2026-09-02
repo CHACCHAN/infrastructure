@@ -6,8 +6,9 @@
   ansible.builtin.assert:
     that:
       - vars[item] is defined
+      - vars[item] | length > 0
     fail_msg: >-
-      {{ item }} が未定義です。
+      {{ item }} が未定義または空です。
       ansible-vault edit vault/k8s_secrets.yml で実値を設定してください。
     quiet: true
   loop:
@@ -106,15 +107,3 @@
   retries: 60
   delay: 5
   when: not ansible_check_mode
-
-# クラスタ全体のSecretまで読める広域RBAC(rbac.enabled: true のとき作られる)が
-# 残っていれば削除する。SSAは宣言から消えたリソースを削除しないため明示的に消す。
-- name: 旧Kubernetes連携RBACの残骸を削除する
-  kubernetes.core.k8s:
-    state: absent
-    api_version: rbac.authorization.k8s.io/v1
-    kind: "{{ item }}"
-    name: "homarr-cluster-role{{ 'binding' if item == 'ClusterRoleBinding' else '' }}"
-  loop:
-    - ClusterRole
-    - ClusterRoleBinding

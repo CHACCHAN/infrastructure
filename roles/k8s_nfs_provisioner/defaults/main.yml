@@ -1,4 +1,4 @@
-# 上流チャートの固定バージョンと、既存values.yamlから転記した設定。
+# 上流チャートの固定バージョンと values。
 ---
 k8s_nfs_provisioner_helm_version: "4.0.18"
 k8s_nfs_provisioner_values:

@@ -48,7 +48,7 @@
   roles:
     - vm_hermes
   post_tasks:
-    # dockerグループへの追加とカーネル更新を反映する(更新があるときだけ再起動)。
+    # カーネル更新などの再起動要求があるときだけ再起動する。
     - name: 構成を反映するためVMを再起動する
       ansible.builtin.import_role:
         name: vm

@@ -8,7 +8,7 @@
 - Ansibleに直接必要ではないので必要に応じて調整してください。
 
 ```json
-"ghcr.io/devcontainers/features/node:1": {},
+"ghcr.io/devcontainers/features/node:2": {},
 "ghcr.io/anthropics/devcontainer-features/claude-code:latest": {},
 "ghcr.io/devcontainers-extra/features/npm-packages:1": {
     "packages": "@openai/codex"

@@ -6,8 +6,9 @@
   ansible.builtin.assert:
     that:
       - vars[item] is defined
+      - vars[item] | length > 0
     fail_msg: >-
-      {{ item }} が未定義です。
+      {{ item }} が未定義または空です。
       ansible-vault edit vault/k8s_secrets.yml で実値を設定してください。
     quiet: true
   loop:

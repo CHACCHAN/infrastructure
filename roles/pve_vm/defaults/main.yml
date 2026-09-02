@@ -15,6 +15,7 @@ pve_vm_power: started
 pve_vm_cores: 2
 pve_vm_memory: 2048
 pve_vm_disk_size: 20
+# NICはリスト順に net0, net1, … になる。項目: bridge(必須) / model / tag(VLAN) / firewall
 pve_vm_nets:
   - bridge: "{{ pve_bridge }}"
 pve_vm_disks: []
@@ -26,6 +27,8 @@ pve_vm_bios: seabios
 pve_vm_machine: q35
 pve_vm_vga: std
 pve_vm_cpu_type: x86-64-v2-AES
+
+# scsi0のディスクオプション。テンプレート作成時(roles/pve_template)にだけ使い、既存VMには反映しない。
 pve_vm_disk_ssd: 1
 pve_vm_disk_iothread: 1
 pve_vm_disk_discard: "on"

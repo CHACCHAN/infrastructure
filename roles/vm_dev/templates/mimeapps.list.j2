@@ -1,10 +1,10 @@
-# Ansible管理: roles/vm_dev/templates/mimeapps.list.j2
+# Ansible(roles/vm_dev)が生成。手動編集は次回実行で上書きされる。
 # デスクトップ全体(システム既定)のMIME関連付け。
 # ユーザー個別の ~/.config/mimeapps.list があればそちらが優先される。
 [Default Applications]
-text/html={{ development_default_browser_desktop }}
-application/xhtml+xml={{ development_default_browser_desktop }}
-x-scheme-handler/http={{ development_default_browser_desktop }}
-x-scheme-handler/https={{ development_default_browser_desktop }}
-x-scheme-handler/about={{ development_default_browser_desktop }}
-x-scheme-handler/unknown={{ development_default_browser_desktop }}
+text/html={{ dev_default_browser_desktop }}
+application/xhtml+xml={{ dev_default_browser_desktop }}
+x-scheme-handler/http={{ dev_default_browser_desktop }}
+x-scheme-handler/https={{ dev_default_browser_desktop }}
+x-scheme-handler/about={{ dev_default_browser_desktop }}
+x-scheme-handler/unknown={{ dev_default_browser_desktop }}

@@ -1,9 +1,7 @@
 # AWX の公開経路。
 #
-# AWX 本体は Operator が作る。Operator は同じディレクトリの values.yaml を
-# 使って helm template -> kubectl apply で入れる (手順は README.md)。
-# ここには Ingress だけを置く。Operator 側の Ingress は
-# values.yaml で ingress_type: none にして止めてある。
+# AWX 本体は Operator が作る (values は roles/k8s_awx の defaults)。
+# ここには Ingress だけを置く。Operator 側の Ingress は ingress_type: none で止めてある。
 #
 # 経路の書き方 (TLS、エントリポイント、Middleware) を 1 箇所に揃えるため、
 # 上流に Ingress を作らせない方針にしている。
@@ -35,7 +33,7 @@ spec:
             backend:
               service:
                 # Operator が作る Service。名前は AWX リソース名 + "-service" で、
-                # values.yaml の AWX.name を変えるとここも変わる。
+                # defaults の AWX.name を変えるとここも変わる。
                 name: awx-service
                 port:
                   # 番号 (80) ではなく名前で指定しておくと、

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Ansible管理: roles/vm_dev/templates/vscode-server-cleanup.sh.j2
+# Ansible(roles/vm_dev)が生成。手動編集は次回実行で上書きされる。
 set -euo pipefail
 
 TARGET_DIR="/home/{{ ansible_user }}/.vscode-server"
-RETENTION_DAYS="{{ development_vscode_cleanup_retention_days }}"
+RETENTION_DAYS="{{ dev_vscode_cleanup_retention_days }}"
 BIN_DIR="${TARGET_DIR}/bin"
 
 if [ ! -d "$BIN_DIR" ]; then

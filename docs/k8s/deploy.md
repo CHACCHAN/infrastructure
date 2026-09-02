@@ -26,7 +26,7 @@ ansible-playbook playbooks/k8s/deploy.yml -e force=true    # フィールド所�
 | `k8s_api_server` | str | ✔ | group_vars | 接続先検証に使うAPIサーバーURL |
 | `k8s_apps` | list | ✔ | group_vars | アプリ登録簿(適用順) |
 | `k8s_secret_*` | dict | ✔ | vault | Secret実値([vault/k8s_secrets.yml](../../vault/k8s_secrets.yml)。`ansible-vault edit` で編集) |
-| 各アプリの `<役割>_helm_version` / `<役割>_values` ほか | | | role defaults | アプリごとの設定([README.md](README.md#アプリの追加のしかた)) |
+| 各アプリの `<役割>_helm_version` / `<役割>_values` ほか | | | role defaults | アプリごとの設定([README.md](README.md#宣言のしかた)) |
 
 接続(kubeconfig)は kubernetes.core の標準解決に任せている: `K8S_AUTH_KUBECONFIG` 環境変数 → `~/.kube/config` の順。
 

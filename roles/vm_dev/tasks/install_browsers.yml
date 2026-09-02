@@ -25,7 +25,7 @@
 - name: 既定のブラウザ(x-www-browser)を設定する
   community.general.alternatives:
     name: x-www-browser
-    path: "{{ development_default_browser_bin }}"
+    path: "{{ dev_default_browser_bin }}"
   become: true
 
 - name: デスクトップ全体の既定ブラウザを設定する

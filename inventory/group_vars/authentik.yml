@@ -1,10 +1,12 @@
-# Authentik VMのProxmox VMプロファイル。認証基盤の旧リソース値を維持する。
+# Authentik VMの役割プロファイル。
 ---
+# --- ① VMプロファイル(pveドメインが使う) ---
 pve_storage: local-lvm
 pve_vm_cores: 2
-pve_vm_cpu_type: x86-64-v2-AES
 pve_vm_memory: 4096
 pve_vm_disk_size: 16
+
+# --- ② SSH接続(cloud-initが作るユーザーと鍵) ---
 pve_ssh_user: authentik
 pve_ssh_pubkey_file: ~/.ssh/id_ed25519_authentik.pub
 pve_ssh_prikey_file: ~/.ssh/id_ed25519_authentik

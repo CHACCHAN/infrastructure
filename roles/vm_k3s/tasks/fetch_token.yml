@@ -1,13 +1,8 @@
 # 参加用トークンをコントロールプレーンから自動取得する。
-# 接続情報(ユーザー・秘密鍵)は呼び出し元のplaybook
-# (playbooks/kubernetes.yml、proxmox/ 経由なら proxmox/playbooks/kubernetes.yml)が
-# 参加先をインベントリに登録済みで、delegate_to でその接続設定がそのまま使われる。
-#
-# workerへserver tokenを配らないためagent-tokenを優先し、未作成の既存環境だけ
-# node-tokenへフォールバックする。K3s token documentation:
-# https://docs.k3s.io/cli/token
-# トークンはクラスタに参加できてしまう秘密情報のため no_log で出力を抑止している
-# (失敗しても詳細は出ないので、切り分けが必要ならここのno_logを外す)。
+# 接続情報(ユーザー・秘密鍵)は呼び出し元のplaybook(playbooks/vm/k3s.yml)が参加先を
+# インベントリへ登録済みで、delegate_to でその接続設定が使われる。
+# workerへserver tokenを配らないためagent-tokenを優先し、無ければnode-tokenを使う
+# (https://docs.k3s.io/cli/token)。トークンは秘密情報のため no_log にする。
 ---
 - name: コントロールプレーンからトークンを取得する
   block:

@@ -1,18 +1,12 @@
 # VMIDによるVM検索を共通化し、呼び出し元へ検索結果を返すタスク。
-# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
-# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
-# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: VMIDでVMを検索する  # noqa: args[module]
   community.proxmox.proxmox_vm_info:
     vmid: "{{ pve_vmid }}"
   register: pve_vm_info
 
-# 「未作成」の目印にnoneを使わないこと。ansible-core 2.19より前のテンプレート処理は
-# レンダリング結果のうち { [ True False しかPythonオブジェクトへ戻さないため、
-# `| default(none)` は文字列 "None" のまま残る(AWXの既定EE quay.io/ansible/awx-ee が
-# 該当)。文字列は `is none` を満たさないので未作成の判定がすべて反転し、
-# 下の照合assertが「実体: name=(不明)」で暴発する。空辞書ならどの版でもdictになる。
+# 未作成の目印は空辞書にする。ansible-core 2.19より前(AWXの既定EEを含む)では
+# `default(none)` が文字列 "None" になり、`is none` 判定が成立しないため。
 - name: VMの検索結果を設定する
   ansible.builtin.set_fact:
     pve_found_vm: "{{ pve_vm_info.proxmox_vms | first | default({}) }}"

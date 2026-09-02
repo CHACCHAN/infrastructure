@@ -13,6 +13,15 @@
 - name: 必須変数を検証する
   ansible.builtin.import_tasks: validate.yml
 
+- name: ディスクの空き容量を確認する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: check_disk_space
+  vars:
+    svc_name: Portainer
+    svc_min_free_gb: "{{ portainer_min_free_disk_gb }}"
+    svc_min_free_var: portainer_min_free_disk_gb
+
 - name: VM共通の初期セットアップを実行する
   ansible.builtin.import_role:
     name: vm

@@ -1,6 +1,6 @@
 # OS・ノード単位のProxmoxテンプレートを単体で収束させるPlaybook。
 # 実行例: ansible-playbook playbooks/pve/template.yml -e os=debian -e version=13 -e target_node=pve01
-# テスト例: 上記へ -e vmid=9990 -e name=migration-test-template を追加する。
+# テスト例: 上記へ -e vmid=9990 -e name=debian13-template-test を追加する。
 ---
 - name: Proxmoxテンプレートを対象ノードへ収束させる
   hosts: localhost
@@ -40,8 +40,6 @@
         pve_os: "{{ os }}"
         pve_os_version: "{{ version | string }}"
         node: "{{ target_node }}"
-        # 未指定は空文字で渡す。noneを渡すと、ansible-core 2.19より前では
-        # 文字列 "None" になり「指定あり」と誤判定される
-        # (理由は roles/pve/tasks/find_vm.yml の冒頭コメント)。
+        # 未指定は空文字で渡す(noneは使わない。roles/pve/tasks/find_vm.yml)。
         pve_template_vmid: "{{ vmid | default('') }}"
         pve_template_name: "{{ name | default('') }}"

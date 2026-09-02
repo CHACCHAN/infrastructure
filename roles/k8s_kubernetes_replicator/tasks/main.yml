@@ -1,17 +1,16 @@
 # ghcr.ioの資格情報を1箇所で宣言し、複製コントローラで全Namespaceへ配る。
 #
-# 他のk8s_*ロールと違い、Secretを**最後**に収束させる。このロールのSecretを
-# 読むのはコントローラ自身であり、起動直後のコントローラはinformerのキャッシュが
-# 温まる前に複製元を見つけると、既存の`default` ServiceAccountを「存在しない」と
-# 判断してcreateし、AlreadyExistsで失敗する(次のresyncまで最大30分未反映になる)。
-# Deploymentのready後に複製元を置けばこの競合は起きない。
+# Secretは他ロールと違い**最後**に収束させる。起動直後のコントローラはinformerの
+# キャッシュが温まる前に複製元を見つけると既存の default ServiceAccount を誤って
+# createし AlreadyExists で失敗するため、Deploymentのready後に複製元を置く。
 ---
 - name: 必須Secret変数が定義されていることを確認する
   ansible.builtin.assert:
     that:
       - vars[item] is defined
+      - vars[item] | length > 0
     fail_msg: >-
-      {{ item }} が未定義です。
+      {{ item }} が未定義または空です。
       ansible-vault edit vault/k8s_secrets.yml で実値を設定してください。
     quiet: true
   loop:

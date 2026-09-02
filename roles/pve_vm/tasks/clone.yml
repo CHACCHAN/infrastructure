@@ -1,10 +1,7 @@
 # 未作成のProxmox VMを同一ノードのOSテンプレートからフルクローンする。
-# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
-# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
-# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: 未作成VMをテンプレートからクローンする
-  # 未作成の目印は空辞書(理由は roles/pve/tasks/find_vm.yml の冒頭コメント)。
+  # 未作成の目印は空辞書(roles/pve/tasks/find_vm.yml)。
   when: pve_found_vm | length == 0
   block:
     - name: クローン元のOSとノードを選択する

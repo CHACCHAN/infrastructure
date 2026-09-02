@@ -2,6 +2,22 @@
 
 Docker composeでAuthentik(OIDC SSO)をVMごと一気通貫で構築する。構築後は `http://<IP>:9000/`(初回セットアップは `/if/flow/initial-setup/`)。ヘルスチェック(`/-/health/ready/`)の応答まで確認してから終わる。
 
+## 公開経路(このリポジトリでの扱い)
+
+TLSは**メインクラスタのTraefikで終端**し、VMの:9000へHTTPで転送する。経路の宣言は [inventory/group_vars/all/k8s.yml](../../inventory/group_vars/all/k8s.yml) の `k8s_external_routes`(`authentik`)。
+
+```mermaid
+flowchart LR
+    E[外部クライアント] -->|"https://auth.cc-chacchan.com"| CF["Cloudflare Tunnel<br>(cloudflared → entrypoint web :80)"]
+    L[LAN内クライアント] -->|"https://auth.cc-chacchan.com"| T
+    CF --> T["メインk3sのTraefik<br>(TLS終端 + X-Forwarded-Proto: https)"]
+    T -->|"HTTP :9000"| S["Authentik server<br>Authentik VM 172.16.11.2"]
+```
+
+- 公開範囲: `entrypoints: web,websecure` のため、Cloudflare Tunnel経由で**インターネットからも到達できる**(他サービスのSSOログインに必要)
+- 証明書: LAN側は `*.cc-chacchan.com` のワイルドカード(cert-manager)、Tunnel側はCloudflareがTLSを終端する
+- この経路(`forward_auth: true`)が、他の外部サービス(ddns.)に使う `authentik-forward-auth` Middlewareと `authentik-external` Serviceも生成する
+
 ## 実行方法
 
 ```sh
@@ -13,9 +29,9 @@ ansible-playbook playbooks/vm/authentik.yml \
   -e target=authentik02 -e profile=authentik -e vmid=902 -e node=pve02 -e ip=172.16.11.92
 ```
 
-## 変数一覧(サービス固有の主要なもの)
+## 変数一覧
 
-接続系の共通変数は [README.md](README.md#共通の変数全サービスplaybook)。全既定値の正は [roles/vm_authentik/defaults/main.yml](../../roles/vm_authentik/defaults/main.yml)。
+接続系の共通変数は [README.md](README.md#共通の変数)。全既定値の正は [roles/vm_authentik/defaults/main.yml](../../roles/vm_authentik/defaults/main.yml)。
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |

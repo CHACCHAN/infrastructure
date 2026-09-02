@@ -1,12 +1,12 @@
-# Web UIの死活エンドポイント(/api/status。認証不要)へ実行元から到達できることを確認する。
+# VM内から見た確認(死活エンドポイント /api/status は認証不要)。
+# VM外から見えるかどうかは、再起動後にplaybook側で行う。
 ---
 - name: Web UIの疎通を確認する
   ansible.builtin.uri:
-    url: "http://{{ ansible_host }}:{{ portainer_http_port }}/api/status"
+    url: "http://127.0.0.1:{{ portainer_http_port }}/api/status"
     status_code: [200]
-  delegate_to: localhost
-  become: false
   register: portainer_status
   retries: "{{ portainer_ready_retries }}"
   delay: "{{ portainer_ready_delay }}"
   until: portainer_status is succeeded
+  changed_when: false

@@ -1,8 +1,5 @@
 # VMIDを直接指定し、停止中のProxmox VMまたはテンプレートを削除するPlaybook。
 # 実行例: ansible-playbook playbooks/pve/destroy.yml -e vmid=991 -e confirm=991
-# 各タスクの `# noqa: args[module]` は誤検知の抑止。api_host/api_user等は
-# Playbookの module_defaults (group/community.proxmox.proxmox) で供給しているが、
-# ansible-lintのargsルールはaction groupを解決せず未指定と判定するため。
 ---
 - name: Proxmox VMを安全に削除する
   hosts: localhost

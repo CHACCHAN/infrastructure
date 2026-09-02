@@ -20,7 +20,7 @@ ansible-playbook playbooks/utils/awx/job_launch.yml -e job_template=k8s-deploy -
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |
-| `job_template` | str | ✔ | | 起動するJob Template名(一覧は [docs/awx/README.md](README.md)) |
+| `job_template` | str | ✔ | | 起動するJob Template名(一覧は [docs/utils/awx/README.md](README.md)) |
 | `job_extra_vars` | dict | | なし | JTへ渡すextra vars(JT側は全て変数欄を許可済み) |
 | `awx_job_wait` | bool | | `true` | 完了まで待つか。失敗ジョブは待ちタスクが失敗になる |
 | `awx_job_timeout` | int | | `1800` | 完了待ちの上限(秒) |

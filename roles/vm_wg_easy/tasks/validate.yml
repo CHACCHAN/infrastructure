@@ -147,7 +147,7 @@
       -e "wg_easy_oauth_oidc_server=https://auth.example.com
       wg_easy_oauth_oidc_client_id=<ID> wg_easy_oauth_oidc_client_secret=<シークレット>"
       のように指定してください
-      (プロバイダ側にはリダイレクトURIの登録も必要です。docs/vms/wg-easy.md を参照)。
+      (プロバイダ側にはリダイレクトURIの登録も必要です。docs/vm/wg-easy.md を参照)。
       OIDCを使わない場合は -e "wg_easy_oauth_providers=" にしてください。
     quiet: true
   when: "'oidc' in wg_easy_oauth_providers_resolved"

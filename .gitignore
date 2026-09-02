@@ -1,4 +1,3 @@
-group_vars/vault.yml
 *.retry
 .ansible
 .cache/pip/*
@@ -6,7 +5,7 @@ __pycache__/
 *.pyc
 .venv/
 .env
-# ansible-builder が生成するビルドコンテキスト(ee/ から毎回再生成される)
+# ansible-builder が ee/ から生成するビルドコンテキスト
 context/
-# SAML SP証明書・秘密鍵(実体はvault/k8s_secrets.ymlのk8s_secret_awx_samlへ格納済み)
+# SAML SP証明書・秘密鍵(実体は vault/k8s_secrets.yml に置く)
 *.pem
