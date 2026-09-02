@@ -28,3 +28,19 @@ extra vars(`-e` / AWX Survey / Job Templateの変数欄)はAnsibleの変数優�
 - ネットワーク構成・サービス公開経路の全体像: [infrastructure.md](../infrastructure.md)
 - 設計思想(3層構造・冪等性・ドメイン分離): [README.md](../README.md)
 - 変数の既定値の正: `roles/*/defaults/main.yml`(ドキュメントには書き写さない方針)
+
+## 雛形(default.md / default.yml)
+
+新しいページやplaybookを足すときは、同じディレクトリの雛形をコピーして書き換える。雛形は見出しの順序・節の名前・書きかたの決まりを持つ。
+
+| 置き場所 | 雛形 | 使うとき |
+| --- | --- | --- |
+| `docs/<ドメイン>/` | `default.md` | playbookのページを追加する |
+| `docs/` | [default.md](default.md) | ドメインの入口ページ(README.md)を追加する |
+| `playbooks/<ドメイン>/` | `default.yml` | playbookを追加する |
+| `roles/` | [default.yml](../roles/default.yml) | ロールを追加する(ディレクトリ構成と命名も記載) |
+| `inventory/group_vars/` | [default.yml](../inventory/group_vars/default.yml) | 役割グループのプロファイルを追加する |
+| `awx/` | [default.yml](../awx/default.yml) | Job Template等の定義を追加する |
+| `vault/` | [default.yml](../vault/default.yml) | 暗号化ファイルを追加する(コピー後に暗号化する) |
+
+共通の決まり: **文章もコメントも説明だけを書く**(判断の経緯・変更の過程は書かない)。既定値はコードが正で、ドキュメントへ書き写さない。

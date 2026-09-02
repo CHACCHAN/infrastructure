@@ -33,7 +33,7 @@ ansible-playbook playbooks/k8s/deploy.yml -e app=external
 2. ライセンスキーを入力する([portainer.io](https://www.portainer.io/)で無料発行。**3ノードまで無料枠**なので1ノード構成の本環境では課金なし)
 3. 環境は「Get Started」→ local(docker.sock経由でこのVMのDockerを管理)を選ぶ
 
-## 主要な変数
+## 変数一覧(サービス固有の主要なもの)
 
 | 変数 | 既定値 | 意味 |
 | --- | --- | --- |
@@ -47,7 +47,7 @@ ansible-playbook playbooks/k8s/deploy.yml -e app=external
 - 再実行するとcompose定義の差分だけコンテナが再作成される(データは `data/` バインドマウントで永続)
 - バージョン更新: `portainer_version` を上げて再実行(`pull: missing` のため新タグは自動取得)
 
-## トラブルシュート
+## つまずきやすいポイント
 
 - **`https://portainer.cc-chacchan.com` に到達できない**: 経路の反映(`deploy.yml -e app=external`)を確認。VM単体の生存確認は `curl http://172.16.11.9:9000/api/status`(200なら外側の問題)
 - **ログイン画面がリダイレクトループする/HTTPSを要求される**: `--http-enabled` がcompose定義に入っているか、経路側の `forwarded_https: true`(X-Forwarded-Proto: https付与)を確認

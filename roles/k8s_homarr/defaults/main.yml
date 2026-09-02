@@ -88,7 +88,7 @@ k8s_homarr_values:
       memory: 1Gi
 
   # Kubernetes 連携ウィジェット用の RBAC。有効にするとクラスタ全体のSecretまで
-  # 読めるClusterRoleがPodへ渡る(レビューSEC-03)ため、必要になるまで無効。
+  # 読めるClusterRoleがPodへ渡るため、必要になるまで無効。
   rbac:
     enabled: false
 

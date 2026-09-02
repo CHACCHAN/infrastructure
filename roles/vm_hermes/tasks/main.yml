@@ -54,7 +54,8 @@
 - name: systemdサービスを設定する
   ansible.builtin.import_tasks: configure_services.yml
 
-# web dashboard(管理UI)のポート。GatewayのOpenAI互換APIサーバー(:8642)は公開しない。
+# web dashboard(管理UI)とLINEのwebhookのポート。
+# GatewayのOpenAI互換APIサーバー(:8642)は公開しない。
 # Debianのcloud imageはufw未導入のため通常はスキップされる(roles/vm側の共通タスク)
 - name: Hermesが使うポートを開放する
   ansible.builtin.import_role:
@@ -63,6 +64,7 @@
   vars:
     svc_ufw_ports:
       - {port: "{{ hermes_dashboard_port }}", proto: tcp}
+      - {port: "{{ hermes_line_webhook_port }}", proto: tcp}
 
 - name: サービスの起動を確認する
   ansible.builtin.import_tasks: verify_service.yml

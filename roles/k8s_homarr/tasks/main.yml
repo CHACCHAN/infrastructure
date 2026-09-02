@@ -107,8 +107,8 @@
   delay: 5
   when: not ansible_check_mode
 
-# rbac.enabled: false 化(レビューSEC-03)以前に適用された、クラスタ全体のSecretまで
-# 読める広域RBACの残骸を削除する。SSAは宣言から消えたリソースを削除しないため明示的に消す。
+# クラスタ全体のSecretまで読める広域RBAC(rbac.enabled: true のとき作られる)が
+# 残っていれば削除する。SSAは宣言から消えたリソースを削除しないため明示的に消す。
 - name: 旧Kubernetes連携RBACの残骸を削除する
   kubernetes.core.k8s:
     state: absent

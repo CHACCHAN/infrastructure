@@ -122,6 +122,7 @@ flowchart TB
   subgraph pub["インターネット公開(entrypoints: web,websecure)"]
     H_AUTH["auth.cc-chacchan.com<br>→ Authentik 172.16.11.2:9000"]
     H_WEB["*.web.cc-chacchan.com<br>→ Coolify 172.16.11.6:80<br>(デプロイしたアプリ)"]
+    H_HERMES["hermes.cc-chacchan.com<br>→ Hermes 172.16.11.31:9119(管理UI)<br>/line/* → 172.16.11.31:8646(LINE webhook)<br>認証はHermes側のAuthentik OIDC"]
   end
 
   subgraph lan_app["LAN内のみ: クラスタ内アプリ(Ingress→Service→Pod)"]
@@ -130,7 +131,7 @@ flowchart TB
 
   subgraph lan_ext["LAN内のみ: クラスタ外サービス(k8s_external)"]
     E_FWD["ddns. → 172.16.11.4:8080<br>Authentik forwardAuth Middleware を通す"]
-    E_NET["dns. → 172.16.11.3:5380<br>doh. → 172.16.11.3:8053<br>wgui. → 172.16.11.5:51821<br>coolify. → 172.16.11.6:80<br>hermes. → 172.16.11.31:9119(Authentik OIDC)"]
+    E_NET["dns. → 172.16.11.3:5380<br>doh. → 172.16.11.3:8053<br>wgui. → 172.16.11.5:51821<br>coolify. → 172.16.11.6:80"]
     E_INFRA["pve01.〜pve10. → 172.16.11.11〜.20:8006<br>pbs. → 172.16.11.7:8007<br>nas. → 172.16.11.10:443<br>自己署名HTTPS(insecureSkipVerify)"]
   end
 

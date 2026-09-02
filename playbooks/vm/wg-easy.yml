@@ -21,7 +21,7 @@
   vars:
     ansible_user: "{{ pve_ssh_user }}"
     ansible_ssh_private_key_file: "{{ pve_ssh_prikey_resolved }}"
-    # cloud-init直後はホスト鍵が毎回変わるため検証しない(旧実装踏襲)
+    # cloud-init直後はホスト鍵が毎回変わるため検証しない
     ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
     # 別play間のset_factを廃し、vault値をロールの公開変数へ直接渡す。
     wg_easy_oauth_oidc_client_id: "{{ vault_wg_easy_oidc_client_id | default('') }}"

@@ -27,18 +27,6 @@ ansible-playbook playbooks/pve/provision.yml \
 
 仕組みと注意(1回1台・`-l` 併用禁止・IPは `-e ip=` で渡す等)は [adhoc.md](adhoc.md)。
 
-## 動きかた
-
-2つのプレイで収束させる。
-
-1. **テンプレート準備**(`serial: 1`): 対象VMが未作成で、そのノードに(OS, バージョン)のテンプレートが無ければ作る。イメージはPVEノードがチェックサム検証付きで直接ダウンロードする
-2. **VM収束**: 未作成ならテンプレートからフルクローン。以降は基本設定(CPU/メモリ/NIC/オプション)→ディスク(拡張のみ)→cloud-init(ユーザー/鍵/IP/DNS)→電源(既定: started)の順に、**差分がある項目だけ**適用する
-
-実行前に2段階の検証があり、不足変数を**名前ごと列挙して**止まる:
-
-- クラスタ共通値(`pve_storage` / `pve_bridge` / `pve_ipv4_prefix` / `pve_ipv4_gw`)— group_vars/all が届いていない実行環境の検出
-- ホスト固有値(`vmid` / `node` / `ansible_host`)— 宣言漏れ・指定漏れの検出
-
 ## 変数一覧
 
 ### 必須(ホストごと)
@@ -83,6 +71,18 @@ ansible-playbook playbooks/pve/provision.yml \
 ### 認証情報(vault)
 
 `vault_proxmox_api_host` / `vault_proxmox_api_user` / `vault_proxmox_api_token_id` / `vault_proxmox_api_token_secret` の4変数を [vault/proxmox_api.yml](../../vault/proxmox_api.yml) が供給する(`ansible-vault edit` で編集)。
+
+## 動きかた
+
+2つのプレイで収束させる。
+
+1. **テンプレート準備**(`serial: 1`): 対象VMが未作成で、そのノードに(OS, バージョン)のテンプレートが無ければ作る。イメージはPVEノードがチェックサム検証付きで直接ダウンロードする
+2. **VM収束**: 未作成ならテンプレートからフルクローン。以降は基本設定(CPU/メモリ/NIC/オプション)→ディスク(拡張のみ)→cloud-init(ユーザー/鍵/IP/DNS)→電源(既定: started)の順に、**差分がある項目だけ**適用する
+
+実行前に2段階の検証があり、不足変数を**名前ごと列挙して**止まる:
+
+- クラスタ共通値(`pve_storage` / `pve_bridge` / `pve_ipv4_prefix` / `pve_ipv4_gw`)— group_vars/all が届いていない実行環境の検出
+- ホスト固有値(`vmid` / `node` / `ansible_host`)— 宣言漏れ・指定漏れの検出
 
 ## AWXでの実行
 

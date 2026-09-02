@@ -41,7 +41,7 @@
 
 # PyYAML(YAML 1.1)はYAML 1.2の8進表記「0oNNN」を文字列として読み、数値を要求する
 # フィールドで型エラーになる(実例: nextcloudチャートの defaultMode: 0o755)。
-# kubectlはYAML 1.2対応のため旧手順では顕在化しなかった。「: 0oNNN」で終わる行の
+# 「: 0oNNN」で終わる行の
 # 値を10進へ変換してから適用する(どの8進値が来ても変換できるよう汎用化している)。
 - name: チャート出力のYAML 1.2 8進表記を10進へ正規化する
   ansible.builtin.set_fact:

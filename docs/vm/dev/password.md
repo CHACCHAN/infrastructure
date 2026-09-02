@@ -18,7 +18,7 @@ ansible-playbook playbooks/vm/dev/password.yml -e target=yuya-dev -e pve_ssh_pas
 | `pve_power_force` | bool | | `false` | ゲストが応答しない場合の強制停止 |
 | `vault_proxmox_api_*` | str | ✔ | vault | cloud-initドライブの作り直しに必要(API4変数) |
 
-## 動きかた・設計
+## 動きかた
 
 - `pve_ssh_password` を渡したときだけ動く。値はログにも `--diff` にも出ない
 - **反映にはVMの電源再投入が要る**。cloud-initのドライブはPVEがVMの起動時に作り直すため、ゲスト内の `reboot` では反映されない。playbookが停止→起動まで行う

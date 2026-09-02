@@ -88,6 +88,11 @@
     # sudo経由で実行するのは上流の想定(docs: `sudo hermes gateway install --system`)。
     # 呼び出し元ユーザーの導入(HERMES_HOME)を見てunitを組み立てるため、
     # become: true でrootとして直接叩くのではなく、Hermesユーザーからsudoする。
+    #
+    # 起動・自動起動・実行ユーザーはすべてフラグで明示する。上流CLIは指定が無いと
+    # stdinがttyのとき対話プロンプトを出し、sudoが疑似端末を割り当てる環境
+    # (Debian既定のuse_pty)では応答が無いまま待ち続けるため。
+    # 起動は次のsystemdタスクが行う(unitの内容を検証してから起動する)。
     - name: GatewayのsystemdサービスをHermesにインストールさせる
       ansible.builtin.command:
         argv:
@@ -97,6 +102,10 @@
           - gateway
           - install
           - --system
+          - --run-as-user
+          - "{{ ansible_user }}"
+          - --start-on-login
+          - --no-start-now
         creates: "/etc/systemd/system/{{ hermes_gateway_service_name }}"
       become: false
       environment:

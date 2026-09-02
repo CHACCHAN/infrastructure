@@ -1,0 +1,14 @@
+# Vaultファイルの雛形(このファイルだけ暗号化しない)。
+# 新しく作るときはコピーして中身を入れ替え、必ず暗号化する:
+#   cp vault/default.yml vault/<名前>.yml
+#   ansible-vault encrypt vault/<名前>.yml
+#
+# 決まりごと:
+# - すべて同じVaultパスワードで暗号化する(playbookが複数ファイルを同時に読むため)
+# - 変数名は vault_<サービス>_<用途>。playbook側で通常の変数へ渡す
+# - 作成・変更したら vault/README.md の表にも1行足す
+# - コメントは説明だけを書く。値の由来や発行手順は README 側に書く
+---
+vault_<サービス>_host: https://<ホスト名>
+vault_<サービス>_api_token: <トークン>
+vault_<サービス>_password: <パスワード>

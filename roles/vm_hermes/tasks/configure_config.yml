@@ -91,4 +91,6 @@
     msg: >-
       公開URL: {{ hermes_public_url | default('(なし。IP直打ちのみ)', true) }}
       / 信頼する上流: {{ hermes_trusted_proxies | join(', ') | default('(なし)', true) }}
-      / 認証: username/password({{ hermes_dashboard_username }})
+      / 認証: {{ ((['username/password(' ~ hermes_dashboard_username ~ ')']
+                    if hermes_dashboard_enable_basic_auth | bool else [])
+                   + (['SSO(OIDC)'] if hermes_oidc_enabled else [])) | join(' + ') }}

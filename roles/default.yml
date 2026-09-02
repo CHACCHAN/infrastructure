@@ -1,0 +1,67 @@
+# ロールの雛形(tasks/main.yml の形)。roles/<層>_<サービス> を作るときはこの構成に従う。
+#
+# ディレクトリ構成:
+#   roles/<層>_<サービス>/
+#     defaults/main.yml    変数の既定値。ここが既定値の単一の真実
+#     tasks/main.yml       段階ごとのimportを並べるだけにする(このファイル)
+#     tasks/<段階>.yml     validate / install_* / configure_* / verify_service
+#     templates/*.j2       設定ファイル・systemd unit。冒頭に「Ansibleが生成」と書く
+#     handlers/main.yml    使う場合のみ
+#
+# 命名:
+#   ロール名は 層(pve_ / vm_ / k8s_)+ サービス名。変数名は層を落としたサービス名
+#   (role vm_foo → foo_*)。共有ロール(vm / vm_docker)へ渡す引数は svc_* を使う
+#
+# 決まりごと:
+#   - 既定値は defaults/main.yml にだけ置き、tasks側にリテラルを散らさない
+#   - shell / command は最終手段。creates・changed_when・状態確認とセットで使う
+#   - 秘密情報はplaybookから変数で受け取り、no_log を付けて扱う
+#   - サービスの再起動は差分があったときだけ行う
+#   - サービス側が持つ設定(アプリの設定ファイル・状態)は上書きしない
+#   - コメントは説明だけを書く。判断の経緯・変更の過程は書かない
+---
+- name: 対象OSを確認する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: assert_debian
+
+- name: 必須変数を検証する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: ディスクの空き容量を確認する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: check_disk_space
+  vars:
+    svc_name: <サービス名>
+    svc_min_free_gb: "{{ <サービス>_min_free_disk_gb }}"
+    svc_min_free_var: <サービス>_min_free_disk_gb
+
+- name: VM共通の初期セットアップを実行する
+  ansible.builtin.import_role:
+    name: vm
+
+- name: Dockerをセットアップする
+  ansible.builtin.import_role:
+    name: vm_docker
+  when: <サービス>_install_docker | bool
+
+- name: <サービス名>本体をインストールする
+  ansible.builtin.import_tasks: install_<サービス>.yml
+
+- name: 設定を収束させる
+  ansible.builtin.import_tasks: configure_<対象>.yml
+
+- name: systemdサービスを設定する
+  ansible.builtin.import_tasks: configure_services.yml
+
+- name: 使うポートを開放する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports:
+      - {port: "{{ <サービス>_port }}", proto: tcp}
+
+- name: サービスの起動を確認する
+  ansible.builtin.import_tasks: verify_service.yml

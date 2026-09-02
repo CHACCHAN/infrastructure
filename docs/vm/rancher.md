@@ -51,7 +51,7 @@ ansible-playbook playbooks/k8s/deploy.yml -e app=external
 - 初期管理者パスワードは `vault/rancher.yml` の `vault_rancher_bootstrap_password`(構築時に自動生成済み。確認は `ansible-vault view vault/rancher.yml`)
 - 初回ログイン: `https://rancher.cc-chacchan.com/` → ユーザー `admin` + 上記パスワード → 新しいパスワードへの変更とServer URL(そのまま確定でよい)を求められる
 
-## 主要な変数
+## 変数一覧(サービス固有の主要なもの)
 
 | 変数 | 既定値 | 意味 |
 | --- | --- | --- |
@@ -67,7 +67,7 @@ ansible-playbook playbooks/k8s/deploy.yml -e app=external
 - Helm実行時はそれを**実行元の一時ファイルへ取得し、終了時に必ず削除**する(管理者権限そのもののため、リポジトリ内には置かない)
 - 手元で常用したい場合: `scp -i ~/.ssh/id_ed25519_rancher rancher@172.16.11.8:.kube/config ~/.kube/config-rancher01`
 
-## トラブルシュート
+## つまずきやすいポイント
 
 - **`https://rancher.cc-chacchan.com` に到達できない**: 経路の反映(`deploy.yml -e app=external`)とDNSレコードを確認。VM単体の生存確認は `curl http://172.16.11.8/healthz`(=ServiceLB→Podの経路。200なら外側の問題)
 - **ログインループや「connection is not private」系**: Helm valuesの `tls=external` が効いているか(`helm -n cattle-system get values rancher`)。メインクラスタ側は `forwarded_https: true` がX-Forwarded-Proto: httpsを付ける

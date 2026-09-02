@@ -1,4 +1,4 @@
-# AlmaLinux Cloud imageカタログ。旧os_defaultsから配布元情報を移設したもの。
+# AlmaLinux Cloud imageカタログ。
 ---
 pve_template_os_catalog:
   checksum_algorithm: sha256

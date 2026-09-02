@@ -1,4 +1,4 @@
-# Ubuntu LTS Cloud imageカタログ。旧os_defaultsから配布元情報を移設したもの。
+# Ubuntu LTS Cloud imageカタログ。
 ---
 pve_template_os_catalog:
   checksum_algorithm: sha256

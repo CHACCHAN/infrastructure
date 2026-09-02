@@ -1,0 +1,66 @@
+# <サービス名>のVMを宣言から一気通貫で構築するPlaybook。
+# <何を導入し、何を常駐させるか。1〜3行>
+# 実行例: ansible-playbook playbooks/vm/<名前>.yml
+#
+# このディレクトリのplaybookはこの雛形に従う。
+# - プレイは 0.鍵の実体化 → 1.pveドメインのprovision → 2.SSHセットアップ の3段
+# - ロールへ渡す値は inventory/group_vars/<役割>.yml の宣言が正。ここには書かない
+# - 秘密情報は vault/<名前>.yml から vars で渡す(平文で書かない)
+# - コメントは説明だけを書く。判断の経緯・変更の過程は書かない
+---
+# 0. AWXのSurveyなど、鍵を本文で受け取った場合に一時ファイルへ書き出す
+- name: 接続用の秘密鍵を用意する
+  ansible.builtin.import_playbook: ssh_key.yml
+
+# 1. Proxmox側: テンプレート→クローン→設定→cloud-init→起動まで収束
+- name: VMを収束させる
+  ansible.builtin.import_playbook: ../pve/provision.yml
+  vars:
+    target: <グループ名>
+    profile_expected: <役割グループ名>
+
+# 2. VM内部: SSHでサービスをセットアップ
+- name: <サービス名>をセットアップする
+  hosts: "{{ target | default('<グループ名>', true) }}"
+  gather_facts: false
+  vars:
+    ansible_user: "{{ pve_ssh_user }}"
+    ansible_ssh_private_key_file: "{{ pve_ssh_prikey_resolved }}"
+    # cloud-init直後はホスト鍵が毎回変わるため検証しない
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+    # 秘密情報はVaultが単一の真実。ロールへは変数で渡す
+    <サービス>_password: "{{ vault_<サービス>_password | default('') }}"
+  vars_files:
+    # 解決基準を明示するためリポジトリ全体で {{ playbook_dir }} 形式に統一している
+    - "{{ playbook_dir }}/../../vault/<名前>.yml"
+  pre_tasks:
+    - name: SSH接続を待つ
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ vm_ssh_wait_timeout | default(600) }}"
+
+    # play冒頭の自動ファクト収集はpre_tasksより先に走るため、SSH到達後に明示的に収集する
+    - name: ファクトを収集する
+      ansible.builtin.setup:
+  roles:
+    - vm_<サービス>
+  post_tasks:
+    # dockerグループへの追加とカーネル更新を反映する(更新があるときだけ再起動)
+    - name: 構成を反映するためVMを再起動する
+      ansible.builtin.import_role:
+        name: vm
+        tasks_from: reboot_vm
+
+    - name: 実行元の端末からサービスに接続できることを確認する
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: <ポート>
+        timeout: 300
+        state: started
+      delegate_to: localhost
+      become: false
+
+    - name: 構築結果と次の手順を表示する
+      ansible.builtin.debug:
+        msg:
+          - "<サービス名> を構築しました: <URL>"
+          - "初回セットアップ: <手順>"

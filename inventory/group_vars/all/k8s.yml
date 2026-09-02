@@ -99,14 +99,32 @@ k8s_external_routes:
     # (メインクラスタのTraefik)で完結し、VMの:9119へHTTPで転送する。チャットは
     # WebSocket(/api/ws・/api/pty)だがTraefikがUpgradeをそのまま通すため追加設定は不要
     # (VM側のpublic_url・trusted_proxiesはvm_hermesロールが設定する。docs/vm/hermes.md)
-    ports: [{ name: http, port: 9119 }]
+    ports:
+      - { name: http, port: 9119 }
+      # メッセージングGateway(LINE)のwebhook待受。上流の既定ポート
+      - { name: line, port: 8646 }
     ingresses:
-      # 管理UI(LAN内限定)。X-Forwarded-Proto: https が無いと、Cookieのsecure属性と
+      # 管理UI。hermes.{{ k8s_domain }} はCloudflare Tunnelで公開しているため、
+      # 到達経路はTunnel(HTTP :80 = entrypoint web)とLAN内の直接アクセス
+      # (websecure)の両方になる。認証はHermes側のAuthentik SSO / パスワード。
+      # X-Forwarded-Proto: https が無いと、Cookieのsecure属性と
       # OAuthコールバックの組み立てが実際の公開URLとずれる
       - name: hermes
         host: "hermes.{{ k8s_domain }}"
         port: http
+        entrypoints: "web,websecure"
         forwarded_https: true
+      # LINEのwebhook(/line/webhook)とメディア配信(/line/media)。上流のLINE
+      # プラットフォームが :8646 でこのパスのまま待ち受けるため、プレフィックスは剥がさない。
+      # Traefikはルールが長いほうを優先するので、上の管理UI(/)より先にこちらへ一致する。
+      # LINEのサーバーは宅外から来るため、Cloudflare Tunnel(HTTP :80)が使う
+      # entrypoint web も許可する(公開の可否はCloudflare側の経路表で決まる。
+      # 管理UIのIngressはwebsecureのみのため、公開されるのはこのパスだけ)
+      - name: hermes-line
+        host: "hermes.{{ k8s_domain }}"
+        path: /line
+        port: line
+        entrypoints: "web,websecure"
 
   - name: portainer
     backend_ip: 172.16.11.9

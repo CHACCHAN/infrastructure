@@ -1,0 +1,51 @@
+# <Proxmox側で何を収束させるか>のPlaybook。
+# 実行例: ansible-playbook playbooks/pve/<名前>.yml -l <ホスト名>
+# 実行例: ansible-playbook playbooks/pve/<名前>.yml -e target=<ホスト名> -e profile=<役割>
+#
+# このディレクトリ(Proxmox APIドメイン)のplaybookはこの雛形に従う。
+# - 接続はAPIのみ(connection: local)。VMへSSHしない
+# - インベントリ外のVMを扱えるよう、先頭で adhoc.yml をimportする
+# - API認証情報は vault/proxmox_api.yml を module_defaults で全タスクへ供給する
+# - 破壊的な操作は事前のassertで対象を確認してから実行する
+# - コメントは説明だけを書く。判断の経緯・変更の過程は書かない
+---
+# -e profile= を指定したときだけ、インベントリ外のVMを一時ホストとして宣言する。
+- name: インベントリ外のVMを一時ホストとして宣言する
+  ansible.builtin.import_playbook: adhoc.yml
+
+- name: <何を>収束させる
+  hosts: "{{ target | default('lab', true) }}"
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: local のインタープリタ自動発見はproxmoxerが無いシステムPythonを
+    # 選ぶため、コントローラ(ansible本体のvenv)のPythonに固定する
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/proxmox_api.yml"
+  module_defaults:
+    group/community.proxmox.proxmox:
+      api_host: "{{ vault_proxmox_api_host }}"
+      api_user: "{{ vault_proxmox_api_user }}"
+      api_token_id: "{{ vault_proxmox_api_token_id }}"
+      api_token_secret: "{{ vault_proxmox_api_token_secret }}"
+      validate_certs: false
+
+  tasks:
+    - name: 必須変数が指定されていることを確認する
+      ansible.builtin.assert:
+        that:
+          - vmid is defined
+          - node is defined
+        fail_msg: <不足しているものと指定方法>
+        quiet: true
+
+    - name: <APIの操作>
+      community.proxmox.proxmox:  # noqa: args[module]
+        vmid: "{{ vmid }}"
+        node: "{{ node }}"
+        state: <状態>
+
+    - name: 結果を表示する
+      ansible.builtin.debug:
+        msg: "<結果>"

@@ -18,3 +18,18 @@ skip_list:
   #   文頭に来るのは cert-manager / cloud-init / k3s / nfs / kubectl など
   #   公式表記が小文字で固定された製品名で、大文字化は誤記になる。
   - name[casing]
+
+# 各ディレクトリに置く雛形。プレースホルダを含むため実行・検証の対象にしない。
+exclude_paths:
+  - default.yml
+  - playbooks/k8s/default.yml
+  - playbooks/pve/default.yml
+  - playbooks/utils/default.yml
+  - playbooks/utils/authentik/default.yml
+  - playbooks/utils/awx/default.yml
+  - playbooks/vm/default.yml
+  - playbooks/vm/dev/default.yml
+  - roles/default.yml
+  - inventory/group_vars/default.yml
+  - awx/default.yml
+  - vault/default.yml

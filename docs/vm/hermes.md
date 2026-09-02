@@ -16,15 +16,20 @@ Ansibleは `HERMES_HOME`(`~/.hermes/`)配下の `config.yaml` / `.env` / 状態�
 
 ## 公開経路(このリポジトリでの扱い)
 
-TLSは**メインクラスタのTraefikで終端**し、VMの:9119へHTTPで転送する(Portainer・Rancherと同じ `k8s_external_routes` 方式)。ブラウザ内チャットはWebSocket(`/api/ws`・`/api/pty`)だが、TraefikがUpgradeをそのまま通すため追加設定は不要。
+`hermes.cc-chacchan.com` は**Cloudflare Tunnelで公開**している。DNSはこのホスト名だけTunnel向けの個別レコードを持ち、ワイルドカード `*.cc-chacchan.com` → 172.16.12.11 より優先されるため、**宅内からのアクセスもTunnel経由**になる。TLSはCloudflareのエッジで終端し、TunnelからTraefikの `web`(HTTP :80)へ入る。VMの:9119へはHTTPで転送し、`forwarded_https` Middlewareで X-Forwarded-Proto: https を付ける。ブラウザ内チャットはWebSocket(`/api/ws`・`/api/pty`)だが、TraefikがUpgradeをそのまま通すため追加設定は不要。
 
 ```mermaid
 flowchart LR
-    C[クライアント] -->|"https://hermes.cc-chacchan.com"| T["メインk3sのTraefik<br>(TLS終端 + X-Forwarded-Proto: https)"]
+    C[クライアント] -->|"https://hermes.cc-chacchan.com"| CF["Cloudflare<br>(TLS終端)"]
+    LN["LINE Messaging API"] -->|"/line/webhook"| CF
+    CF -->|"Tunnel → HTTP :80"| T["メインk3sのTraefik<br>entrypoint web<br>(+ X-Forwarded-Proto: https)"]
     T -->|"HTTP :9119"| D["hermes dashboard<br>(管理UI + ブラウザ内チャット)<br>Hermes VM 172.16.11.31"]
+    T -->|"/line/* → HTTP :8646"| G["hermes gateway<br>(LINEプラットフォーム)<br>同じVM"]
 ```
 
-- 公開範囲は**LAN内限定**(`entrypoints` は既定の `websecure` のみ。Cloudflare Tunnelの経路には載せない)
+- Ingressは管理UI(`/`)・LINE(`/line/*`)とも **`entrypoints: web,websecure`**。`web` を落とすとTunnel経由の到達先が無くなり、ホスト名でのアクセスがすべて404になる(`websecure` はLAN内から直接k3sノードを叩く経路用)
+- 管理UIもインターネットから到達する。**認証はHermes側**(Authentik SSO / パスワード)が担う。前段にAuthentikのforwardAuthを置くなら、`web` 用のIngressを分けて `middlewares: [authentik-forward-auth]` と `/outpost.goauthentik.io` の経路を足す(ddnsの実例)
+- **`/line` プレフィックスは剥がさない**。上流のLINEプラットフォームが `:8646` で `/line/webhook`(POST)・`/line/webhook/health`(GET)・`/line/media/…`(メディア配信)をそのまま待ち受けるため。Traefikはルールが長いほうを優先するので、`/line/*` は管理UI(`/`)より先に一致する
 - 証明書: `hermes.cc-chacchan.com` は既存の `*.cc-chacchan.com` SANでカバー済み(Certificate変更不要)
 - 認証はAuthentikのSSO(下記)と同梱のusername/passwordプロバイダの併用。**非loopback待受ではプロバイダが1つも無いとdashboardは起動しない**(上流仕様)。ユーザー名は `hermes_dashboard_username`(既定 `admin`)、パスワードと署名鍵は `vault/hermes.yml`(確認は `ansible-vault view vault/hermes.yml`)
 - 認証設定は `config.yaml` に置かず、systemdの環境ファイル `/etc/hermes/dashboard.env`(root所有・`hermes` グループのみ読める)から渡す。`~/.hermes/.env` はHermes自身が書き換えるためAnsibleは触らない
@@ -95,6 +100,7 @@ ansible-playbook playbooks/vm/hermes.yml -e hermes_version=v2026.9.7
 | `hermes_public_url` | str | | `https://hermes.{{ k8s_domain }}`(group_vars) | 公開URL。空にすると公開向けの設定を書かない |
 | `hermes_trusted_proxies` | list | | `["172.16.12.0/24"]`(group_vars) | X-Forwarded-* を信頼する上流のCIDR |
 | `hermes_enable_gateway` | bool | | `false` | メッセージングGatewayをsystemサービスとして常駐させるか |
+| `hermes_line_webhook_port` | int | | `8646` | LINEのwebhook待受ポート。ufwの開放と `k8s_external_routes` の転送先の宣言に使う |
 | `hermes_skip_browser` / `_skip_computer_use` | bool | | `true` / `true` | ヘッドレス前提で省く重い依存(Chromium・cua-driver) |
 | `hermes_install_docker` / `_install_agent_tools` | bool | | `true` / `true` | Docker(Agent Sandbox)と運用ツール(ansible-core / kubectl / Helm) |
 | `hermes_min_free_disk_gb` | int | | `20` | 事前チェックの必要空き容量 |
@@ -113,6 +119,7 @@ Job Template **`vm-hermes`**(定義: [awx/job_templates.yml](../../awx/job_templ
 
 ## つまずきやすいポイント
 
+- **`https://hermes.cc-chacchan.com` が `404 page not found`(Traefikの応答)** → Tunnel経由で entrypoint `web` に入っているのに、Ingressが `websecure` しか許可していない。`kubectl -n platform get ingress hermes -o jsonpath='{.metadata.annotations.traefik\.ingress\.kubernetes\.io/router\.entrypoints}'` で `web,websecure` になっているか確認し、`deploy.yml -e app=external` で反映する
 - **`https://hermes.cc-chacchan.com` に到達できない** → 経路の反映(`deploy.yml -e app=external`)を確認。VM単体の生存確認は `curl -s http://172.16.11.31:9119/api/status`(応答があれば外側の問題)
 - **ログイン画面が出ずセッショントークンを求められる** → 認証プロバイダが読み込まれていない。`curl -s http://172.16.11.31:9119/api/status` の `auth_required` と `auth_providers`(`basic` / `self-hosted` が入るか)を見る。`/etc/hermes/dashboard.env` とサービスのログを確認
 - **SSOボタンを押すとAuthentikが400 `The request fails due to a missing, invalid, or mismatching redirection URI`** → プロバイダのRedirect URIsに `https://hermes.cc-chacchan.com/auth/callback` が未登録。Authentik UIで追加する(Hermes側は再実行不要)
@@ -121,5 +128,7 @@ Job Template **`vm-hermes`**(定義: [awx/job_templates.yml](../../awx/job_templ
 - **再起動するたびにログアウトされる** → 署名鍵(`vault_hermes_dashboard_secret`)が渡っていない。Vaultの値と環境ファイルを確認する
 - **初回起動直後だけ502/接続できない** → dashboardが初回にWeb UI(npm)をビルドしている。`sudo journalctl -u hermes-dashboard -f` で進行を確認する(playbookは既定で最大10分待つ)
 - **版を変えたのに更新されない** → 指定タグがupstreamに存在しない、または既にそのコミット。タグ一覧は [releases](https://github.com/NousResearch/hermes-agent/tags)、`-e hermes_version=<タグ>` で明示する
+- **LINEのwebhookが届かない(LINE Developersの「検証」が失敗する)** → 順に確認する: ①Gatewayが動いているか(`curl -s http://172.16.11.31:9119/api/status` の `gateway_running`)②`hermes gateway setup` でLINEを設定したか ③経路が反映済みか(LAN内から `curl -i https://hermes.cc-chacchan.com/line/webhook/health` が200。未反映なら `deploy.yml -e app=external`)④Cloudflare側のTunnel経路に `hermes.cc-chacchan.com` があるか(宅外からの到達はここで決まる)
+- **Gatewayを二重に起動しない** → dashboardのUIから起動したGateway(dashboardプロセスの子)と `hermes_enable_gateway: true` のsystemd unitは、同じ:8646を掴むため同時に動かせない。前者はunitが無いぶんVM再起動後の復帰がHermes側の挙動任せになるので、常駐させるならsystemd側(`hermes_enable_gateway: true`)に寄せる
 - **Gatewayが起動しない/落ち続ける** → チャネル未設定のまま常駐させていないか(`hermes_enable_gateway: false` に戻し、`hermes gateway setup` を先に済ませる)。ログは `sudo journalctl -u hermes-gateway -f`
 - **エージェントは強い権限を持つ** → `hermes` ユーザーは `sudo` と `docker` グループに属する。専用VM・LAN内限定が前提の構成のため、公開範囲を広げるときは権限設計から見直す

@@ -15,7 +15,7 @@
     - "{{ playbook_dir }}/../../vault/k8s_secrets.yml"
 
   tasks:
-    # 誤ったkubeconfig/contextのまま別クラスタへ適用する事故を防ぐ(レビューSAF-03)。
+    # 誤ったkubeconfig/contextのまま別クラスタへ適用する事故を防ぐ。
     # 接続先APIサーバーが宣言(k8s_api_server)と一致しない限り一切書き込まない。
     - name: 接続先クラスタが宣言と一致することを確認する
       kubernetes.core.k8s_cluster_info:

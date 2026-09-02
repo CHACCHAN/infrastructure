@@ -1,0 +1,41 @@
+# <クラスタ上の何を収束させるか>のPlaybook。
+# 実行例: ansible-playbook playbooks/k8s/<名前>.yml
+# 実行例: ansible-playbook playbooks/k8s/<名前>.yml --check --diff
+#
+# このディレクトリ(Kubernetesドメイン)のplaybookはこの雛形に従う。
+# - 宣言は inventory/group_vars/all/k8s.yml、Secretの実値は vault/k8s_secrets.yml
+# - 適用は roles/k8s のSSA(field_manager固定)を通す。kubectlを直接叩かない
+# - 書き込み前に接続先クラスタが宣言と一致することを確認する
+# - Secretを扱うタスクは no_log を付ける
+# - コメントは説明だけを書く。判断の経緯・変更の過程は書かない
+---
+- name: <何を>収束させる
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # Kubernetesライブラリを持つAnsible自身のPythonをモジュールにも使う
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_files:
+    # 解決基準を明示するためリポジトリ全体で {{ playbook_dir }} 形式に統一している
+    - "{{ playbook_dir }}/../../inventory/group_vars/all/k8s.yml"
+    - "{{ playbook_dir }}/../../vault/k8s_secrets.yml"
+
+  tasks:
+    # 誤ったkubeconfig/contextのまま別クラスタへ適用する事故を防ぐ
+    - name: 接続先クラスタが宣言と一致することを確認する
+      kubernetes.core.k8s_cluster_info:
+      register: k8s_preflight_info
+
+    - name: 接続先APIサーバーを検証する
+      ansible.builtin.assert:
+        that:
+          - k8s_preflight_info.connection.host == k8s_api_server
+        fail_msg: >-
+          接続先 {{ k8s_preflight_info.connection.host }} が宣言
+          {{ k8s_api_server }} と一致しません。kubeconfigのcurrent-contextを確認してください。
+        quiet: true
+
+    - name: <アプリ>を適用する
+      ansible.builtin.include_role:
+        name: k8s_<アプリ>

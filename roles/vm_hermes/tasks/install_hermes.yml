@@ -28,6 +28,10 @@
   become: false
   changed_when: false
   register: hermes_tag_lookup
+  # 未認証のgit ls-remoteは短時間に繰り返すとGitHubが429を返す
+  retries: 3
+  delay: 30
+  until: hermes_tag_lookup.rc == 0
 
 - name: 解決したコミットSHAを取り出す
   ansible.builtin.set_fact:

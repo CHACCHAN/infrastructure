@@ -1,6 +1,6 @@
 # Web UIの死活エンドポイント(/api/status。認証不要)へ実行元から到達できることを確認する。
 ---
-- name: Web UI(:{{ portainer_http_port }})の疎通を確認する
+- name: Web UIの疎通を確認する
   ansible.builtin.uri:
     url: "http://{{ ansible_host }}:{{ portainer_http_port }}/api/status"
     status_code: [200]

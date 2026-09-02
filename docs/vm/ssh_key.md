@@ -17,13 +17,6 @@ AWXのSurveyはファイル入力に対応していない。鍵をパスで置�
 
 **改行の自動復元**: AWX SurveyのPassword型は1行入力欄のため、貼り付けた鍵の改行が失われて届くことがある(そのままでは `invalid format` でSSHが拒否する)。このplaybookはヘッダ/フッタとbase64本体からPEM構造を自動復元するため、**そのまま貼り付ければよい**。改行が保たれている鍵は無変換で通り、鍵の形式でない入力は書き出す前に日本語メッセージで停止する。
 
-## 変数一覧
-
-| 変数 | 型 | 必須 | 既定値 | 説明 |
-| --- | --- | :-: | --- | --- |
-| `pve_ssh_prikey_value` | str | | なし | 秘密鍵の本文。空なら何もしない |
-| `pve_ssh_prikey_tmpfile` | str | | `~/.ansible/pve_ssh_keys/<SHA1>` | 書き出し先(自動導出。鍵の内容から名前が決まるため並列実行でも衝突しない) |
-
 ## 実行方法
 
 単体実行はしない。各playbookから自動で呼ばれる。手元から本文で渡す場合:
@@ -39,6 +32,13 @@ ansible-playbook playbooks/vm/wg-easy.yml -e @keys.json
   "pve_ssh_prikey_value": "-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----\n"
 }
 ```
+
+## 変数一覧
+
+| 変数 | 型 | 必須 | 既定値 | 説明 |
+| --- | --- | :-: | --- | --- |
+| `pve_ssh_prikey_value` | str | | なし | 秘密鍵の本文。空なら何もしない |
+| `pve_ssh_prikey_tmpfile` | str | | `~/.ansible/pve_ssh_keys/<SHA1>` | 書き出し先(自動導出。鍵の内容から名前が決まるため並列実行でも衝突しない) |
 
 ## AWXでの扱い
 

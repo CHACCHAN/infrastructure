@@ -26,6 +26,6 @@ kubernetes_server_ip: "{{ hostvars[kubernetes_server_inventory_host].ansible_hos
 kubernetes_server_node_ip: >-
   {{ hostvars[kubernetes_server_inventory_host].cluster_ip | regex_replace('/.*$', '') }}
 
-# 新規ノードにも既存クラスタと同じ版を入れる(stableチャネル任せの版ズレ防止。レビューSEC-07)
+# 新規ノードにも既存クラスタと同じ版を入れる(stableチャネル任せの版ズレ防止)
 # クラスタ更新時はこの値を上げてから全ノードを順に再構築する
 kubernetes_version: v1.36.2+k3s1

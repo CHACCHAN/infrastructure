@@ -70,7 +70,7 @@
         quiet: true
       when: expect_name is defined
 
-    # templateフラグでは拒否せず、旧実装どおり停止状態だけを削除可能にする。
+    # templateフラグでは拒否せず、停止状態だけを削除可能にする。
     - name: 削除対象が停止中であることを確認する
       ansible.builtin.assert:
         that:

@@ -390,11 +390,9 @@ k8s_nextcloud_values:
   # open(O_CREAT|O_EXCL) → write → fchmodat → lchown → rename と
   # 4〜5 回 RPC を往復するので、実際には **50〜100 分**かかる。
   #
-  # 以前は failureThreshold: 60 (= 10 分) にしていた。これだと
-  # 初回同期が終わる前に kubelet がコンテナを殺し、
-  # 再起動 → rsync が最初からやり直し → また 10 分で殺される、
-  # という無限ループになる。**これが「Initializing nextcloud ... で
-  # 止まる」ように見えていた正体。**
+  # failureThreshold が小さいと初回同期の途中で kubelet がコンテナを殺し、
+  # 再起動 → rsync が最初からやり直し、を繰り返す
+  # (「Initializing nextcloud ...」で止まって見える)。
   #
   # 10s × 720 = 2 時間の猶予にしてある。正常なら Apache が応答した
   # 時点で成功するので、2 回目以降の起動が遅くなることはない。

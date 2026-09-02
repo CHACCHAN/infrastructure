@@ -31,7 +31,7 @@ ansible-playbook playbooks/vm/k3s.yml \
   -e vmid=801 -e node=pve08 -e ip=172.16.12.19 -e ip2=10.10.20.19/24
 ```
 
-## 変数一覧(このplaybookに固有のもの)
+## 変数一覧(サービス固有の主要なもの)
 
 接続系の共通変数は [README.md](README.md#共通の変数全サービスplaybook)。全既定値の正は [roles/vm_k3s/defaults/main.yml](../../roles/vm_k3s/defaults/main.yml) と [inventory/group_vars/k8s.yml](../../inventory/group_vars/k8s.yml)。
 

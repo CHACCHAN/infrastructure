@@ -26,6 +26,11 @@ hermes_public_url: "https://hermes.{{ k8s_domain }}"
 hermes_trusted_proxies:
   - 172.16.12.0/24
 
+# メッセージングGateway(LINE)。上流はheadlessホストへsystemdのsystem service
+# (`sudo hermes gateway install --system`)を推奨しているためtrueで常駐させる。
+# dashboardのUIから起動するGatewayは同じ:8646を掴むので併用しない
+hermes_enable_gateway: true
+
 # dashboardのSSO(AuthentikのOIDCプロバイダ "hermes-agent")。
 # Authentik側はpublic client(PKCEのみ)のため client_secret は使わない。
 # Authentikのプロバイダに <hermes_public_url>/auth/callback を

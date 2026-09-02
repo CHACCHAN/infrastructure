@@ -1,5 +1,5 @@
 # 構成完了後のVM再起動。各playbookのpost_tasksから import_role(tasks_from: reboot_vm)で呼ぶ。
-# カーネル等の更新があった場合(/var/run/reboot-required)だけ再起動する(レビューREL-04)。
+# カーネル等の更新があった場合(/var/run/reboot-required)だけ再起動する。
 # 差分がないのに毎回再起動すると「収束済みならchanged=0」に反し、単一レプリカの
 # サービスを不要に中断するため。強制したいときは -e vm_reboot_force=true。
 # restart: unless-stopped のコンテナは再起動後に自動復帰する。

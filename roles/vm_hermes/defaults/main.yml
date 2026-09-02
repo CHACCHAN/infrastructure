@@ -75,6 +75,10 @@ hermes_trusted_proxies: []
 hermes_enable_gateway: false
 # 上流の `hermes gateway install --system` が作るunit名(内容も上流が管理する)
 hermes_gateway_service_name: hermes-gateway.service
+# LINEプラットフォームがwebhookを受けるポート(上流の既定 8646。
+# 待受パスは /line/webhook と /line/media で、Traefikはこのパスのまま転送する)。
+# Hermes側で変えたときはこの値も合わせる(ufwの開放と経路の宣言に使う)
+hermes_line_webhook_port: 8646
 # `hermes update` やエージェント自身の /restart がroot昇格なしにGatewayを
 # 再起動できるようにするsudoers(上流ドキュメントの推奨設定)
 hermes_gateway_sudoers_file: /etc/sudoers.d/hermes-gateway

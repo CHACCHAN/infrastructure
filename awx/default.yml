@@ -1,0 +1,25 @@
+# AWX定義ファイルの雛形。awx/ の各ファイル(job_templates.yml / credentials.yml /
+# inventory.yml / project.yml / execution_environment.yml)はこの形に従う。
+#
+# 決まりごと:
+# - playbooks/utils/awx/configure.yml がこれらを読み、AWXへ収束させる
+# - Surveyの任意項目は required: false かつ default を持たせない
+#   (AWXは未回答の任意質問の変数を送らないため、既定値は default() 側で決める)
+# - 秘密情報は type: password。値そのものはここに書かず、Vault credentialで渡す
+# - 絞り込みは Limit ではなく target 変数で行う(localhost前処理プレイを除外しないため)
+# - コメントは説明だけを書く。判断の経緯・変更の過程は書かない
+---
+awx_job_templates:
+  - name: <ドメイン>-<名前>
+    description: <このJob Templateが何をするか>
+    playbook: playbooks/<ドメイン>/<名前>.yml
+    # インベントリ実行では未回答のままで宣言どおりに動くこと
+    survey_enabled: true
+    ask_variables_on_launch: true
+    survey_spec: "{{ awx_survey_common }}"
+    extra_survey:
+      - question_name: <質問名>(<変数名>)
+        question_description: <未回答時の挙動を含む説明>
+        variable: <変数名>
+        type: text
+        required: false
