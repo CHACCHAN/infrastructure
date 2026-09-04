@@ -14,7 +14,7 @@ flowchart TB
     end
     D["playbooks/k8s/deploy.yml<br>(1動詞: 全アプリ or -e app=X)"]
     subgraph 型["役割ごとの型"]
-        E["外部経路型 k8s_external<br>宣言リスト→64リソース量産"]
+        E["外部経路型 k8s_external<br>宣言リスト→ServersTransport / Service<br>EndpointSlice / Middleware / Ingress を生成"]
         S["自前アプリ型<br>k8s_guacamole / k8s_open_webui<br>k8s_cloudflared<br>k8s_certificates / k8s_namespaces"]
         H["Helm型(リリースなし)<br>k8s_awx k8s_homarr<br>k8s_pgadmin k8s_nextcloud k8s_postgresql<br>k8s_cert_manager k8s_nfs_provisioner<br>k8s_kubernetes_replicator"]
     end
@@ -28,7 +28,7 @@ flowchart TB
 | --- | --- |
 | ディストリビューション | k3s(Traefik v3同梱。kube-systemのTraefikは**管理対象外**) |
 | 証明書 | cert-manager + Let's Encrypt(Cloudflare DNS-01)のワイルドカード `cc-chacchan-wildcard-tls` |
-| 永続ストレージ | TrueNAS NFS(StorageClass `truenas-nfs`)。既定の`local-path`は永続用途に使わない |
+| 永続ストレージ | TrueNAS NFS(StorageClass `truenas-nfs`。`reclaimPolicy: Retain` / `allowVolumeExpansion: true`)。既定の`local-path`は永続用途に使わない |
 | 外部公開 | Cloudflare Tunnel(`auth.` / `*.web.` / `hermes.`)。他はLAN内のみ |
 | 共有DB | PostgreSQL(StatefulSet)。homarr/awx/pgadmin/nextcloud/guacamole/open_webuiが共用 |
 | プライベートレジストリ | ghcr.io。pull用Secretをkubernetes-replicatorが全Namespaceへ複製 |
@@ -67,12 +67,14 @@ flowchart TB
 
 `roles/k8s_homarr` をひな型に: defaults/main.ymlに `<役割>_helm_version`(バージョン固定)と `<役割>_values`(values全文)を置き、tasks/main.ymlで `roles/k8s` のhelmを呼ぶ。**Helmリリースは作らない**(helm template→SSA)。バージョンの正は各ロールの defaults。
 
+チャート参照は2形態を受け付ける。HTTPリポジトリは `k8s_helm_chart: <チャート名>` + `k8s_helm_repo_url: <リポジトリURL>`、OCIレジストリは `k8s_helm_chart: oci://<レジストリ>/<パス>` で `k8s_helm_repo_url` を省く(`--repo` は付けない)。描画時のKubernetesバージョンは `k8s_kube_version` で固定する。
+
 | チャート | 特記 |
 | --- | --- |
 | jetstack/cert-manager | --no-hooks。ns注入禁止(kube-systemにも書く) |
 | nfs-subdir-external-provisioner | --no-hooks。**ns注入必須**(忘れるとdefaultに落ちる) |
-| awx-operator | --include-crds。ns注入必須。AWX本体はOperatorが作る |
-| homarr-labs/homarr | ns注入必須。OCI版は使わない |
+| awx-operator | --include-crds。ns注入必須。CRDのみの1段目→Established待ち→AWXリソースを含む2段目。AWX本体はOperatorが作る |
+| homarr-labs/homarr | OCIのみ配布(`oci://ghcr.io/homarr-labs/charts/homarr`)。ns注入必須 |
 | runix/pgadmin4 | --no-hooks |
 | groundhog2k/postgres | ns注入必須。customScriptsでDB作成 |
 | nextcloud/nextcloud | ns注入必須。OIDC設定はbefore-startingフック |
@@ -128,6 +130,7 @@ flowchart LR
 | `k8s_tls_secret` | str | ✔ | group_vars | 各Ingressが参照するワイルドカード証明書のSecret名 |
 | `k8s_admin_email` | str | ✔ | group_vars | ACMEアカウントとアプリの管理者連絡先 |
 | `k8s_api_server` | str | ✔ | group_vars | 接続先検証に使うAPIサーバーURL |
+| `k8s_kube_version` | str | ✔ | group_vars | `helm template --kube-version` に渡す対象クラスタのKubernetesマイナーバージョン |
 | `k8s_apps` | list | ✔ | group_vars | アプリ登録簿(適用順) |
 | `k8s_external_routes` / `k8s_external_transports` | list | | group_vars | クラスタ外サービスの公開経路とTLSトランスポート |
 | `k8s_secret_*` | dict | ✔ | vault | Secret実値([vault/k8s_secrets.yml](../../vault/k8s_secrets.yml)) |

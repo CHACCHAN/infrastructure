@@ -21,9 +21,9 @@
     state: present
   become: true
 
-- name: "Cockpit用ユーザーをdockerグループに追加する({{ cockpit_user }})"
+- name: "Cockpit用ユーザーをdockerグループに追加する({{ dev_cockpit_user }})"
   ansible.builtin.user:
-    name: "{{ cockpit_user }}"
+    name: "{{ dev_cockpit_user }}"
     groups: docker
     append: true
   become: true

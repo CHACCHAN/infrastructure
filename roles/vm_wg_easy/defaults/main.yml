@@ -1,5 +1,5 @@
 # タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
-# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+# 既定値は roles/vm/defaults/main.yml にある。
 #
 # ここの変数はコンテナの環境変数と1対1で対応させている。
 # 未指定(空)の項目は .env に書き出さず、イメージ側の既定値がそのまま使われる。
@@ -36,9 +36,6 @@ wg_easy_disable_ipv6: false
 wg_easy_disable_version_check: false
 # AmneziaWG(実験的機能。環境変数EXPERIMENTAL_AWG)
 wg_easy_experimental_awg: false
-# ログの詳細度(環境変数DEBUG)。空ならイメージの既定
-# (Server,WireGuard,Database,CMD,Firewall)のまま
-wg_easy_debug: ""
 
 # --- 初期セットアップ(環境変数: INIT_*。初回起動時のみ有効) ---
 # trueならセットアップウィザードを飛ばして管理者とWireGuardを作る(環境変数INIT_ENABLED)。
@@ -111,3 +108,5 @@ wg_easy_ready_delay: 5
 # WireGuardのインターフェースが上がるまでの待ち(コンテナのヘルスチェック)
 wg_easy_health_retries: 12
 wg_easy_health_delay: 10
+# 再起動を繰り返していないかを判定するために2回の観測を空ける時間(秒)
+wg_easy_restart_check_delay: 10

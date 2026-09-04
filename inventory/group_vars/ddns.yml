@@ -14,6 +14,6 @@ pve_ssh_prikey_file: ~/.ssh/id_ed25519_cloudflare_ddns_ui
 # --- ③ サービス設定(vm_ddnsロールが使う) ---
 # WireGuardの接続先(wg_easy_init_host)がこのapexなので、WAN IPの変動に追従させる。
 # 他のホスト名はCloudflare Tunnel経由かLAN内限定のため、Aレコードの追従は不要。
-cloudflare_ddns_ui_records:
+ddns_records:
   - cc-chacchan.com
-cloudflare_ddns_ui_zone_domain: cc-chacchan.com
+ddns_zone_domain: cc-chacchan.com

@@ -24,8 +24,8 @@
     # cloud-init直後はホスト鍵が毎回変わるため検証しない
     ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
     # vaultの値をロールの変数として渡す
-    cloudflare_ddns_ui_zone_id: "{{ vault_cloudflare_zone_id }}"
-    cloudflare_ddns_ui_api_token: "{{ vault_cloudflare_api_token }}"
+    ddns_zone_id: "{{ vault_cloudflare_zone_id }}"
+    ddns_api_token: "{{ vault_cloudflare_api_token }}"
   pre_tasks:
     - name: SSH接続を待つ
       ansible.builtin.wait_for_connection:
@@ -47,29 +47,29 @@
     # 待ち受けを絞っている場合はVMの外から見えないのが正しいため確認しない。
     - name: 実行元の端末からWeb UIに接続できることを確認する
       ansible.builtin.uri:
-        url: "http://{{ ansible_host }}:{{ cloudflare_ddns_ui_http_port | default(8080) }}/"
+        url: "http://{{ ansible_host }}:{{ ddns_http_port | default(8080) }}/"
         status_code: [200]
       delegate_to: localhost
       become: false
-      register: cloudflare_ddns_ui_remote_web
+      register: ddns_remote_web
       retries: 30
       delay: 10
-      until: cloudflare_ddns_ui_remote_web is succeeded
+      until: ddns_remote_web is succeeded
       changed_when: false
-      when: cloudflare_ddns_ui_published | bool
+      when: ddns_published | bool
 
     - name: 接続先を表示する
       ansible.builtin.debug:
         msg:
-          - "{{ 'Web UI: http://' ~ ansible_host ~ ':' ~ (cloudflare_ddns_ui_http_port | default(8080))
+          - "{{ 'Web UI: http://' ~ ansible_host ~ ':' ~ (ddns_http_port | default(8080))
                 ~ '/(⚠ 認証がありません。レコードの削除まで行える画面です)'
-                if (cloudflare_ddns_ui_published | bool)
-                else 'Web UI: 待ち受けを ' ~ (cloudflare_ddns_ui_http_bind | default('0.0.0.0'))
+                if (ddns_published | bool)
+                else 'Web UI: 待ち受けを ' ~ (ddns_http_bind | default('0.0.0.0'))
                      ~ ' に絞っています(VMの外からは見えません)' }}"
-          - "更新対象: {{ cloudflare_ddns_ui_records_resolved | join(', ') }}(A レコードのみ)"
+          - "更新対象: {{ ddns_records_resolved | join(', ') }}(A レコードのみ)"
           - "設定の変更: group_varsまたは-eの指定を変えて再実行してください
              (直接編集する場合は
-             {{ cloudflare_ddns_ui_install_dir | default('/opt/cloudflare-ddns-ui') }}/config/config.json。
+             {{ ddns_install_dir | default('/opt/cloudflare-ddns-ui') }}/config/config.json。
              Web UIでの変更も次回実行で上書きされます)"
           - "ログ: ssh -i <秘密鍵> {{ ansible_user }}@{{ ansible_host }}
-             'sudo tail -f {{ cloudflare_ddns_ui_install_dir | default('/opt/cloudflare-ddns-ui') }}/logs/ddns.log'"
+             'sudo tail -f {{ ddns_install_dir | default('/opt/cloudflare-ddns-ui') }}/logs/ddns.log'"

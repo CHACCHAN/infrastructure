@@ -41,7 +41,7 @@
         quiet: true
 
     - name: <APIの操作>
-      community.proxmox.proxmox:  # noqa: args[module]
+      community.proxmox.proxmox_kvm:  # noqa: args[module]
         vmid: "{{ vmid }}"
         node: "{{ node }}"
         state: <状態>

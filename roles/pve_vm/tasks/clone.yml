@@ -35,6 +35,20 @@
         or not ((pve_clone_template_info.proxmox_vms | first).template
                 | default(false) | bool)
 
+    # VMIDが別ノードや別名のテンプレートを指していると、意図しない中身のVMができる。
+    - name: クローン元が解決した名前とノードのテンプレートであることを確認する
+      ansible.builtin.assert:
+        that:
+          - (pve_clone_template_info.proxmox_vms | first).name | default('') == pve_template_resolved_name
+          - (pve_clone_template_info.proxmox_vms | first).node | default('') == pve_clone_node
+        fail_msg: >-
+          VMID {{ pve_template_resolved_vmid }} のテンプレートは
+          期待値(name={{ pve_template_resolved_name }}, node={{ pve_clone_node }})と一致しません。
+          実体: name={{ (pve_clone_template_info.proxmox_vms | first).name | default('(不明)') }},
+          node={{ (pve_clone_template_info.proxmox_vms | first).node | default('(不明)') }}。
+          PVE上のテンプレートを手動確認してください。
+        quiet: true
+
     - name: テンプレートからVMをフルクローンする  # noqa: args[module]
       community.proxmox.proxmox_kvm:
         clone: "{{ pve_template_resolved_name }}"

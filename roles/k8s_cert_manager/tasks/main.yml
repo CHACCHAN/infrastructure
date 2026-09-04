@@ -30,3 +30,20 @@
   retries: 36
   delay: 5
   when: not ansible_check_mode
+
+# cainjector が caBundle を埋めるまで、cert-manager.io のリソース作成は
+# webhook のTLS検証に失敗する(x509: certificate signed by unknown authority)。
+- name: webhookのcaBundleが注入されるのを待つ
+  kubernetes.core.k8s_info:
+    api_version: admissionregistration.k8s.io/v1
+    kind: ValidatingWebhookConfiguration
+    name: cert-manager-webhook
+  register: k8s_cert_manager_webhook_ca
+  until: >-
+    k8s_cert_manager_webhook_ca.resources | length > 0
+    and (k8s_cert_manager_webhook_ca.resources[0].webhooks | default([]) | length > 0)
+    and (k8s_cert_manager_webhook_ca.resources[0].webhooks[0].clientConfig.caBundle
+         | default('') | length > 0)
+  retries: 36
+  delay: 5
+  when: not ansible_check_mode

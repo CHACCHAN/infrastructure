@@ -51,9 +51,9 @@
       until: authentik_remote_health is succeeded
       changed_when: false
 
+    # 公開経路(k8s_external_routes)のホスト名で案内する。TLSはメインクラスタのTraefikが終端する。
     - name: 接続先を表示する
       ansible.builtin.debug:
         msg:
-          - "初期セットアップ(初回のみ): http://{{ ansible_host }}:{{ authentik_http_port | default(9000) }}/if/flow/initial-setup/"
-          - "ログイン画面: http://{{ ansible_host }}:{{ authentik_http_port | default(9000) }}/"
-          - "HTTPS: https://{{ ansible_host }}:{{ authentik_https_port | default(9443) }}/ (自己署名証明書のため警告が出ます)"
+          - "初期セットアップ(初回のみ): https://auth.{{ k8s_domain }}/if/flow/initial-setup/"
+          - "ログイン画面: https://auth.{{ k8s_domain }}/"

@@ -10,6 +10,25 @@
       -e "ansible_user=<ユーザ名>" で指定してください。
     quiet: true
 
+- name: 設置ディレクトリが絶対パスであることを検証する
+  ansible.builtin.assert:
+    that:
+      - portainer_install_dir is match('^/.+')
+    fail_msg: >-
+      portainer_install_dir は絶対パスで指定してください
+      (指定値: {{ portainer_install_dir }})。
+    quiet: true
+
+- name: 公開ポートの範囲を検証する
+  ansible.builtin.assert:
+    that:
+      - portainer_http_port | int > 0
+      - portainer_http_port | int < 65536
+    fail_msg: >-
+      portainer_http_port は1〜65535の範囲で指定してください
+      (指定値: {{ portainer_http_port }})。
+    quiet: true
+
 - name: 構築する内容を表示する
   ansible.builtin.debug:
     msg: >-

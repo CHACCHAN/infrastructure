@@ -1,51 +1,25 @@
 # Debian公式リポジトリに無いため、45DrivesのGitHubリリースから.debを取得する
 # (45Drivesのaptリポジトリ repo.45drives.com はDebian 13を想定していないため使わない)。
-#
-# バージョンは固定しない。0.5.x系には.debが添付されないリリースが混在するため、
-# 単純なlatest取得ではなくアセットの有無で判定する。
-# パッケージはアーキテクチャ非依存(Architecture: all)なので、trixie向けビルドが
-# 無ければbookworm向けでそのまま動作する。
+# 版は dev_cockpit_navigator_version で固定し、sha256で検証してから入れる。
 ---
-- name: Cockpit Navigatorのリリース一覧を取得する
-  ansible.builtin.uri:
-    url: https://api.github.com/repos/45Drives/cockpit-navigator/releases
-    return_content: true
-    timeout: 30
-  register: dev_navigator_releases
-  changed_when: false
+- name: Cockpit Navigatorの.debをチェックサム検証付きでダウンロードする
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/45Drives/cockpit-navigator/releases/download/{{ dev_cockpit_navigator_version }}/{{ dev_cockpit_navigator_deb }}
+    checksum: "sha256:{{ dev_cockpit_navigator_deb_sha256 }}"
+    dest: "/usr/local/src/{{ dev_cockpit_navigator_deb }}"
+    owner: root
+    group: root
+    mode: "0644"
+    timeout: 60
+  become: true
+  register: dev_navigator_download
   retries: 3
   delay: 5
-  until: dev_navigator_releases is succeeded
+  until: dev_navigator_download is succeeded
 
-# リリースは新しい順に返るため、平坦化した時点で新しい順が保たれる
-- name: 配布されている.debアセットを抽出する
-  ansible.builtin.set_fact:
-    dev_navigator_debs: >-
-      {{ dev_navigator_releases.json
-         | map(attribute='assets') | flatten
-         | selectattr('name', 'search', '[.]deb$')
-         | list }}
-
-# 対象OSに近いコードネームを優先する(trixie版が出ればそちらへ自動で切り替わる)
-- name: インストール対象の.debを決定する
-  ansible.builtin.set_fact:
-    dev_navigator_deb: >-
-      {{ ((dev_navigator_debs | selectattr('name', 'search', 'trixie') | list)
-          or (dev_navigator_debs | selectattr('name', 'search', 'bookworm') | list)
-          or dev_navigator_debs)
-         | first | default({}, true) }}
-
-- name: インストール可能な.debが見つかったことを検証する
-  ansible.builtin.assert:
-    that:
-      - dev_navigator_deb.browser_download_url is defined
-    fail_msg: >-
-      Cockpit Navigatorの.debパッケージが見つかりませんでした。
-      45DrivesのGitHubリリースの配布形態が変わった可能性があります。
-    quiet: true
-
-- name: "Cockpit Navigatorをインストールする({{ dev_navigator_deb.name }})"
+- name: "Cockpit Navigatorをインストールする({{ dev_cockpit_navigator_deb }})"
   ansible.builtin.apt:
-    deb: "{{ dev_navigator_deb.browser_download_url }}"
+    deb: "/usr/local/src/{{ dev_cockpit_navigator_deb }}"
     state: present
   become: true

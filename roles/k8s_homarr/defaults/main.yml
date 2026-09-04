@@ -1,6 +1,6 @@
 # 上流チャートの固定バージョンと values。
 ---
-k8s_homarr_helm_version: "8.27.0"
+k8s_homarr_helm_version: "8.28.2"
 k8s_homarr_values:
   strategyType: Recreate
 
@@ -66,16 +66,17 @@ k8s_homarr_values:
 
   persistence:
     homarrDatabase:
-      # DB は PostgreSQL に移したが、/appdata 自体はまだ要る
-      # (アイコンのキャッシュ、信頼する証明書などが置かれる)。
+      # /appdata にはアイコンのキャッシュと信頼する証明書が置かれるので必要。
       enabled: true
       # PVC 名。上流の既定のまま。
       name: "homarr-database"
       # TrueNAS の NFS 共有。既定クラス (local-path) はノードローカルなので使わない。
       storageClassName: "truenas-nfs"
       accessMode: "ReadWriteOnce"
-      # 既定は 50Mi。DB が抜けた分もう要らないが、キャッシュが載るので少し持たせる。
-      # NFS の StorageClass は拡張に対応していないので後から広げられない。
+      # 既定の 50Mi ではアイコンのキャッシュに足りないので少し持たせる。
+      # StorageClass truenas-nfs は reclaimPolicy: Retain / allowVolumeExpansion: true。
+      # NFS 共有配下のサブディレクトリなのでこのサイズは強制されず、
+      # 実際の上限は TrueNAS 側のデータセットの空き容量。
       size: "2Gi"
       mountPath: "/appdata"
 

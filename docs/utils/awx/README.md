@@ -17,12 +17,12 @@ ansible-vault edit vault/awx_api.yml
 
 # 2. AWX側の設定を一括収束(冪等。定義を変えたら再実行するだけ)
 ansible-playbook playbooks/utils/awx/configure.yml \
-  -e awx_kubeconfig_content="$(cat ~/.kube/config)"   # 初回のみ: k8s-deploy用kubeconfig
+  -e awx_kubeconfig_file=~/.kube/config   # 初回のみ: k8s-deploy用kubeconfig
 ```
 
-- **Vault credential**: 既定でDevContainerの `ANSIBLE_VAULT_PASSWORD_FILE` の中身が登録される(明示は `-e awx_vault_password=`)
+- **Vault credential**: 既定でDevContainerの `ANSIBLE_VAULT_PASSWORD_FILE` の中身が登録される(明示は `-e awx_vault_password=`)。登録済みCredentialの実値を入れ替えるときだけ `-e awx_update_secrets=true` を付ける
 - **ProjectのGit同期はSSH**(`git@github.com:CHACCHAN/infrastructure.git`)。鍵は `vault/awx_api.yml` の `vault_awx_scm_prikey`(`ansible-vault edit` で設定)から Source Control credential として自動登録される
-- Job Templateを追加・変更するときは [awx/job_templates.yml](../../../awx/job_templates.yml) を編集して再実行(AWX UIでは編集しない。次回のconfigure実行で上書きされる)
+- Job Templateを追加・変更するときは [awx/job_templates.yml](../../../awx/job_templates.yml) を編集して再実行(AWX UIでは編集しない。次回のconfigure実行で上書きされる)。まだAWXが同期していないplaybookを参照するJob Templateを足すときは `-e awx_project_update=true` でProjectを同期してから収束させる
 
 ### EEイメージのビルドと登録
 
@@ -34,7 +34,7 @@ ansible-builder build --tag ghcr.io/chacchan/awx-ee-custom:latest --container-ru
 docker push ghcr.io/chacchan/awx-ee-custom:latest
 ```
 
-イメージは ghcr.io(プライベート)にある。クラスタ内のPodは kubernetes-replicator が全Namespaceへ配る `ghcr-pull-secret`([docs/k8s/](../../k8s/README.md#プライベートレジストリghcrio))でpullできるため、AWX側にレジストリ用Credentialの追加は不要。EE定義(`ee/requirements.yml` 等)を変えたときは、ビルド→push→AWXのJob再実行だけでよい(イメージ名は変えない)。
+イメージは ghcr.io(プライベート)にある。クラスタ内のPodは kubernetes-replicator が全Namespaceへ配る `ghcr-pull-secret`([docs/k8s/](../../k8s/README.md#プライベートレジストリghcrio))でpullできるため、AWX側にレジストリ用Credentialの追加は不要。EE定義(`ee/requirements.yml` 等)を変えたときは、ビルド→pushで反映される(イメージ名は変えない)。EEは `pull: always`(`awx/execution_environment.yml`)で登録してあるため、次のジョブ起動時に最新のイメージがpullされる。
 
 ## AWXから実行するときの前提(読み物)
 
@@ -82,7 +82,7 @@ AWXは未回答の質問を**空文字**で渡すことがある。空文字は�
 
 ### 5. EEのansible-coreは手元より古い
 
-`quay.io/ansible/awx-ee` のansible-coreは手元のDev Containerより古い(実質2.17か2.18)。**2.19より前は、テンプレートの結果を `{` `[` `True` `False` で始まるものしかPythonオブジェクトへ戻さない。**
+`quay.io/ansible/awx-ee:latest` のansible-coreは `<2.19`(2.18系)に固定されており、Dev Containerのansible-core 2.21より古い。**2.19より前は、テンプレートの結果を `{` `[` `True` `False` で始まるものしかPythonオブジェクトへ戻さない。**
 
 つまり `"{{ ... | default(none) }}"` は**文字列 `"None"`** になり、`is none` が成立しない。**このリポジトリでは `none` をセンチネルに使わない**:
 
@@ -91,7 +91,7 @@ AWXは未回答の質問を**空文字**で渡すことがある。空文字は�
 | VMの検索結果(dict) | `default({})` | `\| length == 0` |
 | 任意指定の値(文字列・数値) | `default('')` | 真偽値(`not x`) |
 
-実例は [roles/pve/tasks/find_vm.yml](../../../roles/pve/tasks/find_vm.yml) の冒頭コメント。手元(2.19以降)では `none` でも動いてしまい**AWXでだけ落ちる**ので、新しいロールを書くときも上表に合わせること。
+実例は [roles/pve/tasks/find_vm.yml](../../../roles/pve/tasks/find_vm.yml) の冒頭コメント。手元(2.19以降)では `none` でも動いてしまい**AWXでだけ落ちる**ので、新しいロールを書くときも上表に合わせること。2.19以降の記法や挙動に依存する変更は、`ansible-lint` と `--syntax-check` に加えてAWXでのJob実行まで確認してから使う。
 
 ### 6. ③k8sドメインはkubeconfigが要る
 

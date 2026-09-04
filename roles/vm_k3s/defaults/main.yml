@@ -1,5 +1,5 @@
 # タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
-# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+# 既定値は roles/vm/defaults/main.yml にある。
 #
 # kubernetes_node_role(server=コントロールプレーン / agent=ワーカー)には既定値を置かない。
 # 既定を持たせると指定漏れがそのままコントロールプレーンの構築になってしまうため、
@@ -8,6 +8,9 @@
 # k3sのバージョン。未指定なら kubernetes_channel の最新版が入る(例: v1.34.1+k3s1)
 kubernetes_version: ""
 kubernetes_channel: stable
+# 導入済みより古い版を宣言したときに入れ直しを許すか
+# (データの互換性を壊すため、通常の収束では失敗させる)
+kubernetes_allow_downgrade: false
 
 # --- 参加先のコントロールプレーン ---
 # agentでは必須。serverで指定すると2台目以降のコントロールプレーンとして参加する
@@ -24,8 +27,8 @@ kubernetes_server_node_ip: ""
 # ワーカーとコントロールプレーンでログインユーザーや鍵が違う場合に指定する
 kubernetes_server_ssh_user: ""
 kubernetes_server_ssh_prikey: ""
-# 参加用トークン。未指定ならコントロールプレーンのagent-tokenを優先し、
-# agent-tokenが無い既存環境だけnode-tokenへフォールバックしてSSH取得する。
+# 参加用トークン。未指定ならSSHで取得する(agentはagent-tokenを優先し、
+# agent-tokenが無い既存環境ではnode-token。serverとして参加する場合はnode-token)。
 kubernetes_token: ""
 
 # --- ノードの設定 ---

@@ -1,5 +1,5 @@
 # タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
-# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+# 既定値は roles/vm/defaults/main.yml にある。
 ---
 technitium_install_dir: /opt/technitium-dns
 technitium_container_name: dns-server
@@ -13,6 +13,10 @@ technitium_http_port: 5380
 technitium_https_port: 53443
 # WebコンソールのHTTPS(自己署名証明書)。DNSサービス自体のDoT/DoHとは別物
 technitium_enable_https_console: false
+
+# DNS-over-HTTP(8053)を有効にする。TLSはメインクラスタのTraefikで終端し、
+# VMへは平文HTTPで転送する(反映されるのは初回起動時のみ)
+technitium_enable_doh: true
 
 # DoT(853)・DoH(443)・DHCP(67)などを足す場合に使う。
 # 例: [{port: 853, proto: tcp}, {port: 853, proto: udp}]

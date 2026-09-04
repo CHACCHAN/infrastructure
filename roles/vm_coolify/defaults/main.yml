@@ -1,9 +1,9 @@
 # タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
-# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+# 既定値は roles/vm/defaults/main.yml にある。
 ---
 # Coolifyの版。公式install.shへ引数で渡して固定する(勝手に最新へ上げない)。
 # 上げるときはこの値を変えて playbooks/vm/coolify.yml を再実行する(再実行=アップグレード)
-coolify_version: "4.3.9"
+coolify_version: "4.3.16"
 # 本体の自動アップデート機能は止め、版の管理をこのリポジトリの宣言へ寄せる
 coolify_autoupdate: false
 

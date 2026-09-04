@@ -17,7 +17,7 @@ flowchart LR
 
 - 公開範囲: どちらも `entrypoints` は `websecure` のみ = **LAN内限定**
 - 証明書: `*.cc-chacchan.com` のワイルドカード(cert-manager)でカバーされる
-- VM側の設定: `doh.` の転送先 :8053 はコンテナ側でDoHを有効化したうえで、VM側の公開ポートを `technitium_extra_ports` で宣言する
+- VM側の設定: `doh.` の転送先 :8053 はロール既定の `technitium_enable_doh`(環境変数 `DNS_SERVER_OPTIONAL_PROTOCOL_DNS_OVER_HTTP`)で有効化し、VM側の公開ポートを `technitium_extra_ports` で宣言する
 
 ## 実行方法
 

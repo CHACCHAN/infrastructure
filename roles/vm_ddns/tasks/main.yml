@@ -18,8 +18,8 @@
     tasks_from: check_disk_space
   vars:
     svc_name: Cloudflare-ddns-ui
-    svc_min_free_gb: "{{ cloudflare_ddns_ui_min_free_disk_gb }}"
-    svc_min_free_var: cloudflare_ddns_ui_min_free_disk_gb
+    svc_min_free_gb: "{{ ddns_min_free_disk_gb }}"
+    svc_min_free_var: ddns_min_free_disk_gb
 
 - name: VM共通の初期セットアップを実行する
   ansible.builtin.import_role:
@@ -40,8 +40,8 @@
   ansible.builtin.import_tasks: ../../vm_docker/tasks/deploy_compose.yml
   vars:
     svc_name: Cloudflare-ddns-ui
-    svc_install_dir: "{{ cloudflare_ddns_ui_install_dir }}"
-    svc_config_changed: "{{ cloudflare_ddns_ui_config_file is changed }}"
+    svc_install_dir: "{{ ddns_install_dir }}"
+    svc_config_changed: "{{ ddns_config_file is changed }}"
 
 # 待ち受けを127.0.0.1に絞っている場合はVMの外に出ないため開けない
 - name: Web UIのポートを開放する
@@ -50,8 +50,8 @@
     tasks_from: configure_ufw_ports
   vars:
     svc_ufw_ports: >-
-      {{ [{'port': cloudflare_ddns_ui_http_port, 'proto': 'tcp'}]
-         if (cloudflare_ddns_ui_published | bool) else [] }}
+      {{ [{'port': ddns_http_port, 'proto': 'tcp'}]
+         if (ddns_published | bool) else [] }}
 
 - name: Web UIとレコードの更新結果を確認する
   ansible.builtin.import_tasks: verify_service.yml

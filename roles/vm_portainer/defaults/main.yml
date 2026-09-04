@@ -1,5 +1,5 @@
 # タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
-# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+# 既定値は roles/vm/defaults/main.yml にある。
 ---
 portainer_install_dir: /opt/portainer
 portainer_container_name: portainer
@@ -7,7 +7,7 @@ portainer_container_name: portainer
 # Business Edition(3ノードまで無料。初回セットアップでライセンスキーの入力が必要)。
 # バージョンはLTS系を固定する(2.44系はSTS)。更新はこの値を上げて再実行するだけ
 portainer_image: portainer/portainer-ee
-portainer_version: "2.39.6"
+portainer_version: "2.39.7"
 
 # Web UI(HTTP)。TLSはメインクラスタのTraefikで終端するため、--http-enabled で
 # HTTP待受(:9000)を有効化して使う。既定のHTTPS(:9443)は公開しない

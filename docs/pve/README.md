@@ -99,6 +99,8 @@ pve_vm_nets:
 
 - **cloud-initが自動設定するIPは最初の2枚だけ**: net0=`ansible_host`(直接実行では `-e ip=`)、net1=`cluster_ip`(同 `-e ip2=`)。3枚目以降はNICとして接続されるが、IPはゲストOS内で設定する
 - 更新時は既存のMACアドレスを引き継ぐ。**宣言に無いNICオプション(tag / firewall 等)は更新時に外れる**ため、使うものは項目として宣言する
+- **宣言に無い `netN` はPVE上に残る**。収束の対象外のため削除せず、実行時に「宣言に無いNIC」として表示するだけ。不要ならPVE側で外す
+- **並び順がNIC番号**。MACは番号ごとに引き継ぐため、リストの順序を入れ替えると既存のMACが別のブリッジへ移る
 
 #### 追加ディスク(pve_vm_disks)— 任意の本数・ディスクごとにストレージ指定可
 
@@ -114,6 +116,8 @@ pve_vm_disks:
     iothread: true
     discard: "on"
 ```
+
+- 必須は `bus` / `index` / `size`。`storage` / `ssd` / `iothread` / `discard` は省略でき、省略時は `pve_storage` と scsi0 のディスクオプション既定値を使う
 
 #### ハードウェア設定(すべて変数)
 

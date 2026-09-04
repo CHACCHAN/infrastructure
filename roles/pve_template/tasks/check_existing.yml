@@ -22,3 +22,18 @@
   when:
     - pve_template_existing_vm | length > 0
     - not pve_template_complete
+
+# 同じVMIDが別ノードや別名のテンプレートに使われている場合は、収束させずに止める。
+- name: 既存テンプレートが解決した名前とノードと一致することを確認する
+  ansible.builtin.assert:
+    that:
+      - pve_template_existing_vm.name | default('') == pve_template_resolved_name
+      - pve_template_existing_vm.node | default('') == node
+    fail_msg: >-
+      VMID {{ pve_template_resolved_vmid }} の既存テンプレートは
+      期待値(name={{ pve_template_resolved_name }}, node={{ node }})と一致しません。
+      実体: name={{ pve_template_existing_vm.name | default('(不明)') }},
+      node={{ pve_template_existing_vm.node | default('(不明)') }}。
+      PVE上のテンプレートを手動確認してください。
+    quiet: true
+  when: pve_template_existing_vm | length > 0

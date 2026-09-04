@@ -126,7 +126,7 @@
   ansible.builtin.command:
     argv:
       - find
-      - "/sys/class/block/{{ pbs_data_disk_tree.kname }}/holders"
+      - "/sys/class/block/{{ pbs_data_disk_tree.kname | basename }}/holders"
       - -mindepth
       - "1"
       - -maxdepth
@@ -171,7 +171,7 @@
 - name: 新規初期化して安全なデータ用ディスクであることを確認する
   ansible.builtin.assert:
     that:
-      - pbs_data_disk_tree.kname not in pbs_os_block_names
+      - (pbs_data_disk_tree.kname | basename) not in pbs_os_block_names
       - (pbs_data_disk_mountpoints.stdout_lines | map('trim') | reject('equalto', '') | list | length) == 0
       - (pbs_data_disk_children | length) == 0
       - (pbs_data_disk_holders.stdout_lines | map('trim') | reject('equalto', '') | list | length) == 0
@@ -181,7 +181,7 @@
         or (pbs_data_disk_wipe | bool)
     fail_msg: >-
       {{ pbs_data_disk_device }} (実体 {{ pbs_data_disk_target }}) は安全に初期化できません。
-      OS系統={{ pbs_data_disk_tree.kname in pbs_os_block_names }},
+      OS系統={{ (pbs_data_disk_tree.kname | basename) in pbs_os_block_names }},
       mount={{ pbs_data_disk_mountpoints.stdout_lines | map('trim') | reject('equalto', '') | list | join(', ') | default('なし', true) }},
       子デバイス={{ pbs_data_disk_children | map(attribute='name') | list | join(', ') | default('なし', true) }},
       holder={{ pbs_data_disk_holders.stdout_lines | join(', ') | default('なし', true) }},

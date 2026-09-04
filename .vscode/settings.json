@@ -12,7 +12,6 @@
     "collections": "packages",
     "ee": "container",
     "docs": "docs",
-    "migration": "archive",
     "templates": "template",
     "defaults": "config",
     "tasks": "tools",

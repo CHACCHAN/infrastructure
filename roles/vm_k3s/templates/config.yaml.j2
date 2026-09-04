@@ -33,6 +33,9 @@ node-taint:
 {% endfor %}
 {% endif %}
 {% if kubernetes_role_resolved == 'server' %}
+
+# APIサーバーの待ち受けポート(agentの参加先URL・ufwの開放・待機確認と同じ値)
+https-listen-port: {{ kubernetes_server_port }}
 {% if (kubernetes_cluster_init | bool) and not (kubernetes_join_existing | bool) %}
 
 # 埋め込みetcdで構築する(あとからコントロールプレーンを増やせる)

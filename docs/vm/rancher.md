@@ -41,7 +41,7 @@ ansible-playbook playbooks/vm/rancher.yml \
 ansible-playbook playbooks/k8s/deploy.yml -e app=external
 ```
 
-- 初期管理者パスワードは `vault/rancher.yml` の `vault_rancher_bootstrap_password`(構築時に自動生成済み。確認は `ansible-vault view vault/rancher.yml`)
+- 初期管理者パスワードは `vault/rancher.yml` の `vault_rancher_bootstrap_password`(vaultに事前設定する。確認は `ansible-vault view vault/rancher.yml`)
 - 初回ログイン: `https://rancher.cc-chacchan.com/` → ユーザー `admin` + 上記パスワード → 新しいパスワードへの変更とServer URL(そのまま確定でよい)を求められる
 
 ## 変数一覧

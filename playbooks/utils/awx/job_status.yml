@@ -7,7 +7,7 @@
   connection: local
   gather_facts: false
   vars:
-    # connection: localでawxkitを利用できるコントローラ側Pythonへ固定する。
+    # awx.awxモジュールの依存(requests)を持つコントローラ側Pythonへ固定する。
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     awx_admin_user: "{{ lookup('ansible.builtin.env', 'CONTROLLER_USERNAME') | default('', true) }}"
     awx_admin_password: "{{ lookup('ansible.builtin.env', 'CONTROLLER_PASSWORD') | default('', true) }}"
@@ -88,4 +88,4 @@
             開始: {{ utils_awx_job_info.json.started | default('(未開始)', true) }} /
             終了: {{ utils_awx_job_info.json.finished | default('(未終了)', true) }} /
             所要: {{ utils_awx_job_info.json.elapsed | default(0) }}秒
-          - "出力: {{ vault_awx_host }}/#/jobs/playbook/{{ job_id }}/output"
+          - "出力: {{ awx_api_base }}/#/jobs/playbook/{{ job_id }}/output"

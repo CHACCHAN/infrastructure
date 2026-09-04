@@ -16,7 +16,7 @@ flowchart LR
 
 - 公開範囲: `entrypoints` は `websecure` のみ = **LAN内限定**
 - 証明書: `*.cc-chacchan.com` のワイルドカード(cert-manager)でカバーされる
-- 認証: Web UI自体に認証が無いため、Ingressに `authentik-forward-auth` Middlewareを付け、`/outpost.goauthentik.io` パスをAuthentikへ向けている(Middlewareは [authentik.md](authentik.md) の経路が生成する)。VMのIPへ直接アクセスすると認証を通らないため、必要なら `cloudflare_ddns_ui_http_bind` で待ち受けを絞る
+- 認証: Web UI自体に認証が無いため、Ingressに `authentik-forward-auth` Middlewareを付け、`/outpost.goauthentik.io` パスをAuthentikへ向けている(Middlewareは [authentik.md](authentik.md) の経路が生成する)。VMのIPへ直接アクセスすると認証を通らないため、必要なら `ddns_http_bind` で待ち受けを絞る
 
 ## 実行方法
 
@@ -35,12 +35,12 @@ ansible-playbook playbooks/vm/ddns.yml \
 
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |
-| `cloudflare_ddns_ui_records` | list | ✔ | 役割プロファイル | 更新対象レコードのFQDN一覧([inventory/group_vars/ddns.yml](../../inventory/group_vars/ddns.yml)で宣言) |
-| `cloudflare_ddns_ui_zone_id` | str | ✔ | vault | CloudflareゾーンID(vaultから自動) |
-| `cloudflare_ddns_ui_api_token` | str | ✔ | vault | Cloudflare APIトークン(vaultから自動) |
-| `cloudflare_ddns_ui_http_port` | int | | `8080` | Web UIポート |
-| `cloudflare_ddns_ui_http_bind` | str | | `0.0.0.0` | Web UIの待ち受けアドレス(絞る設定もdefaults参照) |
-| `cloudflare_ddns_ui_interval` | int | | `300` | 更新チェック間隔(秒) |
+| `ddns_records` | list | ✔ | 役割プロファイル | 更新対象レコードのFQDN一覧([inventory/group_vars/ddns.yml](../../inventory/group_vars/ddns.yml)で宣言) |
+| `ddns_zone_id` | str | ✔ | vault | CloudflareゾーンID(vaultから自動) |
+| `ddns_api_token` | str | ✔ | vault | Cloudflare APIトークン(vaultから自動) |
+| `ddns_http_port` | int | | `8080` | Web UIポート |
+| `ddns_http_bind` | str | | `0.0.0.0` | Web UIの待ち受けアドレス(絞る設定もdefaults参照) |
+| `ddns_interval` | int | | `300` | 更新チェック間隔(秒) |
 
 ## AWXでの実行
 
@@ -50,4 +50,4 @@ Job Template **`vm-ddns`**(定義: [awx/job_templates.yml](../../awx/job_templat
 
 - **Web UIに認証が無い** → 既定で :8080 が開く。LAN外に見せない。待ち受けを絞る設定はdefaultsを参照
 - **vaultの値を変えたいとき** → `ansible-vault edit vault/cloudflare.yml`(トークンのスコープはZone.DNS編集のみが正)
-- **レコードの追加はインベントリで** → `cloudflare_ddns_ui_records` に足して再実行(冪等)
+- **レコードの追加はインベントリで** → `ddns_records` に足して再実行(冪等)

@@ -1,37 +1,63 @@
-# 公式ドキュメント(https://helm.sh/docs/intro/install/)のget-helm-4便利
-# スクリプトを使う。
-# スクリプトは誰でも書き込める/tmpではなく/usr/local/srcに置き、実行後は残さない。
+# 公式配布物(https://get.helm.sh)をチェックサム検証付きで導入する。
+# 版は vm_helm_version で固定する(取得先の配布物とsha256sumを対で検証する)。
 #
 # 複数のロール(vm_dev / vm_hermes)がHelmを使うため、ベースロール側の共有タスクと
 # して置いている。呼び出しは import_role(tasks_from: install_helm)。受け取る変数は無い。
 ---
-- name: Helmが導入済みか確認する
-  ansible.builtin.stat:
-    path: /usr/local/bin/helm
-  register: vm_helm_bin
+- name: 導入済みのHelmのバージョンを確認する
+  ansible.builtin.command:
+    cmd: helm version --short
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  register: vm_helm_installed
 
+# 宣言した版と違う(未導入も含む)ときだけ入れ直す
 - name: Helmをインストールする
-  when: not vm_helm_bin.stat.exists
+  when: vm_helm_version not in (vm_helm_installed.stdout | default(''))
+  vars:
+    vm_helm_archive: "helm-{{ vm_helm_version }}-linux-amd64.tar.gz"
   block:
-    - name: Helm公式インストールスクリプトを取得する
+    - name: Helmの配布物をチェックサム検証付きでダウンロードする
       ansible.builtin.get_url:
-        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
-        dest: /usr/local/src/get-helm-4.sh
+        url: "https://get.helm.sh/{{ vm_helm_archive }}"
+        checksum: "sha256:https://get.helm.sh/{{ vm_helm_archive }}.sha256sum"
+        dest: "/usr/local/src/{{ vm_helm_archive }}"
+        owner: root
+        group: root
+        mode: "0644"
+        timeout: 60
+      become: true
+      register: vm_helm_download
+      retries: 3
+      delay: 5
+      until: vm_helm_download is succeeded
+
+    - name: 配布物からhelmバイナリを取り出す
+      ansible.builtin.unarchive:
+        src: "/usr/local/src/{{ vm_helm_archive }}"
+        remote_src: true
+        dest: /usr/local/src
+        include:
+          - linux-amd64/helm
+      become: true
+
+    - name: Helmバイナリを配置する
+      ansible.builtin.copy:
+        src: /usr/local/src/linux-amd64/helm
+        remote_src: true
+        dest: /usr/local/bin/helm
         owner: root
         group: root
         mode: "0755"
       become: true
 
-    - name: インストールスクリプトを実行する
-      ansible.builtin.command:
-        cmd: /usr/local/src/get-helm-4.sh
-      args:
-        creates: /usr/local/bin/helm
-      become: true
-
   always:
-    - name: インストールスクリプトを削除する
+    - name: ダウンロードした配布物を削除する
       ansible.builtin.file:
-        path: /usr/local/src/get-helm-4.sh
+        path: "{{ item }}"
         state: absent
       become: true
+      loop:
+        - "/usr/local/src/{{ vm_helm_archive }}"
+        - /usr/local/src/linux-amd64

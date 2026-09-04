@@ -9,20 +9,20 @@
 ---
 services:
   cloudflare-ddns-ui:
-    container_name: {{ cloudflare_ddns_ui_container_name }}
-    image: {{ cloudflare_ddns_ui_image }}:{{ cloudflare_ddns_ui_version }}
+    container_name: {{ ddns_container_name }}
+    image: {{ ddns_image }}:{{ ddns_version }}
     restart: unless-stopped
     environment:
-      TZ: {{ vm_timezone_resolved | default('Asia/Tokyo', true) }}
-{% for key, value in (cloudflare_ddns_ui_extra_env | dictsort) %}
+      TZ: {{ vm_timezone }}
+{% for key, value in (ddns_extra_env | dictsort) %}
       {{ key }}: {{ value | to_json }}
 {% endfor %}
     ports:
-{% if cloudflare_ddns_ui_http_bind in ['0.0.0.0', '::', ''] %}
-      - "{{ cloudflare_ddns_ui_http_port }}:8080/tcp"
+{% if ddns_http_bind in ['0.0.0.0', '::', ''] %}
+      - "{{ ddns_http_port }}:8080/tcp"
 {% else %}
       # ダッシュボードには認証が無いため、待ち受けアドレスを絞っている
-      - "{{ cloudflare_ddns_ui_http_bind }}:{{ cloudflare_ddns_ui_http_port }}:8080/tcp"
+      - "{{ ddns_http_bind }}:{{ ddns_http_port }}:8080/tcp"
 {% endif %}
     volumes:
       # 設定(APIトークンを含む)

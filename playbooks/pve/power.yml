@@ -3,6 +3,7 @@
 # 実行例: ansible-playbook playbooks/pve/power.yml -l k8s -e state=stopped
 # stopped はゲストOSへの正常シャットダウン要求。ゲストが応答できない間は失敗するため、
 # 強制停止は -e pve_power_force=true で行う。
+# stopped では対象の指定(-e target= または -l)が必須。未指定はlab全体が対象になる。
 ---
 # -e profile= を指定したときだけ、インベントリ外のVMを一時ホストとして宣言する。
 - name: インベントリ外のVMを一時ホストとして宣言する
@@ -34,6 +35,21 @@
           state が未指定または不正です。
           -e state=started または -e state=stopped を指定してください。
         quiet: true
+
+    # 対象未指定のstoppedはlab全体の停止になるため、範囲の明示を求める。
+    - name: 停止時に対象が絞られていることを確認する
+      ansible.builtin.assert:
+        that:
+          - >-
+            state != 'stopped'
+            or target | default('', true) | length > 0
+            or ansible_limit | default('', true) | length > 0
+        fail_msg: >-
+          state=stopped では対象の指定が必須です。
+          -e target=<グループ|ホスト> または -l <グループ|ホスト> を指定してください
+          (未指定ではlabの全VMが停止対象になります)。
+        quiet: true
+      run_once: true
 
     - name: ホスト固有の必須変数が届いていることを確認する
       ansible.builtin.assert:

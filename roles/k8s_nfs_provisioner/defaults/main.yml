@@ -13,6 +13,12 @@ k8s_nfs_provisioner_values:
     # 既定 StorageClass は k3s 同梱の local-path のままにする
     defaultClass: false
 
-    # PVC を消しても NFS 上のデータは残す
+    # PVC を消しても PV と NFS 上のディレクトリを残す。
+    # Retain では provisioner の削除処理が走らないため archiveOnDelete は効かない
+    # (チャート既定と同値なので指定を残している)。
     reclaimPolicy: Retain
     archiveOnDelete: true
+
+    # allowVolumeExpansion はチャート既定の true のまま。ただし作られるのは NFS 共有
+    # 配下のサブディレクトリで PVC のサイズは強制されず、実際の上限は
+    # TrueNAS 側のデータセットの空き容量になる(拡張操作は要らない)。

@@ -52,7 +52,10 @@
     k8s_definition: "{{ k8s_awx_awx_saml_secret_definition }}"
     k8s_apply_no_log: true
 
-- name: awx-operator Helmチャートを描画して適用する
+# チャートはCRDとAWXカスタムリソースを同時に出力するため、2段に分けて適用する。
+# 1段目はAWX.enabled=falseでCRDとOperatorだけを収束させ、CRDがEstablishedに
+# なってから2段目でAWXリソースを含む全体を適用する。
+- name: awx-operator HelmチャートをAWXリソース抜きで描画して適用する
   ansible.builtin.import_role:
     name: k8s
     tasks_from: helm
@@ -62,7 +65,7 @@
     k8s_helm_repo_url: https://ansible-community.github.io/awx-operator-helm/
     k8s_helm_version: "{{ k8s_awx_helm_version }}"
     k8s_helm_namespace: platform
-    k8s_helm_values: "{{ k8s_awx_values }}"
+    k8s_helm_values: "{{ k8s_awx_values | combine({'AWX': {'enabled': false}}, recursive=true) }}"
     k8s_helm_no_hooks: false
     k8s_helm_include_crds: true
     k8s_helm_inject_namespace: true
@@ -96,6 +99,23 @@
   retries: 60
   delay: 5
   when: not ansible_check_mode
+
+# 収束の基準となる適用。1段目との差はAWXリソース1件だけなので、再実行では
+# ここもchanged=0になる。
+- name: awx-operator Helmチャートを描画して適用する
+  ansible.builtin.import_role:
+    name: k8s
+    tasks_from: helm
+  vars:
+    k8s_helm_release: awx-operator
+    k8s_helm_chart: awx-operator
+    k8s_helm_repo_url: https://ansible-community.github.io/awx-operator-helm/
+    k8s_helm_version: "{{ k8s_awx_helm_version }}"
+    k8s_helm_namespace: platform
+    k8s_helm_values: "{{ k8s_awx_values }}"
+    k8s_helm_no_hooks: false
+    k8s_helm_include_crds: true
+    k8s_helm_inject_namespace: true
 
 - name: 公開Ingressを描画する
   ansible.builtin.set_fact:

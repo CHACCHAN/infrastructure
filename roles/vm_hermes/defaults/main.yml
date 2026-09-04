@@ -1,5 +1,5 @@
 # タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
-# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+# 既定値は roles/vm/defaults/main.yml にある。
 ---
 # Hermes Agentの版。upstream(NousResearch/hermes-agent)のリリースタグを指定する。
 # 実体はgitチェックアウトのため、タグ→コミットSHAを解決してそのSHAへ固定する。

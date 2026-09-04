@@ -2,7 +2,6 @@
 ---
 # --- ① VMプロファイル(pveドメインが使う) ---
 pve_storage: local-lvm
-pve_vm_cores: 2
 pve_vm_memory: 1024
 pve_vm_disk_size: 16
 

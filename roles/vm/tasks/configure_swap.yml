@@ -1,20 +1,16 @@
 # 固定サイズのswapfileではなく、RAM使用率ベースのzramでswapを確保する。
 ---
-- name: スワップ(zram)の割り当て率を決定する
-  ansible.builtin.set_fact:
-    vm_zram_percent_resolved: "{{ vm_zram_percent | default(50, true) }}"
-
 - name: 動的swap用のzram-toolsパッケージをインストールする
   ansible.builtin.apt:
     name: zram-tools
     state: present
   become: true
 
-- name: "スワップ(zram)の割り当て率を設定する({{ vm_zram_percent_resolved }}%)"
+- name: "スワップ(zram)の割り当て率を設定する({{ vm_zram_percent }}%)"
   ansible.builtin.lineinfile:
     path: /etc/default/zramswap
     regexp: '^#?PERCENT='
-    line: "PERCENT={{ vm_zram_percent_resolved }}"
+    line: "PERCENT={{ vm_zram_percent }}"
   become: true
   register: vm_zramswap_conf
 

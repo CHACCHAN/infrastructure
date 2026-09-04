@@ -6,7 +6,7 @@
 ---
 - name: Cloudflare-ddns-uiの設置ディレクトリを作成する
   ansible.builtin.file:
-    path: "{{ cloudflare_ddns_ui_install_dir }}"
+    path: "{{ ddns_install_dir }}"
     state: directory
     owner: root
     group: root
@@ -15,7 +15,7 @@
 
 - name: コンテナへマウントするディレクトリを作成する
   ansible.builtin.file:
-    path: "{{ cloudflare_ddns_ui_install_dir }}/{{ item }}"
+    path: "{{ ddns_install_dir }}/{{ item }}"
     state: directory
     owner: root
     group: root

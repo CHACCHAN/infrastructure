@@ -10,4 +10,5 @@
 awx_ee_name: awx-ee-custom
 awx_ee_description: proxmoxer/kubernetes/docker SDKを含むカスタムEE(ee/で定義)
 awx_ee_image: ghcr.io/chacchan/awx-ee-custom:latest
-awx_ee_pull: missing
+# タグを固定運用しているため、ジョブ起動ごとにpullして最新のビルドを使う。
+awx_ee_pull: always

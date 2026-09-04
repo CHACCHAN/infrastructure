@@ -11,18 +11,66 @@
   block:
     - name: コンテナの状態を問い合わせる
       ansible.builtin.command:
-        cmd: docker inspect {{ wg_easy_container_name }}
+        argv:
+          - docker
+          - inspect
+          - --format
+          # Config.Env(秘密情報)を取り込まないよう、必要な項目だけを取り出す
+          - >-
+            {% raw %}{"status": "{{.State.Status}}",
+            "health": "{{if .State.Health}}{{.State.Health.Status}}{{end}}",
+            "restarts": {{.RestartCount}}}{% endraw %}
+          - "{{ wg_easy_container_name }}"
       become: true
       changed_when: false
-      register: wg_easy_state_raw
+      register: wg_easy_state_first
       retries: 6
       delay: 5
+      # ヘルスチェックの通過は初期セットアップ後の確認タスクで待つため、
+      # ここでは「起動している」「異常判定されていない」ことだけを見る
       until: >-
-        ((wg_easy_state_raw.stdout | default('') | trim | length) > 0)
-        and (((wg_easy_state_raw.stdout | from_json | first).State.Status
+        ((wg_easy_state_first.stdout | default('') | trim | length) > 0)
+        and (((wg_easy_state_first.stdout | default('{}', true) | from_json).status
               | default('')) == 'running')
-        and (((wg_easy_state_raw.stdout | from_json | first).RestartCount
-              | default(0) | int) == 0)
+        and (((wg_easy_state_first.stdout | default('{}', true) | from_json).health
+              | default('')) != 'unhealthy')
+
+    # 起動直後に落ちて再起動を繰り返す状態は、一定時間おいて再起動回数が
+    # 増えるかどうかで判定する(過去の再起動回数そのものは異常ではない)。
+    - name: 再起動が続いていないか確かめるため待機する
+      ansible.builtin.pause:
+        seconds: "{{ wg_easy_restart_check_delay }}"
+
+    - name: 待機後のコンテナの状態を問い合わせる
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - --format
+          - >-
+            {% raw %}{"status": "{{.State.Status}}",
+            "health": "{{if .State.Health}}{{.State.Health.Status}}{{end}}",
+            "restarts": {{.RestartCount}}}{% endraw %}
+          - "{{ wg_easy_container_name }}"
+      become: true
+      changed_when: false
+      register: wg_easy_state_second
+
+    - name: 待機中に再起動していないことを確認する
+      ansible.builtin.assert:
+        that:
+          - >-
+            ((wg_easy_state_second.stdout | default('{}', true) | from_json).status
+             | default('')) == 'running'
+          - >-
+            ((wg_easy_state_second.stdout | default('{}', true) | from_json).restarts
+             | default(0) | int)
+            <= ((wg_easy_state_first.stdout | default('{}', true) | from_json).restarts
+                | default(0) | int)
+        fail_msg: >-
+          コンテナ {{ wg_easy_container_name }} の再起動回数が
+          {{ wg_easy_restart_check_delay }}秒の間に増えました。
+        quiet: true
 
   rescue:
     - name: コンテナのログを取得する
@@ -101,7 +149,15 @@
   block:
     - name: コンテナのヘルスチェックが通るまで待機する
       ansible.builtin.command:
-        cmd: docker inspect {{ wg_easy_container_name }}
+        argv:
+          - docker
+          - inspect
+          - --format
+          - >-
+            {% raw %}{"status": "{{.State.Status}}",
+            "health": "{{if .State.Health}}{{.State.Health.Status}}{{end}}",
+            "restarts": {{.RestartCount}}}{% endraw %}
+          - "{{ wg_easy_container_name }}"
       become: true
       changed_when: false
       register: wg_easy_health_raw
@@ -109,7 +165,7 @@
       delay: "{{ wg_easy_health_delay }}"
       until: >-
         ((wg_easy_health_raw.stdout | default('') | trim | length) > 0)
-        and (((wg_easy_health_raw.stdout | from_json | first).State.Health.Status
+        and (((wg_easy_health_raw.stdout | default('{}', true) | from_json).health
               | default('')) == 'healthy')
 
     - name: 起動を確認できたことを記録する

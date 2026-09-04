@@ -1,6 +1,6 @@
 # 上流チャートの固定バージョンと values。
 ---
-k8s_cert_manager_helm_version: "v1.21.0"
+k8s_cert_manager_helm_version: "v1.21.1"
 k8s_cert_manager_values:
   crds:
     enabled: true

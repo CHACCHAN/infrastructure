@@ -126,6 +126,7 @@
       environment:
         HERMES_HOME: "{{ hermes_home }}"
         XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
+      register: hermes_gateway_unit_install
 
     - name: 生成されたGatewayのunitを読み取る
       ansible.builtin.slurp:
@@ -143,12 +144,19 @@
           指していません。unitを削除(hermes gateway uninstall)してから再実行してください。
         quiet: true
 
+    # 本体の版・設定が変わったときだけ restarted にする(dashboardと同じ条件)。
     - name: Gatewayのサービスを有効化・起動する
       ansible.builtin.systemd:
         name: "{{ hermes_gateway_service_name }}"
         scope: user
         enabled: true
-        state: started
+        state: >-
+          {{ 'restarted'
+             if ((hermes_gateway_unit_install is changed)
+                 or ((hermes_installer_run | default({}, true)) is changed)
+                 or ((hermes_web_extras_install | default({}, true)) is changed)
+                 or (hermes_config_changed | default(false) | bool))
+             else 'started' }}
         daemon_reload: true
       become: false
       environment:

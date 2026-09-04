@@ -7,6 +7,7 @@ k8s_awx_values:
 
   AWX:
     # AWX リソースを一緒に出力する。false だと Operator だけになる。
+    # CRD を先に確立させる 1 段目の適用では、ロール側が false に上書きする。
     enabled: true
 
     # AWX リソースの名前。子リソースの名前がすべてこれで決まるので、

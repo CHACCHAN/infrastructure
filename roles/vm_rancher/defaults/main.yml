@@ -1,8 +1,10 @@
-# タイムゾーン(vm_timezone)・ロケール(vm_locale)などの共通既定は roles/vm 側にある。
+# タイムゾーン(vm_timezone)・ロケール(vm_locale)などの共通既定は
+# roles/vm/defaults/main.yml にある。
 # k3s自体の変数(バージョン・Traefik無効化・SAN)は roles/vm_k3s の担当で、
 # このロールはその上へのRancher導入(Helm)だけを受け持つ。
 ---
-# Rancherのバージョン(Helmチャート版=本体版)。stableリポジトリの最新に合わせて固定する。
+# Rancherのバージョン(Helmチャート版=本体版)。下の取得元リポジトリに公開されている版だけを
+# 指定できる(helm search repo rancher-latest/rancher --versions で確認する)。
 # 上げるときはKubernetesサポートマトリクスを確認し、inventory/group_vars/rancher.ymlの
 # kubernetes_version(このVMのk3s)が対応範囲に収まっているかを必ず併せて確認する
 rancher_version: "2.14.3"

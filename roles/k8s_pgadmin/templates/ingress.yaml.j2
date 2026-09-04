@@ -15,7 +15,7 @@ metadata:
     # HTTPS 専用で公開する。平文 HTTP (:80) では 404 になる。
     traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
     # Authentik の forwardAuth Middleware はここでは使わない。
-    # pgAdmin 自身が OIDC で Authentik に認証を投げるため (config.yaml)、
+    # pgAdmin 自身が OIDC で Authentik に認証を投げるため (config_local.py)、
     # 前段でも認証すると二重になる。
     # traefik.ingress.kubernetes.io/router.middlewares: "platform-authentik-forward-auth@kubernetescrd"
 spec:

@@ -84,6 +84,8 @@
       ansible.builtin.setup:
 
     # vm_k3sはdelegate_toで管理IPを直接参照するため、その名前でも接続情報を登録する。
+    # このplayの vars(ansible_user 等)は委譲先にも適用され、そこでは pve_ssh_user /
+    # pve_ssh_prikey_resolved が解決できないため、同名の変数も委譲先ホストへ持たせる。
     - name: コントロールプレーンを参加先グループへ登録する
       ansible.builtin.add_host:
         name: "{{ kubernetes_server_ip }}"
@@ -92,6 +94,8 @@
         ansible_user: "{{ kubernetes_server_ssh_user }}"
         ansible_ssh_private_key_file: "{{ kubernetes_server_ssh_prikey }}"
         ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+        pve_ssh_user: "{{ kubernetes_server_ssh_user }}"
+        pve_ssh_prikey_resolved: "{{ kubernetes_server_ssh_prikey }}"
       changed_when: false
 
   roles:

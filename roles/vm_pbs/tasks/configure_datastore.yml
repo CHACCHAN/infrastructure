@@ -26,16 +26,32 @@
     mode: "0755"
   become: true
 
+# 既存のデータ用ディスクを付け替えた場合、パスにはチャンクストアが残っている。
+# `datastore create` は空でないパスを拒否するため、再利用指定が必要になる。
+- name: チャンクストアが既にあるか確認する
+  ansible.builtin.stat:
+    path: "{{ pbs_datastore_path }}/.chunks"
+  become: true
+  register: pbs_datastore_chunks
+
 # チャンクストアの初期化を含むため、ディスクが大きいと少し時間がかかる
 - name: データストアを作成する
   ansible.builtin.command:
-    argv:
-      - proxmox-backup-manager
-      - datastore
-      - create
-      - "{{ pbs_datastore_name }}"
-      - "{{ pbs_datastore_path }}"
+    argv: >-
+      {{ ['proxmox-backup-manager', 'datastore', 'create',
+          pbs_datastore_name, pbs_datastore_path]
+         + (['--reuse-datastore', 'true']
+            if (pbs_datastore_chunks.stat.exists | default(false)) else []) }}
   become: true
   register: pbs_datastore_create
   changed_when: pbs_datastore_create.rc == 0
   when: not pbs_datastore_exists
+
+- name: データストアの作成方法を表示する
+  ansible.builtin.debug:
+    msg: >-
+      {{ pbs_datastore_path }} には既存のチャンクストアがあるため、
+      データストア {{ pbs_datastore_name }} は既存データを再利用して作成しました。
+  when:
+    - not pbs_datastore_exists
+    - pbs_datastore_chunks.stat.exists | default(false)

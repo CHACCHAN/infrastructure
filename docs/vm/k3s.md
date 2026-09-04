@@ -43,7 +43,8 @@ ansible-playbook playbooks/vm/k3s.yml \
 | `kubernetes_server_ip` | str | △ | 宣言から自動導出 | コントロールプレーンの管理IP。**k8sグループが届かない実行では `-e` で必須** |
 | `kubernetes_server_ssh_user` | str | △ | 同上 | コントロールプレーンのSSHユーザー(同上) |
 | `kubernetes_server_ssh_prikey` | str | | 接続に使う鍵と同じ | コントロールプレーンの秘密鍵(実行環境上のファイルパス)。別の鍵でしか入れないときだけ指定する |
-| `kubernetes_server_port` | int | | `6443` | APIサーバーポート |
+| `kubernetes_server_port` | int | | `6443` | APIサーバーポート(config.yamlの `https-listen-port` にも入る) |
+| `kubernetes_allow_downgrade` | bool | | `false` | 導入済みより古い版の宣言を許すか(既定では失敗して止まる) |
 | `kubernetes_node_labels` / `kubernetes_node_taints` | list | | `[]` | ノードのラベル/taint |
 
 △: インベントリのk8sグループがある実行では自動導出。無い実行(AWX手動インベントリ等)では実行前検証が不足名を列挙して止まり、`-e` での指定を案内する。
@@ -61,4 +62,5 @@ Job Template **`vm-k3s`**(定義: [awx/job_templates.yml](../../awx/job_template
 - **ワーカーが参加に失敗する** → コントロールプレーン(グループ先頭)が未構築のまま後続だけ実行した。グループ全体で再実行する
 - **`kubernetes_server_ip ... が解決できません` で止まる** → インベントリのk8sグループが届いていない実行。メッセージどおり `-e k3s_role=` と `kubernetes_server_*` を渡すか、インベントリを同期する
 - **バージョンずれ** → `kubernetes_version` は宣言で固定している(stableチャネル任せにしない)。新ノードだけ新しくならないよう、更新はgroup_varsで版を上げてから全台順に再構築
+- **`より古い版です` で止まる** → 導入済みより低い `kubernetes_version` を宣言した。宣言を直すか、意図した操作なら `-e kubernetes_allow_downgrade=true`
 - **クラスタ構築後のアプリ配備は③ドメイン** → [docs/k8s/deploy.md](../k8s/deploy.md)

@@ -17,6 +17,8 @@ ansible-playbook playbooks/pve/template.yml -e os=debian -e version=13 -e target
 | `os` | str | ✔ | - | `debian` / `ubuntu` / `rocky` / `almalinux`(カタログは [README.md](README.md#テンプレートの仕組み)) |
 | `version` | str | ✔ | - | OSのバージョン(カタログに存在するもの。例 `13`) |
 | `target_node` | str | ✔ | - | 構築先PVEノード(例 `pve01`) |
+| `vmid` | int | | 規則(`9XXNN`)から算出 | テンプレートVMIDを明示する(検証用) |
+| `name` | str | | OS・バージョン・ノードから算出 | テンプレート名を明示する(検証用) |
 | `pve_storage` | str | | group_vars/all | テンプレート用ストレージ(`-e pve_storage=` や `pve_template_storage` で上書き可) |
 | `pve_bridge` | str | | group_vars/all | テンプレートNICのブリッジ(同上) |
 | `pve_template_image_storage` | str | | `local` | cloud-image置き場 |
@@ -29,7 +31,7 @@ ansible-playbook playbooks/pve/template.yml -e os=debian -e version=13 -e target
 ## 動きかた
 
 1. `os` / `version` / `target_node` を検証(カタログ外・形式ミスは実行前に停止)
-2. テンプレートVMIDを規則(`9XXNN`)から解決
+2. テンプレートVMIDと名前を規則(`9XXNN` / `<os><version>-template-<node>`)から解決(`-e vmid=` / `-e name=` を渡した場合はその値)
 3. 未作成なら、cloud-imageをPVEノードが**チェックサム検証付きで直接ダウンロード**し、テンプレートVMを作成して変換する(作成済みなら `changed=0`)
 
 ## AWXでの実行

@@ -51,7 +51,6 @@ flowchart TB
 ```yaml
 # inventory/group_vars/wg_easy.yml
 # --- ① VMプロファイル(pveドメインが使う) ---
-pve_vm_cores: 2
 pve_vm_memory: 512
 pve_vm_disk_size: 8
 
@@ -62,7 +61,6 @@ pve_ssh_prikey_file: ~/.ssh/id_ed25519_wg_easy
 
 # --- ③ サービス設定(vm_<service>ロールが使う) ---
 wg_easy_init_host: wg.example.com
-wg_easy_version: "15.4.0"
 ```
 
 - SSH接続は **provisionがcloud-initに書き込んだユーザー・鍵をそのまま使う**ため、宣言が一致していれば必ず入れる
@@ -105,7 +103,7 @@ ansible-playbook playbooks/vm/wg-easy.yml -e vm_reboot_after_setup=false  # 稼�
 
 - **`gather_facts: false` + SSH到達後に明示的な `setup`**: プレイ冒頭の自動ファクト収集は `pre_tasks` の接続待ちより**先に**走るため、作りたてのVMでは必ず失敗する。全playbookで接続待ち→収集の順を明示している
 - **ホスト鍵を検証しない**: cloud-init直後はVMのホスト鍵が毎回変わるため `StrictHostKeyChecking=no`。管理ネットワーク内での運用が前提
-- **再起動は要求があるときだけ**: カーネル更新などで `/var/run/reboot-required` が置かれたときだけ仕上げに再起動する(`-e vm_reboot_force=true` で強制)。`restart: unless-stopped` のコンテナは自動復帰する
+- **再起動は要求があるときだけ**: `needrestart -b` が新しいカーネルの適用待ちを報告したときだけ仕上げに再起動する(`-e vm_reboot_force=true` で強制)。`restart: unless-stopped` のコンテナは自動復帰する
 - **ロールは接続変数をそのまま使う**: VM内のユーザー名は `ansible_user`、IPは `ansible_host` を参照する(playbookが宣言の `pve_ssh_user` / `ansible_host` から接続を組み立てるため、変数は1系統だけ)
 
 ## トラブルシューティング(ドメイン共通)

@@ -5,7 +5,7 @@ Authentik REST API(`/api/v3/core/users/` ほか)でユーザーを作成し、�
 ## 冪等性(何度実行しても安全)
 
 - **既存ユーザーは作り直さない**(名前・メールも上書きしない。作成のみ)
-- **グループ追加は所属済みでも安全**(Authentik APIの `add_user` が冪等)
+- **所属済みのユーザーとグループの組はAPIを呼ばない**(2回目の実行は変更なし)
 - **グループ未指定(空)ならユーザー作成のみ**行う
 - **パスワードは新規作成したユーザーにだけ設定**する(既存ユーザーのパスワードは変えない)
 - 指定されたグループが存在しない場合は**何も変更する前に**一覧つきで停止する(グループは作成しない)
@@ -18,14 +18,16 @@ ansible-playbook playbooks/utils/authentik/users.yml -e username=taro
 
 # 単一ユーザー+グループ+初期パスワード
 ansible-playbook playbooks/utils/authentik/users.yml \
-  -e username=taro -e display_name="Taro Yamada" -e email=taro@example.com \
+  -e username=taro -e 'display_name="Taro Yamada"' -e email=taro@example.com \
   -e user_groups=developers,ops -e user_password='S3cret-Pass123'
 
 # 複数ユーザーの一括作成(ファイルで渡す)
 ansible-playbook playbooks/utils/authentik/users.yml -e @users.yml
 ```
 
-一括作成のファイル書式(`users.yml`。**リポジトリにはコミットしない**こと):
+`-e 変数=値` は値を空白で切るため、空白を含む値は `-e '変数="値"'` と二重にクォートする(外側はシェル用、内側はAnsible用)。
+
+一括作成のファイル書式(リポジトリルートの `users.yml`。パスワードを平文で持つため `.gitignore` で除外済み):
 
 ```yaml
 authentik_users:

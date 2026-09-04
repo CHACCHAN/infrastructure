@@ -1,4 +1,4 @@
-# OpenWebUI一式(PVC/Deployment/Service/Ingress)とOIDC・アプリ・DB Secretを収束させる。
+# OpenWebUI一式(Deployment/Service/Ingress。DATA_DIRはemptyDir)とOIDC・アプリ・DB Secretを収束させる。
 ---
 # Secretを先に収束させる(これを参照するワークロードが待たずに起動できるように)
 

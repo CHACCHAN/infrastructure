@@ -1,9 +1,5 @@
 ---
-- name: 設定するタイムゾーンを決定する
-  ansible.builtin.set_fact:
-    vm_timezone_resolved: "{{ vm_timezone | default('Asia/Tokyo', true) }}"
-
-- name: "タイムゾーンを設定する({{ vm_timezone_resolved }})"
+- name: "タイムゾーンを設定する({{ vm_timezone }})"
   community.general.timezone:
-    name: "{{ vm_timezone_resolved }}"
+    name: "{{ vm_timezone }}"
   become: true

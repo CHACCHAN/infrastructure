@@ -6,14 +6,14 @@
 #   1. ansible-vault edit vault/awx_api.yml でAWXのURLとOAuthトークンを設定
 #   2. 初回はVault credentialの実値が必要(既定でANSIBLE_VAULT_PASSWORD_FILEの
 #      中身を使うため、DevContainerではそのまま動く)
-#   3. k8s-deploy用のkubeconfigは初回に
-#      -e awx_kubeconfig_content="$(cat ~/.kube/config)" で渡す
+#   3. k8s-deploy用のkubeconfigは初回に -e awx_kubeconfig_file=~/.kube/config で渡す
 #      (2回目以降は未指定なら登録済みの値を変更しない)
+#      内容を直接渡すときは -e '{"awx_kubeconfig_content": "..."}' のJSON形式にする
+#      (-e 変数=値 は空白で切れるため改行を含む値を渡せない)
 #   4. ProjectのGit同期はSSH。鍵は vault/awx_api.yml の vault_awx_scm_prikey
 #      (ansible-vault edit で設定)を Source Control credential として登録する
 #
-# 構成は redhat-cop/controller_configuration に倣う(接続情報のmodule_defaults一元化・定義YAMLの分離)。
-# 実装は awx.awx コレクションのモジュールを直接使う。
+# 接続情報は module_defaults で一元化し、定義YAML(awx/*.yml)と適用処理を分離している。
 ---
 - name: AWXの構成をコードから収束させる
   hosts: localhost
@@ -29,7 +29,12 @@
                 lookup('ansible.builtin.env', 'ANSIBLE_VAULT_PASSWORD_FILE'))
          if lookup('ansible.builtin.env', 'ANSIBLE_VAULT_PASSWORD_FILE') | length > 0
          else '' }}
+    # kubeconfigの受け取り口。内容を直接渡す awx_kubeconfig_content と
+    # ファイルパスを渡す awx_kubeconfig_file のどちらでもよい(内容が優先)。
     awx_kubeconfig_content: ""
+    awx_kubeconfig_file: ""
+    # Credentialの実値をAWX側へ上書きするか。ローテーション時のみ true にする。
+    awx_update_secrets: false
     # 初回(トークン未発行)のブートストラップ用。awx.awxコレクション標準の
     # CONTROLLER_USERNAME / CONTROLLER_PASSWORD 環境変数で管理者認証を渡せる。
     # トークン(vault/awx_api.yml)が設定済みならそちらが優先される。
@@ -75,9 +80,7 @@
           管理者ログインを渡してください。
         quiet: true
 
-    # 全Job Templateが名前でVault credentialを参照するため、実値(awx_vault_password)を
-    # 渡さない実行では「AWX側に登録済みか」を先に確認する。未作成のままJob Templateの
-    # 収束へ進むと、名前解決に失敗する分かりにくいエラーが後半で出るため。
+    # 全Job Templateが名前でVault credentialを参照するため、実値を渡さない実行では登録済みかを先に確認する。
     - name: Vault credentialの登録状況を確認する(実値を渡さない実行のみ)
       ansible.builtin.uri:
         url: >-
@@ -113,6 +116,29 @@
           から自動供給されます。手動実行では -e awx_vault_password=... で実値を渡してください。
         quiet: true
 
+    # awx_kubeconfig_content(内容)と awx_kubeconfig_file(パス)を1つの値へ揃える。
+    - name: kubeconfigの内容を解決する
+      ansible.builtin.set_fact:
+        awx_kubeconfig_resolved: >-
+          {{ awx_kubeconfig_content
+             if awx_kubeconfig_content | length > 0
+             else (lookup('ansible.builtin.file', awx_kubeconfig_file | expanduser)
+                   if awx_kubeconfig_file | length > 0 else '') }}
+      no_log: true
+
+    - name: 解決したkubeconfigがkubeconfigの形をしていることを確認する
+      ansible.builtin.assert:
+        that:
+          - "'clusters:' in awx_kubeconfig_resolved"
+          - "'contexts:' in awx_kubeconfig_resolved"
+        fail_msg: >-
+          渡されたkubeconfigに clusters: / contexts: がありません。
+          -e 変数=値 は空白で値が切れるため、改行を含む値はファイルパス
+          (-e awx_kubeconfig_file=~/.kube/config)かJSON形式
+          (-e '{"awx_kubeconfig_content": "..."}')で渡してください。
+        quiet: true
+      when: awx_kubeconfig_resolved | length > 0
+
     # k8s-deploy が名前でkubeconfig credentialを参照するため、内容を渡さない実行では登録済みかを先に確認する。
     - name: kubeconfig credentialの登録状況を確認する(内容を渡さない実行のみ)
       ansible.builtin.uri:
@@ -133,18 +159,18 @@
       register: awx_kubeconfig_credential_lookup
       failed_when: false
       no_log: true
-      when: awx_kubeconfig_content | length == 0
+      when: awx_kubeconfig_resolved | length == 0
 
     - name: kubeconfig credentialが利用可能であることを確認する
       ansible.builtin.assert:
         that:
-          - awx_kubeconfig_content | length > 0
+          - awx_kubeconfig_resolved | length > 0
             or (awx_kubeconfig_credential_lookup.json.count | default(0) | int) > 0
         fail_msg: >-
           kubeconfigが供給されておらず、AWX上にもCredential
           「{{ awx_credential_kubeconfig_name }}」が登録されていません。
           k8s-deploy がこの名前を参照するため、初回は
-          -e awx_kubeconfig_content="$(cat ~/.kube/config)" で内容を渡してください。
+          -e awx_kubeconfig_file=~/.kube/config でkubeconfigを渡してください。
         quiet: true
 
     # --- Credential(Job Templateより先に作る。JTが名前で参照するため) ---
@@ -156,6 +182,8 @@
         credential_type: Source Control
         inputs:
           ssh_key_data: "{{ vault_awx_scm_prikey }}"
+        # 実値の上書きは -e awx_update_secrets=true のときだけ行う(既定は登録済みの値を維持)。
+        update_secrets: "{{ awx_update_secrets | bool }}"
         state: present
       when: vault_awx_scm_prikey | default('') | length > 0
       no_log: true
@@ -168,6 +196,7 @@
         credential_type: Vault
         inputs:
           vault_password: "{{ awx_vault_password }}"
+        update_secrets: "{{ awx_update_secrets | bool }}"
         state: present
       when: awx_vault_password | length > 0
       no_log: true
@@ -200,9 +229,11 @@
         organization: "{{ awx_organization }}"
         credential_type: "{{ awx_credential_type_kubeconfig_name }}"
         inputs:
-          kubeconfig_data: "{{ awx_kubeconfig_content }}"
+          kubeconfig_data: "{{ awx_kubeconfig_resolved }}"
+        # kubeconfigを渡す操作そのものが入れ替えの指示なので、登録済みの実値を常に上書きする
+        update_secrets: true
         state: present
-      when: awx_kubeconfig_content | length > 0
+      when: awx_kubeconfig_resolved | length > 0
       no_log: true
 
     # --- Project / Inventory / EE ---
@@ -219,8 +250,8 @@
           {{ awx_project_scm_credential_name
              if vault_awx_scm_prikey | default('') | length > 0 else omit }}
         state: present
-        # Job Templateのplaybookパスは同期済みリビジョンで検証されるため、先にGitの最新へ同期して完了を待つ
-        update_project: true
+        # Job Templateのplaybookパスは同期済みリビジョンで検証される。同期は -e awx_project_update=true で行う
+        update_project: "{{ awx_project_update | default(false) | bool }}"
         wait: true
         timeout: "{{ awx_project_sync_timeout | default(300) }}"
 

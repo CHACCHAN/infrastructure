@@ -14,6 +14,9 @@
 #
 # field_managerをkubectlに固定し、kubectl --server-side との併用でも
 # フィールド所有権が分裂しないようにする。
+#
+# CRD由来のkindやwebhook経由のkindを適用する呼び出し側は k8s_apply_retries /
+# k8s_apply_delay で再試行できる(既定0=1回だけ試して失敗はそのまま失敗)。
 ---
 - name: マニフェストをServer-Side Applyする
   kubernetes.core.k8s:
@@ -25,5 +28,9 @@
     definition: "{{ k8s_definition }}"
     # Helmチャートがmetadata.namespaceを出力しない場合だけ呼び出し側で補う。
     namespace: "{{ k8s_namespace | default(omit) }}"
+  register: k8s_apply_result
+  until: k8s_apply_result is not failed
+  retries: "{{ k8s_apply_retries | default(0) | int }}"
+  delay: "{{ k8s_apply_delay | default(5) | int }}"
   # Secret等を含む適用では--diffでも中身を出さない(呼び出し側がtrueを渡す)
   no_log: "{{ k8s_apply_no_log | default(false) }}"

@@ -1,10 +1,22 @@
 # 構成完了後のVM再起動。各playbookのpost_tasksから import_role(tasks_from: reboot_vm)で呼ぶ。
-# カーネル等の更新があった場合(/var/run/reboot-required)だけ再起動する。
+# 稼働中のカーネルより新しいカーネルが入っている場合(needrestartの判定)だけ再起動する。
 # 差分がないのに毎回再起動すると「収束済みならchanged=0」に反し、単一レプリカの
 # サービスを不要に中断するため。強制したいときは -e vm_reboot_force=true。
 # restart: unless-stopped のコンテナは再起動後に自動復帰する。
 ---
-- name: 再起動が必要か確認する
+# NEEDRESTART-KSTA: 2(ABI互換の更新あり)/ 3(版が上がっている)が再起動の対象。
+# needrestartが無いVMでは判定できないため、失敗させずフラグファイルの確認に任せる。
+- name: カーネルの再起動要求を確認する
+  ansible.builtin.command:
+    cmd: needrestart -b
+  become: true
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  register: vm_needrestart
+
+# 他のツールが置いた再起動要求も拾う(Debianの標準機構ではない)
+- name: 再起動要求のフラグファイルを確認する
   ansible.builtin.stat:
     path: /var/run/reboot-required
   register: vm_reboot_required_flag
@@ -15,6 +27,7 @@
     reboot_timeout: 600
   become: true
   when: >-
-    (vm_reboot_after_setup | default(true) | bool)
-    and (vm_reboot_required_flag.stat.exists
-         or vm_reboot_force | default(false) | bool)
+    (vm_reboot_after_setup | bool)
+    and (((vm_needrestart.stdout | default('')) is search('NEEDRESTART-KSTA:\s*[23]'))
+         or vm_reboot_required_flag.stat.exists
+         or (vm_reboot_force | bool))

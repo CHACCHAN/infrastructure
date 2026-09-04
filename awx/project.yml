@@ -1,7 +1,5 @@
 # AWXのProject(このリポジトリのGit同期)定義。
 # playbooks/utils/awx/configure.yml が読み込み、awx.awx.project へ渡す。
-# ファイル構成は redhat-cop/controller_configuration の
-# 「定義YAMLとplaybookの分離」に倣っている(実装はawx.awxモジュール直接使用)。
 ---
 awx_organization: Default
 

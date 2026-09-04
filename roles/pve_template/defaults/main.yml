@@ -10,7 +10,7 @@ pve_template_disk_import_timeout: 600
 pve_template_vmid: null
 pve_template_name: null
 
-# pve_vmロールと同じディスク既定値を使い、テンプレートからのクローン後も揃える。
+# roles/pve_vm/defaults/main.yml の同名既定値の写し(クローン後も揃えるため常に同じ値にする)。
 pve_vm_disk_ssd: 1
 pve_vm_disk_iothread: 1
 pve_vm_disk_discard: "on"

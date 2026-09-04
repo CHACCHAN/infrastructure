@@ -73,8 +73,8 @@
     tasks_from: helm
   vars:
     k8s_helm_release: homarr
-    k8s_helm_chart: homarr
-    k8s_helm_repo_url: https://homarr-labs.github.io/charts/
+    # 上流はOCIレジストリでのみチャートを配布する(HTTPリポジトリは無い)
+    k8s_helm_chart: oci://ghcr.io/homarr-labs/charts/homarr
     k8s_helm_version: "{{ k8s_homarr_helm_version }}"
     k8s_helm_namespace: platform
     k8s_helm_values: "{{ k8s_homarr_values }}"

@@ -39,9 +39,11 @@ ansible-playbook playbooks/vm/technitium.yml \
   -e vmid=605 -e node=pve06 -e ip=172.16.11.91
 
 # k3sワーカーを1台だけ追加する(参加先のコントロールプレーンは宣言から自動解決される)
+# k8sプロファイル既定のssd01はpve08では無効なため、このノードで有効なストレージを指定する
 ansible-playbook playbooks/vm/k3s.yml \
   -e target=k3s-worker05 -e profile=k8s \
-  -e vmid=802 -e node=pve08 -e ip=172.16.12.19 -e ip2=10.10.20.19/24
+  -e vmid=802 -e node=pve08 -e ip=172.16.12.19 -e ip2=10.10.20.19/24 \
+  -e pve_storage=local-lvm
 
 # サービス設定を-eで変えて立てる(group_vars/<役割>.yml の値を個体だけ上書き)
 ansible-playbook playbooks/vm/wg-easy.yml \

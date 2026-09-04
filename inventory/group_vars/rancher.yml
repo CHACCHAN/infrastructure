@@ -15,7 +15,7 @@ pve_ssh_prikey_file: ~/.ssh/id_ed25519_rancher
 # Rancher 2.14系のサポート上限はKubernetes v1.35のため、メインクラスタ(k8sグループ)とは
 # 別に固定する。Rancherを上げるときはサポートマトリクスを確認してから併せて上げる。
 # https://www.suse.com/suse-rancher/support-matrix/
-kubernetes_version: v1.35.7+k3s1
+kubernetes_version: v1.35.8+k3s1
 # TLS終端はメインクラスタのTraefikに一本化するため、このVMにTraefikは入れない。
 # 公開はRancherのService(type: LoadBalancer)をk3s同梱のServiceLBが:80へ直接束ねる
 kubernetes_disable: ["traefik"]

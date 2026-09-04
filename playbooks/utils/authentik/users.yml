@@ -1,7 +1,8 @@
 # Authentikのユーザー作成とグループ所属を収束させる単発実行ツール(utils)。
 # 実行例(単一): ansible-playbook playbooks/utils/authentik/users.yml \
-#                 -e username=taro -e display_name="Taro Yamada" \
+#                 -e username=taro -e 'display_name="Taro Yamada"' \
 #                 -e email=taro@example.com -e user_groups=developers,ops
+# (空白を含む値は -e '変数="値"' と二重にクォートする。Ansibleは -e 変数=値 を空白で切る)
 # (変数名が groups でないのは、Ansibleのマジック変数 groups と衝突するため)
 # 実行例(一括): ansible-playbook playbooks/utils/authentik/users.yml -e @users.yml
 #   users.yml の書式は docs/utils/authentik/users.md を参照
@@ -9,7 +10,7 @@
 #
 # 冪等性:
 # - 既存ユーザーは作り直さない(名前・メール等も上書きしない。作成のみ)
-# - グループ追加はAuthentik APIの仕様により所属済みでも安全(何度実行してもよい)
+# - 所属済みのユーザーとグループの組はAPIを呼ばない(2回目の実行は変更なし)
 # - groups未指定(空)ならユーザー作成のみ行う
 # - passwordは新規作成したユーザーにだけ設定する(既存ユーザーのパスワードは変えない)
 #
@@ -105,6 +106,7 @@
              | reject('match', '^[a-zA-Z0-9@.+_-]{1,150}$') | list }}
 
     # --- グループの事前解決(指定がある場合のみ。無ければこの2タスクは対象0件) ---
+    # 応答の users(所属ユーザーのID一覧)はグループ追加の判定にも使う。
     - name: 指定されたグループを検索する
       ansible.builtin.uri:
         url: "{{ authentik_api_base }}/core/groups/?name={{ item | urlencode }}"
@@ -143,7 +145,7 @@
           {%- endfor -%}
           {{ authentik_missing }}
 
-    - name: グループ名からIDへの対応表を作る
+    - name: グループ名からIDと所属ユーザーへの対応表を作る
       ansible.builtin.set_fact:
         authentik_group_pk_map: >-
           {%- set authentik_map = {} -%}
@@ -151,6 +153,16 @@
           {%-   for authentik_g in authentik_r.json.results
                    | selectattr('name', 'equalto', authentik_r.item) -%}
           {%-     set _ = authentik_map.update({authentik_g.name: authentik_g.pk}) -%}
+          {%-   endfor -%}
+          {%- endfor -%}
+          {{ authentik_map }}
+        authentik_group_members_map: >-
+          {%- set authentik_map = {} -%}
+          {%- for authentik_r in authentik_group_lookup.results | default([]) -%}
+          {%-   for authentik_g in authentik_r.json.results
+                   | selectattr('name', 'equalto', authentik_r.item) -%}
+          {%-     set _ = authentik_map.update({
+                    authentik_g.name: authentik_g.users | default([]) | map('int') | list}) -%}
           {%-   endfor -%}
           {%- endfor -%}
           {{ authentik_map }}
@@ -285,7 +297,7 @@
           {{ authentik_map }}
 
     # --- グループ所属(groups未指定のユーザーはペアが生成されず作成のみで終わる) ---
-    # add_user はAuthentik API側が冪等(所属済みでも成功を返す)。
+    # 既に所属しているペアは呼び出さない(新規作成したユーザーは検索時点の一覧に無いため対象になる)。
     - name: ユーザーをグループへ追加する
       ansible.builtin.uri:
         url: "{{ authentik_api_base }}/core/groups/{{ authentik_group_pk_map[item.1] }}/add_user/"
@@ -298,6 +310,8 @@
       loop: "{{ authentik_users_resolved | subelements('groups') }}"
       loop_control:
         label: "{{ item.0.username }} → {{ item.1 }}"
+      when: (authentik_user_pk_map[item.0.username] | int)
+            not in (authentik_group_members_map[item.1] | default([]))
       failed_when: false
       no_log: true
 
@@ -312,6 +326,7 @@
       vars:
         authentik_add_failed: >-
           {{ authentik_add_user.results | default([])
+             | selectattr('status', 'defined')
              | rejectattr('status', 'in', [200, 204])
              | map(attribute='item.0.username') | list }}
 

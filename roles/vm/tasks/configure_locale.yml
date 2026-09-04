@@ -1,11 +1,14 @@
 ---
-- name: 設定するロケールを決定する
-  ansible.builtin.set_fact:
-    vm_locale_resolved: "{{ vm_locale | default('ja_JP.UTF-8', true) }}"
+# locale_genは /usr/share/i18n と locale-gen を使うため、localesパッケージが必要
+- name: ロケール生成に必要なlocalesパッケージをインストールする
+  ansible.builtin.apt:
+    name: locales
+    state: present
+  become: true
 
-- name: "ロケールを生成する({{ vm_locale_resolved }})"
+- name: "ロケールを生成する({{ vm_locale }})"
   community.general.locale_gen:
-    name: "{{ vm_locale_resolved }}"
+    name: "{{ vm_locale }}"
     state: present
   become: true
 
@@ -13,7 +16,7 @@
   ansible.builtin.lineinfile:
     path: /etc/default/locale
     regexp: '^LANG='
-    line: "LANG={{ vm_locale_resolved }}"
+    line: "LANG={{ vm_locale }}"
     create: true
     mode: "0644"
   become: true

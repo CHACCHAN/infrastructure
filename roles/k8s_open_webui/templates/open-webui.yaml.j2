@@ -47,7 +47,7 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
-        # 公式イメージの既定は root だが、書き込み先は DATA_DIR (= PVC) と
+        # 公式イメージの既定は root だが、書き込み先は DATA_DIR (= emptyDir) と
         # /tmp だけなので非 root で動かせる (HOME を /tmp に向ける。下の env)。
         runAsNonRoot: true
         runAsUser: 1000
@@ -56,7 +56,8 @@ spec:
       containers:
         - name: open-webui
           # latest は使わない。更新はタグを書き換えて --check → 適用。
-          image: ghcr.io/open-webui/open-webui:v0.11.0
+          # 0.11.3 は DB マイグレーションを含む。上げる前に openwebui DB をバックアップする。
+          image: ghcr.io/open-webui/open-webui:v0.11.3
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -70,7 +71,7 @@ spec:
             # Python 系ライブラリの ~/.cache 書き込みが Permission denied になる。
             # 揮発してよいキャッシュなので /tmp に逃がす。
             # (HuggingFace のモデルキャッシュはイメージ側の ENV が
-            #  DATA_DIR 配下 = PVC を指しているのでそのまま)
+            #  DATA_DIR 配下 = emptyDir を指しているのでそのまま)
             - name: HOME
               value: /tmp
 

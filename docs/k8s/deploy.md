@@ -13,7 +13,7 @@ ansible-playbook playbooks/k8s/deploy.yml -e app=homarr # 1アプリだけ
 ansible-playbook playbooks/k8s/deploy.yml -e force=true    # フィールド所有権の衝突を強制取得(一度きり)
 ```
 
-- 適用順は `k8s_apps` 登録簿([inventory/group_vars/all/k8s.yml](../../inventory/group_vars/all/k8s.yml))の並び順。依存(cert-manager→証明書、CRD→AWX)はロール内のwaitで担保
+- 適用順は `k8s_apps` 登録簿([inventory/group_vars/all/k8s.yml](../../inventory/group_vars/all/k8s.yml))の並び順。依存はロール内で担保する: cert-manager→証明書はwebhookのcaBundle待ち、AWXはCRDだけを先に適用してEstablished待ち→AWXリソースを含む2段目の適用
 - `kubectl` の直接利用は状態確認(`get`/`describe`/`logs`)に限る。書き込みは必ずdeploy.yml経由
 
 ## 変数一覧
@@ -35,13 +35,17 @@ ansible-playbook playbooks/k8s/deploy.yml -e force=true    # フィールド所�
 Job Template **`k8s-deploy`**(定義: [awx/job_templates.yml](../../awx/job_templates.yml))。
 
 - Survey: `app`(任意・選択式。**選択肢は `k8s_apps` から自動生成**され二重管理しない)、`force`(任意・選択式)
-- **kubeconfigはCredentialで渡す**: カスタムCredential Type `kubeconfig` が内容をファイルとして注入し `K8S_AUTH_KUBECONFIG` を設定する(登録は `playbooks/utils/awx/configure.yml -e awx_kubeconfig_content="$(cat ~/.kube/config)"`)
+- **kubeconfigはCredentialで渡す**: カスタムCredential Type `kubeconfig` が内容をファイルとして注入し `K8S_AUTH_KUBECONFIG` を設定する(登録は `playbooks/utils/awx/configure.yml -e awx_kubeconfig_file=~/.kube/config`)
 - AWX PodのServiceAccountへのフォールバックは**効かない**(内部APIのURLが宣言と一致せずpreflightで止まる)。これは事故防止の仕様
 
 ## つまずきやすいポイント
 
-- **まず `--check`** → クラスタに触らず差分の有無だけ確認できる。バージョン更新や設定変更は必ずcheck→本適用の順
+- **まず `--check`** → クラスタに触らず差分の有無だけ確認できる。バージョン更新や設定変更は必ずcheck→本適用の順(例外は下の「初回構築時だけ `--check` を先に実行できない」)
 - **`changed=0` は成功** → 「何も起きなかった」ではなく「宣言どおりだった」
 - **`FieldManagerConflict`** → 過去に別の管理者名で適用されたリソース。`--check` で差分を確認してから `-e force=true` を一度だけ
 - **Secretを変えたのに反映されない** → vault編集後に該当アプリを `-e app=X` で適用する。Podへの反映はアプリによって再起動が要る
 - **kubeconfigの置き場所** → 手元はDevContainerの `~/.kube/config`、AWXはCredential。playbook側の変数では渡さない(経路を1つにするため)
+
+### 初回構築時だけ `--check` を先に実行できない
+
+まだCRDが入っていないクラスタでは、CRD由来のkind(`ClusterIssuer` / `Certificate` / `AWX`)のdry-runがAPIサーバーで解決できず失敗する。クラスタ全損からの再構築では `--check` を挟まずそのまま本適用する。CRDが入ったあとは通常どおり `--check` → 本適用の順で運用する。

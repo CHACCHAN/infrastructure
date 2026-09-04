@@ -35,9 +35,13 @@
   ansible.builtin.set_fact:
     k8s_certificates_definition: "{{ lookup('ansible.builtin.template', 'certificates.yaml.j2') }}"
 
+# ClusterIssuer / Certificate は cert-manager の webhook を経由するため、
+# caBundle の注入が間に合わない場合に備えて再試行する。
 - name: 証明書マニフェストをServer-Side Applyする
   ansible.builtin.import_role:
     name: k8s
     tasks_from: apply
   vars:
     k8s_definition: "{{ k8s_certificates_definition }}"
+    k8s_apply_retries: 12
+    k8s_apply_delay: 10

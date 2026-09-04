@@ -31,4 +31,4 @@ kubernetes_server_node_ip: >-
 
 # 新規ノードにも既存クラスタと同じ版を入れる(stableチャネル任せの版ズレ防止)
 # クラスタ更新時はこの値を上げてから全ノードを順に再構築する
-kubernetes_version: v1.36.2+k3s1
+kubernetes_version: v1.36.4+k3s1

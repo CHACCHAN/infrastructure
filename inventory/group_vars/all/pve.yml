@@ -26,13 +26,3 @@ pve_ssh_prikey_resolved: >-
   {{ pve_ssh_prikey_tmpfile
      if pve_ssh_prikey_value | default('') | trim | length > 0
      else pve_ssh_prikey_file }}
-
-# 全役割共通のVM設定。
-pve_vm_bios: seabios
-pve_vm_machine: q35
-pve_vm_vga: std
-pve_vm_disk_ssd: 1
-pve_vm_disk_iothread: 1
-pve_vm_disk_discard: "on"
-pve_vm_agent: 1
-pve_vm_onboot: 1

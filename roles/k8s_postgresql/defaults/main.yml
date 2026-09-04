@@ -1,6 +1,6 @@
 # 上流チャートの固定バージョンと values。
 ---
-k8s_postgresql_helm_version: "1.6.7"
+k8s_postgresql_helm_version: "1.6.8"
 k8s_postgresql_values:
   fullnameOverride: postgresql
 
@@ -21,10 +21,9 @@ k8s_postgresql_values:
     # 15 で、上流が動作確認しているのもそのバージョンだけ。外部 DB として
     # 使う分には新しいものでも動くとされているが、18 は検証範囲外。
     #
-    # **-trixie を外さない。** 既定のタグは bookworm ベース (glibc 2.36) で、
-    # trixie ベースの postgres:16.14 で作った既存 DB (照合順序バージョン 2.41)
-    # と食い違い、起動時に collation version mismatch を出す。照合順序が
-    # 変わるとテキスト索引の並びが崩れるので、glibc を合わせる。
+    # **-trixie を外さない。** 既存データの照合順序バージョンは trixie の glibc に
+    # 対応しており、bookworm ベースのタグでは collation version mismatch になる
+    # (照合順序が変わるとテキスト索引の並びが崩れる)。
     #
     # 0.8.6-pg16-trixie の中身は PostgreSQL 16.15。
     tag: "0.8.6-pg16-trixie"
@@ -74,7 +73,9 @@ k8s_postgresql_values:
   storage:
     # TrueNAS の NFS 共有。既定クラス (local-path) はノードローカルなので使わない。
     className: truenas-nfs
-    # NFS の StorageClass は expansion 非対応。後から広げられない。
+    # StorageClass truenas-nfs は reclaimPolicy: Retain / allowVolumeExpansion: true。
+    # NFS 共有配下のサブディレクトリなのでこのサイズは強制されず、
+    # 実際の上限は TrueNAS 側のデータセットの空き容量。
     requestedSize: 200Gi
     # StatefulSet を消しても PVC を残す。
     persistentVolumeClaimRetentionPolicy:

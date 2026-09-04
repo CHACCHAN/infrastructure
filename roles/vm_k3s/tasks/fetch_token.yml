@@ -1,7 +1,8 @@
 # 参加用トークンをコントロールプレーンから自動取得する。
 # 接続情報(ユーザー・秘密鍵)は呼び出し元のplaybook(playbooks/vm/k3s.yml)が参加先を
 # インベントリへ登録済みで、delegate_to でその接続設定が使われる。
-# workerへserver tokenを配らないためagent-tokenを優先し、無ければnode-tokenを使う
+# workerへserver tokenを配らないためagentにはagent-tokenを優先し、無ければnode-tokenを使う。
+# コントロールプレーンとして参加するノードはserver tokenが必要なためnode-tokenを使う
 # (https://docs.k3s.io/cli/token)。トークンは秘密情報のため no_log にする。
 ---
 - name: コントロールプレーンからトークンを取得する
@@ -13,12 +14,14 @@
       delegate_to: "{{ kubernetes_server_ip }}"
       become: true
       register: kubernetes_agent_token_stat
+      when: kubernetes_role_resolved == 'agent'
 
-    - name: agent専用トークンを優先して参加トークンを読み取る
+    - name: 役割に応じた参加トークンを読み取る
       ansible.builtin.slurp:
         src: >-
           {{ '/var/lib/rancher/k3s/server/agent-token'
-             if kubernetes_agent_token_stat.stat.exists
+             if (kubernetes_role_resolved == 'agent'
+                 and (kubernetes_agent_token_stat.stat.exists | default(false)))
              else '/var/lib/rancher/k3s/server/node-token' }}
       delegate_to: "{{ kubernetes_server_ip }}"
       become: true

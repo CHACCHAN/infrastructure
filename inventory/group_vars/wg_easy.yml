@@ -2,7 +2,6 @@
 ---
 # --- ① VMプロファイル(pveドメインが使う) ---
 pve_storage: local-lvm
-pve_vm_cores: 2
 pve_vm_memory: 512
 pve_vm_disk_size: 8
 
@@ -13,9 +12,7 @@ pve_ssh_prikey_file: ~/.ssh/id_ed25519_wg_easy
 
 # --- ③ サービス設定(vm_wg_easyロールが使う) ---
 wg_easy_init_host: cc-chacchan.com
-wg_easy_oauth_providers: oidc
 wg_easy_oauth_oidc_server: https://auth.cc-chacchan.com/application/o/wg-easy/
 wg_easy_oauth_oidc_name: Authentik
-wg_easy_version: "15.4.0"
 wg_easy_insecure: false
 wg_easy_init_dns: 172.16.11.3

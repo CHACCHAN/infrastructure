@@ -10,6 +10,8 @@
       # NFSサーバー上の共有をどのVMからでもマウントできるようにする
       # (Kubernetesのnfs系ボリュームもノード側のこれを使う)
       - nfs-common
+      # 仕上げの再起動(reboot_vm.yml)がカーネル更新の有無を判定するために使う
+      - needrestart
       - tree
       - htop
     state: present

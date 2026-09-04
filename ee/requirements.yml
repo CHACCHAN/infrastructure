@@ -13,7 +13,7 @@
 collections:
   - name: community.proxmox # ①pveドメイン全般(proxmox_kvm / proxmox_vm_info 等)
     version: ">=2.0.0,<3.0.0"
-  - name: kubernetes.core # ③k8sドメイン(k8s / k8s_info / helm_template)
+  - name: kubernetes.core # ③k8sドメイン(k8s / k8s_info)
     version: ">=6.5.0,<7.0.0"
   - name: community.docker # roles/vm_docker の docker_compose_v2
     version: ">=5.2.0,<6.0.0"

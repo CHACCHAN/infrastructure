@@ -1,6 +1,6 @@
 # 既存Proxmox VMのCPU・メモリ・オプション・NICを宣言値へ収束させる。
-# cpuの現在値は「cputype=x86-64-v3」形式と「x86-64-v3」形式が混在するため、
-# 比較時にプレフィックスを剥がして正規化する。
+# cpu・agentの現在値はプレフィックス付き(cputype= / enabled=)と値だけの形式が
+# 混在するため、比較時にプレフィックスを剥がして正規化する。
 ---
 - name: VMの現在設定を取得する  # noqa: args[module]
   community.proxmox.proxmox_vm_info:
@@ -76,7 +76,8 @@
       'cores': pve_current_config.cores | default(0) | int,
       'memory': pve_current_config.memory | default(0) | int,
       'onboot': pve_current_config.onboot | default(false) | bool,
-      'agent': (pve_current_config.agent | default('0') | string).split(',') | first,
+      'agent': (pve_current_config.agent | default('0') | string).split(',') | first
+               | regex_replace('^enabled=', ''),
       'bios': pve_current_config.bios | default(''),
       'machine': pve_current_config.machine | default(''),
       'vga': pve_current_config.vga | default(''),
@@ -94,6 +95,18 @@
     update_unsafe: true
   register: pve_vm_net_update
   when: pve_vm_net != pve_vm_current_net
+
+- name: 宣言に無いNICがPVE上に残っていることを通知する
+  ansible.builtin.debug:
+    msg: >-
+      VMID {{ vmid }} には宣言(pve_vm_nets)に無いNIC
+      {{ pve_vm_undeclared_nets | join(', ') }} があります。
+      このロールは削除しません。不要ならPVE上で外してください。
+  vars:
+    pve_vm_undeclared_nets: >-
+      {{ pve_current_config.keys() | list | select('match', '^net[0-9]+$')
+         | difference(pve_vm_net.keys() | list) | sort | list }}
+  when: pve_vm_undeclared_nets | length > 0
 
 - name: 稼働中VMの変更が再起動待ちになる可能性を表示する
   ansible.builtin.debug:

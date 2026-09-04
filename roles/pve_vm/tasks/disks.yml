@@ -1,4 +1,5 @@
 # 既存Proxmox VMのscsi0を拡張のみで扱い、宣言された追加ディスクを収束させる。
+# 追加ディスクのstorage・ssd・iothread・discardは省略でき、省略時はscsi0と同じ既定値を使う。
 ---
 - name: ディスクの現在設定を取得する  # noqa: args[module]
   community.proxmox.proxmox_vm_info:
@@ -45,11 +46,11 @@
   community.proxmox.proxmox_disk:
     vmid: "{{ vmid }}"
     disk: "{{ item.bus }}{{ item.index }}"
-    storage: "{{ item.storage }}"
+    storage: "{{ item.storage | default(pve_storage) }}"
     size: "{{ item.size | string }}"
-    ssd: "{{ item.ssd | bool }}"
-    iothread: "{{ item.iothread | bool }}"
-    discard: "{{ item.discard }}"
+    ssd: "{{ item.ssd | default(pve_vm_disk_ssd) | bool }}"
+    iothread: "{{ item.iothread | default(pve_vm_disk_iothread) | bool }}"
+    discard: "{{ item.discard | default(pve_vm_disk_discard) }}"
     state: present
   loop: "{{ pve_vm_disks }}"
   loop_control:

@@ -57,7 +57,7 @@
                 target | default('') not in groups['all']
                 or hostvars[target].pve_adhoc_host | default(false)
               - (vmid | default('') | string) is match('^[0-9]+$')
-              - node | default('') is match('^[A-Za-z0-9][A-Za-z0-9.-]*$')
+              - node | default('') is match('^pve(?:0[1-9]|10)$')
               - ip | default('') is match('^' ~ pve_adhoc_ipv4_pattern ~ '$')
               - >-
                 ip2 | default('', true) | length == 0
@@ -65,7 +65,8 @@
                                 ~ '/([0-9]|[12][0-9]|3[0-2])$')
             fail_msg: >-
               profile=<役割グループ> を指定したときは、target(インベントリに無い
-              新しいホスト名)・vmid・node・ip(1枚目NICのIP)をすべて変数で指定してください。
+              新しいホスト名)・vmid・node(pve01〜pve10)・ip(1枚目NICのIP)を
+              すべて変数で指定してください。
               ip2はプレフィックス付き(例: 10.10.20.19/24)です。
               profileは既存の役割グループ名です(プロファイルを継承しないなら lab)。
               例: -e target=tmp01 -e profile=dev -e vmid=799 -e node=pve07 -e ip=172.16.11.99

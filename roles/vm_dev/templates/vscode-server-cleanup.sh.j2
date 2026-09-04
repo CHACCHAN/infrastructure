@@ -4,11 +4,24 @@ set -euo pipefail
 
 TARGET_DIR="/home/{{ ansible_user }}/.vscode-server"
 RETENTION_DAYS="{{ dev_vscode_cleanup_retention_days }}"
-BIN_DIR="${TARGET_DIR}/bin"
+# 版が展開される2か所(bin: Remote-SSH拡張、cli/servers: CLI経由)
+CLEAN_DIRS=("${TARGET_DIR}/bin" "${TARGET_DIR}/cli/servers")
 
-if [ ! -d "$BIN_DIR" ]; then
-  echo "no ${BIN_DIR}, nothing to clean"
-  exit 0
-fi
+# 実行中のプロセスがパスを掴んでいる版は残す(接続中のセッションを切らないため)
+RUNNING_PROCS="$(pgrep -a -f "${TARGET_DIR}" || true)"
 
-find "$BIN_DIR" -mindepth 1 -maxdepth 1 -type d -mtime "+${RETENTION_DAYS}" -print -exec rm -rf {} \;
+for clean_dir in "${CLEAN_DIRS[@]}"; do
+  if [ ! -d "$clean_dir" ]; then
+    echo "no ${clean_dir}, nothing to clean"
+    continue
+  fi
+
+  while IFS= read -r -d '' version_dir; do
+    if printf '%s' "$RUNNING_PROCS" | grep -qF "$version_dir"; then
+      echo "in use, keeping ${version_dir}"
+      continue
+    fi
+    echo "removing ${version_dir}"
+    rm -rf "$version_dir"
+  done < <(find "$clean_dir" -mindepth 1 -maxdepth 1 -type d -mtime "+${RETENTION_DAYS}" -print0)
+done

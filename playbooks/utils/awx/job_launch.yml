@@ -10,8 +10,13 @@
   connection: local
   gather_facts: false
   vars:
-    # connection: localでawxkitを利用できるコントローラ側Pythonへ固定する。
+    # awx.awxモジュールの依存(requests)を持つコントローラ側Pythonへ固定する。
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    # vault_awx_hostがスキーム無しでも動くよう補う(awx.awxモジュールと同じ既定=https)。
+    awx_api_base: >-
+      {{ vault_awx_host
+         if vault_awx_host is match('^https?://')
+         else 'https://' ~ vault_awx_host }}
     # トークン未発行のブートストラップ経路(CONTROLLER_*)はconfigure.ymlと同じ。
     awx_admin_user: "{{ lookup('ansible.builtin.env', 'CONTROLLER_USERNAME') | default('', true) }}"
     awx_admin_password: "{{ lookup('ansible.builtin.env', 'CONTROLLER_PASSWORD') | default('', true) }}"
@@ -59,6 +64,8 @@
       ansible.builtin.debug:
         msg:
           - "Job Template {{ job_template }} を起動しました (job id={{ utils_awx_job.id }})"
-          - "状態: {{ utils_awx_job.status | default('起動要求のみ(完了待ちなし)') }}"
-          - "出力: {{ vault_awx_host }}/#/jobs/playbook/{{ utils_awx_job.id }}/output"
+          - >-
+            状態: {{ utils_awx_job.status }}{{ '(起動時点。完了待ちなし)'
+            if not (awx_job_wait | default(true) | bool) else '' }}
+          - "出力: {{ awx_api_base }}/#/jobs/playbook/{{ utils_awx_job.id }}/output"
           - "あとから確認: ansible-playbook playbooks/utils/awx/job_status.yml -e job_id={{ utils_awx_job.id }}"

@@ -1,12 +1,12 @@
 # 上流チャートの固定バージョンと values。
 ---
-k8s_nextcloud_helm_version: "9.2.5"
+k8s_nextcloud_helm_version: "9.2.6"
 k8s_nextcloud_values:
   fullnameOverride: nextcloud
 
   image:
     # チャートのバージョンとアプリのバージョンは別物なので明示的に固定する。
-    tag: "34.0.2-apache"
+    tag: "34.0.3-apache"
     # nginx + php-fpm の 2 コンテナ構成 (flavor: fpm) にもできるが、
     # apache 単体のほうが構成要素が少ない。nginx: enabled は既定の false。
     flavor: apache
@@ -88,7 +88,7 @@ k8s_nextcloud_values:
       - name: fix-datadir-permissions
         # **image.tag と同じものを指定すること。** 既にノードに落ちている
         # イメージを使い回すためで、中身は chown/chmod しか使っていない。
-        image: docker.io/library/nextcloud:34.0.2-apache
+        image: docker.io/library/nextcloud:34.0.3-apache
         imagePullPolicy: IfNotPresent
         command:
           - sh
@@ -272,16 +272,8 @@ k8s_nextcloud_values:
   # 利用者 1 人規模なら問題にならない。
   redis:
     enabled: false
-    # **チャートの不具合への対処。** REDIS_URL を出すブロックが
-    # redis.enabled の外に書かれていて、無効にしても env が 1 つ残る。
-    # 既定 (auth.enabled: true / password: changeme) のままだと
-    #   REDIS_URL=redis://:$(REDIS_HOST_PASSWORD)@$(REDIS_HOST):$(REDIS_HOST_PORT)
-    # という「パスワード付き」の形で出る。REDIS_HOST も REDIS_HOST_PASSWORD も
-    # 定義されないので $(...) は展開されず、値としては無意味なまま残る。
-    #
-    # 動作に影響は無い (イメージ側の redis.config.php は REDIS_HOST を見ていて、
-    # それが未定義なので Redis の設定自体が入らない) が、
-    # 認証情報らしきものを残さないよう auth を切っておく。
+    # チャートは redis.enabled: false でも REDIS_URL の env を 1 つ出す。
+    # 認証情報らしき値を残さないため auth を切る(動作には影響しない)。
     auth:
       enabled: false
       password: ""
@@ -330,10 +322,9 @@ k8s_nextcloud_values:
     accessMode: ReadWriteOnce
     # 本体 + アプリで 1GB ほど、残りはプレビューとバージョン履歴の余裕。
     #
-    # nfs-subdir-external-provisioner が作るのは NFS 共有の下のディレクトリで、
-    # このサイズを強制する仕組みは無い (StorageClass は
-    # allowVolumeExpansion: true だが、実際には広げる操作自体が要らない)。
-    # 本当の上限は TrueNAS 側のデータセットの空き容量。
+    # StorageClass truenas-nfs は reclaimPolicy: Retain / allowVolumeExpansion: true。
+    # nfs-subdir-external-provisioner が作るのは NFS 共有配下のサブディレクトリで
+    # このサイズは強制されず、実際の上限は TrueNAS 側のデータセットの空き容量。
     size: 20Gi
 
   resources:

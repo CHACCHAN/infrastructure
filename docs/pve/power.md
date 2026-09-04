@@ -25,8 +25,8 @@ ansible-playbook playbooks/pve/power.yml -e state=stopped \
 | 変数 | 型 | 必須 | 既定値 | 説明 |
 | --- | --- | :-: | --- | --- |
 | `state` | str | ✔ | - | `started` または `stopped` |
-| `target` | str | | `lab` | 対象のホスト/グループ |
-| `vmid` / `node` / `ansible_host` | | ✔ | - | ホストごとの識別(hosts.yml または adhoc変数) |
+| `target` | str | | `lab` | 対象のホスト/グループ(`stopped` では `target` か `-l` が必須) |
+| `vmid` / `node` | int / str | ✔ | - | ホストごとの識別(hosts.yml または adhoc変数) |
 | `pve_power_timeout` | int | | `300` | 停止待ちの上限(秒)。stopped時のみ |
 | `pve_power_force` | bool | | `false` | 応答しないゲストの強制停止。stopped時のみ |
 | `vault_proxmox_api_*` | str | ✔ | - | API認証4変数([vault/proxmox_api.yml](../../vault/proxmox_api.yml)) |
@@ -34,6 +34,7 @@ ansible-playbook playbooks/pve/power.yml -e state=stopped \
 ## 動きかた
 
 - `stopped` は**ゲストOSへの正常シャットダウン要求**。起動直後などゲストが応答できない間は失敗する
+- `stopped` は**対象の指定が必須**。`-e target=` も `-l` も無い実行はlab全体の停止になるため、API操作の前に止まる
 - 操作前にVMID・VM名・ノードを照合し、宣言と違う実体を掴んだら止まる
 
 ## AWXでの実行
@@ -47,4 +48,5 @@ Job Template **`pve-power`**(定義: [awx/job_templates.yml](../../awx/job_templ
 
 - **`powerdown failed - got timeout`** → ゲストが要求に応答できない(起動直後・エージェント未起動)。少し待って再実行するか `-e pve_power_force=true`
 - **stateの指定漏れ** → 必須。playbookが実行前に検出して止まる
+- **`state=stopped では対象の指定が必須です`** → lab全体を止めないためのガード。`-e target=<グループ|ホスト>` か `-l <グループ|ホスト>` を付ける
 - **削除の前段として使う** → [destroy.md](destroy.md) は停止中のVMしか消せない。先にここで `stopped` へ収束させる

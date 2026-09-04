@@ -21,7 +21,8 @@ k8s_pgadmin_values:
     email: "{{ k8s_admin_email }}"
 
     ## Traefik の裏にいるので、クライアント IP でセッションを縛らない。
-    ## True にすると Cloudflare Tunnel 経由と LAN 直の間でセッションが切れる。
+    ## True にすると全アクセスの送信元が Traefik の Pod IP に見え、
+    ## クライアント IP と一致しないセッションが無効化される。
     enhanced_cookie_protection: "False"
 
   ## config_local.py の中で参照する値を Secret から環境変数として流し込む。
@@ -114,7 +115,7 @@ k8s_pgadmin_values:
                   'OAUTH2_CLIENT_SECRET': os.environ['PGADMIN_OAUTH2_CLIENT_SECRET'],
 
                   # discovery を引ければ authorize / token / userinfo は自動で決まる。
-                  # <slug> は Authentik の Application の Slug。ここでは pgadmin。
+                  # URL 中の pga は Authentik の Application の Slug。
                   'OAUTH2_SERVER_METADATA_URL':
                       'https://auth.{{ k8s_domain }}/application/o/pga/.well-known/openid-configuration',
 
@@ -142,6 +143,10 @@ k8s_pgadmin_values:
 
   ## 設定 DB は PostgreSQL に置いているので、ここに残るのは
   ## セッションとストレージマネージャの作業領域だけ。既定の 10Gi は要らない。
+  ##
+  ## StorageClass truenas-nfs は reclaimPolicy: Retain / allowVolumeExpansion: true。
+  ## NFS 共有配下のサブディレクトリなのでこのサイズは強制されず、
+  ## 実際の上限は TrueNAS 側のデータセットの空き容量。
   persistentVolume:
     enabled: true
     storageClass: truenas-nfs

@@ -20,7 +20,7 @@ pve_vm_nets:
   - bridge: "{{ pve_bridge }}"
 pve_vm_disks: []
 
-# lab共通設定と同じ値にし、group_vars/allがなくても一貫した構成にする。
+# 自動起動・エージェント・ファームウェアのベース値。
 pve_vm_onboot: 1
 pve_vm_agent: 1
 pve_vm_bios: seabios

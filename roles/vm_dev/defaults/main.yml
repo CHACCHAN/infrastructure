@@ -1,11 +1,18 @@
 # タイムゾーン(vm_timezone)・ロケール(vm_locale)・zram(vm_zram_percent)の
-# 既定値は roles/vm・roles/vm_docker の共通タスク側にある。
+# 既定値は roles/vm/defaults/main.yml にある。
 ---
 # デスクトップ(XFCE)+ xrdp + ブラウザまで入れるか
-vm_gui_required: false
+dev_gui_required: false
 
 # Cockpitからdockerを操作するユーザー。既定は接続ユーザー
-cockpit_user: "{{ ansible_user }}"
+dev_cockpit_user: "{{ ansible_user }}"
+
+# Cockpit Navigator(45DrivesのGitHubリリースの.deb)。
+# パッケージはアーキテクチャ非依存(Architecture: all)で、trixie向けの配布が無いため
+# bookworm向けをそのまま使う。版を変えるときはsha256も併せて差し替える
+dev_cockpit_navigator_version: v0.6.1
+dev_cockpit_navigator_deb: cockpit-navigator_0.6.1-1bookworm_all.deb
+dev_cockpit_navigator_deb_sha256: 4512d21205ba248e4e693007d5d890253504ee82bcdfea58c05c084f39d7c1bf
 
 # VSCode Server(Remote-SSH)の古い版を何日放置したら削除するか / 実行頻度(OnCalendar書式)
 dev_vscode_cleanup_retention_days: 14
@@ -15,7 +22,7 @@ dev_vscode_cleanup_schedule: weekly
 # 192.168.122.0/24 が既存ネットワークと衝突する場合はfalseにする
 dev_libvirt_default_network_autostart: true
 
-# 既定のブラウザ(vm_gui_required=trueのときのみ使用)。
+# 既定のブラウザ(dev_gui_required=trueのときのみ使用)。
 # Firefoxを既定にする場合は firefox-esr / firefox-esr.desktop を指定する
 dev_default_browser_bin: /usr/bin/google-chrome-stable
 dev_default_browser_desktop: google-chrome.desktop

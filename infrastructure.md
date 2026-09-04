@@ -77,10 +77,16 @@ flowchart TB
     k3s02 ~~~ k3s05
   end
 
+  subgraph nas_group["NAS(物理・Proxmox外)"]
+    truenas["TrueNAS<br>vmbr0と同一L2: 172.16.11.10<br>vmbr3と同一L2: 10.10.20.10"]
+  end
+
   WAN --> ROUTER
   ROUTER --> SW1
   SW1 --> NIC1
   SW2 --> NIC2
+  SW1 --> truenas
+  SW2 --> truenas
   NIC1 --> vmbr0 & vmbr2
   NIC2 --> vmbr1 & vmbr3
   vmbr0 & vmbr1 & vmbr2 & vmbr3 --> pve_group
@@ -90,6 +96,7 @@ flowchart TB
 - 各PVEノードの物理NIC 2枚は、**別々のスイッチングハブ**に挿さっている。NIC1側のハブだけがルータへ上がり、NIC2側のハブは上流を持たないクラスタ間専用の閉じた回路
 - したがって外部と通信できるのは NIC1 が収容する `vmbr0` / `vmbr2`(ともに自宅ルータ直結・VLANタグ付き)だけ。`vmbr1` / `vmbr3` はクラスタ内部専用で、デフォルトゲートウェイを持たない
 - k3s APIサーバー(`k8s_api_server: https://10.10.20.11:6443`)やPBSのバックアップ転送は、この占有回線側を通る
+- TrueNASはProxmoxのVMではなく物理NAS。管理UIの公開(`nas.` → `172.16.11.10:443`)はスイッチングハブ1側、k3sのNFS(`roles/k8s_nfs_provisioner` の `10.10.20.10`)はスイッチングハブ2側を通る
 
 ## 公開経路(Traefik)
 

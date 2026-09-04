@@ -60,9 +60,10 @@
       until: technitium_remote_console is succeeded
       changed_when: false
 
+    # 公開経路(k8s_external_routes)のホスト名で案内する。TLSはメインクラスタのTraefikが終端する。
     - name: 接続先を表示する
       ansible.builtin.debug:
         msg:
-          - "Webコンソール: http://{{ ansible_host }}:{{ technitium_http_port | default(5380) }}/"
+          - "Webコンソール: https://dns.{{ k8s_domain }}/"
           - "ログイン: admin(パスワードは {{ technitium_install_dir | default('/opt/technitium-dns') }}/.env)"
           - "DNSサーバー: {{ ansible_host }}(クライアントやルーターのDNS設定にこのIPを指定します)"

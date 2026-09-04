@@ -159,7 +159,7 @@ spec:
               protocol: TCP
           env:
             - name: LOG_LEVEL
-              value: debug
+              value: info
 
             - name: TZ
               value: Asia/Tokyo
@@ -273,8 +273,6 @@ spec:
             #     セッションクッキーが http:// で組み立てられる
             - name: REMOTE_IP_VALVE_ENABLED
               value: "true"
-            - name: REMOTE_IP_VALVE_PROTOCOL_HEADER
-              value: X-Forwarded-Proto
             # internalProxies は既定の正規表現が 10.x.x.x を含んでいて、
             # k3s の Pod CIDR (10.42.0.0/16) がその中に入る。だから指定しない。
           resources:

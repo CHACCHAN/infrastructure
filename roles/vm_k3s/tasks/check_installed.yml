@@ -8,15 +8,59 @@
   failed_when: false
   register: kubernetes_installed_version
 
-- name: インストールが必要か判定する
+- name: 導入済みのバージョン番号を取り出す
   ansible.builtin.set_fact:
     kubernetes_already_installed: "{{ (kubernetes_installed_version.rc | default(1)) == 0 }}"
-    # バージョン指定がある場合は、動いている版と違えば入れ直す(=アップグレード)。
-    # 指定が無ければ入っている版をそのまま使う(勝手に最新へ上げない)
+    # 1行目の "k3s version v1.36.2+k3s1 (0f4b1d4)" からバージョン番号だけを取る
+    kubernetes_installed_token: >-
+      {{ ((kubernetes_installed_version.stdout_lines | default([]) | first | default(''))
+          | regex_search('v[0-9][^ ]*')) | default('', true) }}
+
+# 宣言した版と完全一致しなければ入れ直す(=その場でアップグレードし、k3sは再起動する)。
+# 指定が無ければ入っている版をそのまま使う(勝手に最新へ上げない)。
+- name: インストールが必要か判定する
+  ansible.builtin.set_fact:
     kubernetes_install_required: >-
-      {{ (kubernetes_installed_version.rc | default(1)) != 0
+      {{ not (kubernetes_already_installed | bool)
          or ((kubernetes_version | default('', true)) | length > 0
-             and kubernetes_version not in (kubernetes_installed_version.stdout | default(''))) }}
+             and kubernetes_version != kubernetes_installed_token) }}
+
+# ダウングレードはetcdのスキーマやAPIの互換性を壊すため、宣言の書き間違いを止める。
+- name: 宣言した版が導入済みより古いか判定する
+  ansible.builtin.set_fact:
+    kubernetes_downgrade: >-
+      {{ (kubernetes_declared_core is version(kubernetes_installed_core, '<'))
+         or ((kubernetes_declared_core == kubernetes_installed_core)
+             and ((kubernetes_declared_build | int) < (kubernetes_installed_build | int))) }}
+  vars:
+    kubernetes_declared_core: >-
+      {{ kubernetes_version | regex_replace('\\+k3s[0-9]+$', '') | regex_replace('^v', '') }}
+    kubernetes_installed_core: >-
+      {{ kubernetes_installed_token | regex_replace('\\+k3s[0-9]+$', '') | regex_replace('^v', '') }}
+    # "+k3sN" のNを取り出す(無ければ0)。regex_searchのグループ指定は不一致時に例外になるため使わない
+    kubernetes_declared_build: >-
+      {{ (kubernetes_version | regex_replace('^.*\\+k3s([0-9]+)$', '\\1'))
+         if (kubernetes_version is search('\\+k3s[0-9]+$')) else 0 }}
+    kubernetes_installed_build: >-
+      {{ (kubernetes_installed_token | regex_replace('^.*\\+k3s([0-9]+)$', '\\1'))
+         if (kubernetes_installed_token is search('\\+k3s[0-9]+$')) else 0 }}
+  when:
+    - kubernetes_already_installed | bool
+    - (kubernetes_version | default('', true)) | length > 0
+    - (kubernetes_installed_token | length) > 0
+
+- name: ダウングレードでないことを確認する
+  ansible.builtin.assert:
+    that:
+      - not (kubernetes_downgrade | default(false) | bool)
+    fail_msg: >-
+      宣言した kubernetes_version={{ kubernetes_version }} は、
+      このノードに入っている {{ kubernetes_installed_token }} より古い版です。
+      ダウングレードはデータの互換性を壊すため通常の収束では行いません。
+      宣言を導入済みの版以降に直すか、意図した操作であれば
+      -e kubernetes_allow_downgrade=true を指定してください。
+    quiet: true
+  when: not (kubernetes_allow_downgrade | bool)
 
 - name: 現在の状態を表示する
   ansible.builtin.debug:
