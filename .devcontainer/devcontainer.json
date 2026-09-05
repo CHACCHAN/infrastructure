@@ -4,22 +4,15 @@
     "updateRemoteUserUID": true,
     "image": "mcr.microsoft.com/devcontainers/base:trixie",
     "features": {
-        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-            "moby": false
-        },
+        "ghcr.io/chacchan/devcontainer-features/my-assets:latest": {},
         "ghcr.io/devcontainers/features/python:1": {
             "version": "3.12"
         },
         "ghcr.io/devcontainers-extra/features/apt-packages:1": {
-            "packages": "openssh-client,rsync,sshpass,jq,less,vim,locales,bubblewrap"
+            "packages": "openssh-client,rsync,sshpass,jq,less"
         },
         "ghcr.io/devcontainers-extra/features/ansible:2": {
             "injections": "proxmoxer requests kubernetes ansible-lint ansible-builder"
-        },
-        "ghcr.io/devcontainers/features/node:2": {},
-        "ghcr.io/anthropics/devcontainer-features/claude-code:latest": {},
-        "ghcr.io/devcontainers-extra/features/npm-packages:1": {
-            "packages": "@openai/codex"
         },
         "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
             "helm": "latest",
@@ -28,32 +21,21 @@
         },
         "ghcr.io/devcontainers-extra/features/kubectx-kubens:1": {},
         "ghcr.io/dhoeric/features/k9s:1": {},
-        "ghcr.io/thediveo/devcontainer-features/lazygit:0": {},
         "ghcr.io/schlich/devcontainer-features/helmfile:1": {}
     },
-    "postCreateCommand": "curl -fsSL https://antigravity.google/cli/install.sh | bash && ansible-galaxy collection install -r ee/requirements.yml",
+    "postCreateCommand": "ansible-galaxy collection install -r ee/requirements.yml",
     "workspaceFolder": "/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder},target=/${localWorkspaceFolderBasename},type=bind,consistency=cached",
     "mounts": [
-        "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind",
-        "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
-        "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
-        "source=${localEnv:HOME}/.codex,target=/home/vscode/.codex,type=bind,consistency=cached",
-        "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json,type=bind,consistency=cached",
         "source=${localEnv:HOME}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
-        "source=${localEnv:HOME}/.ansible_vault_pass,target=/home/vscode/.ansible_vault_pass,type=bind,consistency=cached",
-        "source=${localEnv:HOME}/.gemini,target=/home/vscode/.gemini,type=bind,consistency=cached",
-        "source=${localEnv:HOME}/.cline,target=/home/vscode/.cline,type=bind,consistency=cached"
+        "source=${localEnv:HOME}/.ansible_vault_pass,target=/home/vscode/.ansible_vault_pass,type=bind,consistency=cached"
     ],
     "containerEnv": {
         "DISABLE_AUTOUPDATER": "1",
         "ANSIBLE_VAULT_PASSWORD_FILE": "/home/vscode/.ansible_vault_pass",
         "ANSIBLE_HOST_KEY_CHECKING": "False",
         "ANSIBLE_STDOUT_CALLBACK": "default",
-        "ANSIBLE_RESULT_FORMAT": "yaml",
-        "LANG": "en_US.UTF-8",
-        "LANGUAGE": "en_US:en",
-        "LC_ALL": "en_US.UTF-8"
+        "ANSIBLE_RESULT_FORMAT": "yaml"
     },
     "remoteEnv": {
         "PATH": "/usr/local/py-utils/venvs/ansible-core/bin:${containerEnv:PATH}"
@@ -75,15 +57,10 @@
                 "mikestead.dotenv",
                 "pkief.material-icon-theme",
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
-                "samuelcolvin.jinjahtml",
-                "saoudrizwan.claude-dev"
+                "samuelcolvin.jinjahtml"
             ],
             "settings": {
-                "editor.formatOnSave": true,
                 "editor.tabSize": 2,
-                "editor.insertSpaces": true,
-                "files.trimTrailingWhitespace": true,
-                "files.insertFinalNewline": true,
                 "ansible.python.interpreterPath": "/usr/local/py-utils/venvs/ansible-core/bin/python",
                 "ansible.validation.lint.enabled": true,
                 "ansible.validation.lint.path": "/usr/local/py-utils/venvs/ansible-core/bin/ansible-lint",
