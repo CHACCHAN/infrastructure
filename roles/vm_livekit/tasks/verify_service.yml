@@ -1,0 +1,11 @@
+# VM内部からHTTP APIの応答を確認する。
+---
+- name: LiveKitの起動を待つ
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ livekit_http_port }}/"
+    status_code: 200
+  register: livekit_health
+  retries: "{{ livekit_ready_retries }}"
+  delay: "{{ livekit_ready_delay }}"
+  until: livekit_health is succeeded
+  changed_when: false

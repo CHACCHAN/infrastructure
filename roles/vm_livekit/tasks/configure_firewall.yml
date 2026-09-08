@@ -1,0 +1,44 @@
+# host networkの待受を制限し、SSH許可後にUFWを有効化する。
+---
+- name: UFWを導入する
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  become: true
+
+- name: 管理LANからSSHを許可する
+  community.general.ufw:
+    rule: allow
+    port: "{{ livekit_ssh_port }}"
+    proto: tcp
+    from_ip: "{{ livekit_management_cidr }}"
+  become: true
+
+- name: Signalingの接続元を許可する
+  community.general.ufw:
+    rule: allow
+    port: "{{ livekit_http_port }}"
+    proto: tcp
+    from_ip: "{{ item }}"
+  loop: "{{ livekit_signaling_cidrs }}"
+  become: true
+
+- name: UFWの受信既定ポリシーを設定する
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+  become: true
+
+- name: UFWを有効化する
+  community.general.ufw:
+    state: enabled
+  become: true
+
+- name: RTCの直接接続を許可する
+  ansible.builtin.import_role:
+    name: vm
+    tasks_from: configure_ufw_ports
+  vars:
+    svc_ufw_ports:
+      - { port: "{{ livekit_rtc_tcp_port }}", proto: tcp }
+      - { port: "{{ livekit_rtc_udp_start }}:{{ livekit_rtc_udp_end }}", proto: udp }

@@ -1,0 +1,28 @@
+# LiveKit Serverの単一インスタンス構成。
+---
+livekit_image: livekit/livekit-server
+livekit_version: "v1.13.6"
+livekit_install_dir: /opt/livekit
+livekit_config_file: livekit.yaml
+livekit_container_name: livekit
+livekit_http_port: 7880
+livekit_rtc_tcp_port: 7881
+# UDP muxはvCPU数以上のポートを割り当てる。
+livekit_rtc_udp_start: 7882
+livekit_rtc_udp_end: 7889
+livekit_use_external_ip: true
+livekit_advertise_internal_ip: true
+livekit_skip_external_ip_validation: false
+livekit_rtc_interfaces:
+  - "{{ ansible_facts['default_ipv4']['interface'] }}"
+livekit_domain: "livekit.{{ k8s_domain }}"
+livekit_api_keys: {}
+livekit_min_free_disk_gb: 3
+livekit_ready_retries: 30
+livekit_ready_delay: 5
+# host networkのINPUTをUFWで制限する。SSHとsignalingは管理LANから許可する。
+livekit_management_cidr: 172.16.0.0/16
+livekit_signaling_cidrs:
+  - "{{ livekit_management_cidr }}"
+  - 10.42.0.0/16
+livekit_ssh_port: "{{ ansible_port | default(22) }}"

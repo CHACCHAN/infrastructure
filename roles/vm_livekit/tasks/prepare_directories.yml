@@ -1,0 +1,10 @@
+# 設定とCompose定義の配置先。
+---
+- name: LiveKit用のディレクトリを作成する
+  ansible.builtin.file:
+    path: "{{ livekit_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  become: true

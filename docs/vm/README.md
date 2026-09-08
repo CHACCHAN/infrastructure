@@ -37,6 +37,7 @@ flowchart TB
 | [dev/setup.yml](../../playbooks/vm/dev/setup.yml) | [dev/setup.md](dev/setup.md) | 開発VM一式 | − |
 | [hermes.yml](../../playbooks/vm/hermes.yml) | [hermes.md](hermes.md) | Hermes Agent(セルフホストAIエージェント) | hermes.yml |
 | [k3s.yml](../../playbooks/vm/k3s.yml) | [k3s.md](k3s.md) | k3sクラスタ(k8sグループ全台) | − |
+| [livekit.yml](../../playbooks/vm/livekit.yml) | [livekit.md](livekit.md) | LiveKit Server(音声・映像配信基盤) | livekit.yml |
 | [pbs.yml](../../playbooks/vm/pbs.yml) | [pbs.md](pbs.md) | Proxmox Backup Server | − |
 | [portainer.yml](../../playbooks/vm/portainer.yml) | [portainer.md](portainer.md) | Portainer(DockerのWeb UI管理) | − |
 | [rancher.yml](../../playbooks/vm/rancher.yml) | [rancher.md](rancher.md) | Rancher(Kubernetes管理サーバー) | rancher.yml |

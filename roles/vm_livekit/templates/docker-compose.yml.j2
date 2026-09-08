@@ -1,0 +1,10 @@
+# Ansible(roles/vm_livekit)が生成。手動編集は次回実行で上書きされる。
+services:
+  livekit:
+    image: "{{ livekit_image }}:{{ livekit_version }}"
+    container_name: {{ livekit_container_name | to_json }}
+    restart: unless-stopped
+    network_mode: host
+    command: ["--config", "/etc/livekit.yaml"]
+    volumes:
+      - {{ (livekit_install_dir ~ '/' ~ livekit_config_file ~ ':/etc/livekit.yaml:ro') | to_json }}

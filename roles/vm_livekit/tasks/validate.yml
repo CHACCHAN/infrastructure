@@ -1,0 +1,37 @@
+# 起動前にポートと認証情報の宣言を検証する。
+---
+- name: ポートと配置先を検証する
+  ansible.builtin.assert:
+    that:
+      - livekit_http_port | int > 0
+      - livekit_http_port | int <= 65535
+      - livekit_rtc_tcp_port | int > 0
+      - livekit_rtc_tcp_port | int <= 65535
+      - livekit_http_port | int != livekit_rtc_tcp_port | int
+      - livekit_rtc_udp_start | int > 0
+      - livekit_rtc_udp_end | int <= 65535
+      - livekit_rtc_udp_end | int >= livekit_rtc_udp_start | int
+      - livekit_install_dir is match('^/')
+      - livekit_config_file is match('^[A-Za-z0-9_.-]+$')
+      - livekit_rtc_interfaces | length > 0
+      - livekit_signaling_cidrs | length > 0
+    quiet: true
+
+- name: APIキーペアが設定されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - livekit_api_keys is mapping
+      - livekit_api_keys | length > 0
+    quiet: true
+  no_log: true
+
+- name: APIキーペアの形式を検証する
+  ansible.builtin.assert:
+    that:
+      - item.key is string
+      - item.key | length > 0
+      - item.value is string
+      - item.value | length >= 32
+    quiet: true
+  loop: "{{ livekit_api_keys | dict2items }}"
+  no_log: true

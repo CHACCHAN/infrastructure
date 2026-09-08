@@ -186,6 +186,11 @@ awx_survey_common:
 # survey_extra: そのJT固有の質問(共通の後ろに並ぶ)
 # extra_credentials: Vault以外に追加で紐づけるCredential名
 awx_job_templates:
+  - name: vm-livekit
+    description: LiveKit Server専用VMを構築する
+    playbook: playbooks/vm/livekit.yml
+    use_common_survey: true
+
   # ① Proxmox操作ドメイン
   - name: pve-provision
     description: テンプレート準備→クローン→設定→cloud-init→起動まで冪等収束

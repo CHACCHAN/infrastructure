@@ -54,6 +54,7 @@ flowchart TB
     vm_service06["Proxmox Backup Server<br>vmbr0: 172.16.11.7<br>vmbr1: 10.10.10.7"]
     vm_service07["Rancher<br>vmbr0: 172.16.11.8"]
     vm_service08["Portainer<br>vmbr0: 172.16.11.9"]
+    vm_livekit["LiveKit Server<br>pve06 VMID 602<br>vmbr0: 172.16.11.32"]
     vm_service09["Hermes Agent<br>vmbr0: 172.16.11.31"]
 
     vm_service01 ~~~ vm_service04 ~~~ vm_service07
@@ -100,7 +101,7 @@ flowchart TB
 
 ## 公開経路(Traefik)
 
-すべてのHTTP(S)公開はk3s同梱のTraefik v3に集約される。**インターネットへ出るのはCloudflare Tunnel経由のホスト(auth. / *.web. / hermes.)だけ**で、残りはLAN内(WireGuard接続中の端末を含む)からのみ到達できる。
+すべてのHTTP(S)公開はk3s同梱のTraefik v3に集約される。**インターネットへ出るのはCloudflare Tunnel経由のホスト(auth. / *.web. / hermes. / livekit.)だけ**で、残りはLAN内(WireGuard接続中の端末を含む)からのみ到達できる。
 
 ```mermaid
 flowchart TB
@@ -113,7 +114,7 @@ flowchart TB
   end
 
   subgraph edge["宅内エッジ"]
-    ROUTER["ルータ<br>外部へ開けるのは UDP 51820 のみ"]
+    ROUTER["ルータ<br>WireGuard UDP 51820<br>LiveKit RTCは専用NAT転送"]
     WG["wg-easy (VM) 172.16.11.5<br>WireGuard終端 / Authentik OIDC<br>配布DNS: 172.16.11.3"]
     DNS["TechnitiumDNS (VM) 172.16.11.3<br>*.cc-chacchan.com を内部解決"]
   end
@@ -161,7 +162,11 @@ flowchart TB
 ### 公開範囲の決めかた
 
 - 公開範囲は Ingress の `traefik.ingress.kubernetes.io/router.entrypoints` で決まる。既定は `websecure` のみ = **LAN内限定**。`web,websecure` を明示したホスト名だけが、HTTP :80 で入ってくるCloudflare Tunnelから到達できる
-- ルータで外部へ開けているのは WireGuard の UDP 51820 だけ。HTTP/HTTPS の受信ポートは開けていない(公開はすべて cloudflared のアウトバウンド接続経由)
+- HTTP/HTTPSの公開はcloudflaredのアウトバウンド接続を利用する。WireGuardのUDP 51820に加え、LiveKitはRTC用UDP muxとICE/TCPをルータから専用VMへ直接NAT転送する必要がある。転送対象ポートの正は [LiveKitの既定値](roles/vm_livekit/defaults/main.yml)の `livekit_rtc_udp_start` / `livekit_rtc_udp_end` / `livekit_rtc_tcp_port`。ルータの設定はこのリポジトリでは管理しない
 - Cloudflare Tunnel の経路表はCloudflare側にあり、`roles/k8s_cloudflared` はコネクタ(Deployment/PDB)だけを収束させる。**公開ホストを増やす操作はこのリポジトリでは完結しない**
 - クラスタ外サービスの単一の真実は `inventory/group_vars/all/k8s.yml` の `k8s_external_routes`。1エントリからService(セレクタなし)+EndpointSlice+Ingress+Middlewareが生成される
 - WireGuardクライアントには `172.16.11.3`(TechnitiumDNS)が配布されるため、VPN接続中は LAN内クライアントとまったく同じ名前解決・同じ経路になる
+
+### LiveKit Server
+
+専用VMはpve06 / VMID 602 / `172.16.11.32`。資源宣言は [LiveKitプロファイル](inventory/group_vars/livekit.yml)、構築とNAT・Firewallの手順は [LiveKitドキュメント](docs/vm/livekit.md)を参照する。`livekit.cc-chacchan.com` のHTTP/WebSocketは既存の `k8s_external_routes` からTraefikへ登録し、VMのHTTPポートへ転送する。Internet公開にはCloudflare Tunnel側のホスト登録が必要。音声・映像はTunnel・Traefikを経由せずVMへ直接接続する。

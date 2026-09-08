@@ -1,0 +1,14 @@
+# Ansible(roles/vm_livekit)が生成。手動編集は次回実行で上書きされる。
+port: {{ livekit_http_port }}
+bind_addresses: ["0.0.0.0"]
+rtc:
+  tcp_port: {{ livekit_rtc_tcp_port }}
+  udp_port: "{{ livekit_rtc_udp_start }}-{{ livekit_rtc_udp_end }}"
+  use_external_ip: {{ livekit_use_external_ip | bool | lower }}
+  advertise_internal_ip: {{ livekit_advertise_internal_ip | bool | lower }}
+  skip_external_ip_validation: {{ livekit_skip_external_ip_validation | bool | lower }}
+  interfaces:
+    includes: {{ livekit_rtc_interfaces | to_json }}
+keys: {{ livekit_api_keys | to_json }}
+turn:
+  enabled: false

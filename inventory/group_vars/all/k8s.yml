@@ -95,6 +95,18 @@ k8s_external_routes:
         entrypoints: "web,websecure"
         forwarded_https: true
 
+  - name: livekit
+    backend_ip: "{{ hostvars['livekit01']['ansible_host'] }}"
+    scheme: http
+    # HTTP / WebSocketのみ。RTCはVMへ直接接続する(docs/vm/livekit.md)。
+    ports: [{ name: http, port: 7880 }]
+    ingresses:
+      - name: livekit
+        host: "livekit.{{ k8s_domain }}"
+        port: http
+        entrypoints: web,websecure
+        forwarded_https: true
+
   - name: hermes
     backend_ip: 172.16.11.31
     scheme: http

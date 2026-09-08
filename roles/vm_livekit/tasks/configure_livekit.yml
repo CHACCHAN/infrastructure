@@ -1,0 +1,13 @@
+# 認証情報を含む設定はrootだけが読み取れるようにする。
+---
+- name: LiveKitの設定を配置する
+  ansible.builtin.template:
+    src: livekit.yaml.j2
+    dest: "{{ livekit_install_dir }}/{{ livekit_config_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+  no_log: true
+  diff: false
+  register: livekit_config
