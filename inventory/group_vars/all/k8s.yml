@@ -110,10 +110,10 @@ k8s_external_routes:
   - name: hermes
     backend_ip: 172.16.11.31
     scheme: http
-    # Hermes Agentのweb dashboard(:9119)とLINE webhook(:8646)。TLS終端はメインクラスタのTraefik(docs/vm/hermes.md)
+    # Hermes Agentのweb dashboard(:9119)とRelay会社(:8080)。TLS終端はメインクラスタのTraefik(docs/vm/hermes.md)
     ports:
       - { name: http, port: 9119 }
-      - { name: line, port: 8646 }
+      - { name: relay, port: 8080 }
     ingresses:
       # 管理UI。Cloudflare Tunnel(entrypoint web)とLAN(websecure)の両方から到達する。
       # forwarded_https が無いとCookieのsecure属性とOAuthコールバックURLが公開URLとずれる
@@ -122,12 +122,12 @@ k8s_external_routes:
         port: http
         entrypoints: "web,websecure"
         forwarded_https: true
-      # LINE webhook(/line/*)。宅外のLINEサーバーから来るため管理UIと同じく web も許可する
-      - name: hermes-line
-        host: "hermes.{{ k8s_domain }}"
-        path: /line
-        port: line
+      # Hermesの会社ページ
+      - name: relay-group
+        host: "relay-group.{{ k8s_domain }}"
+        port: relay
         entrypoints: "web,websecure"
+        forwarded_https: true
 
   - name: portainer
     backend_ip: 172.16.11.9
