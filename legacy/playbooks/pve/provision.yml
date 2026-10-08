@@ -1,0 +1,124 @@
+# テンプレート準備→クローン→設定→cloud-init→電源まで宣言どおりに収束させるPlaybook。
+# 実行例: ansible-playbook playbooks/pve/provision.yml -l k8s
+# 実行例: ansible-playbook playbooks/pve/provision.yml -l k3s-worker03
+# 実行例: ansible-playbook playbooks/pve/provision.yml
+# インベントリに無いVMを-eだけで構築する場合は docs/pve/adhoc.md
+---
+# -e profile= を指定したときだけ、インベントリ外のVMを一時ホストとして宣言する。
+- name: インベントリ外のVMを一時ホストとして宣言する
+  ansible.builtin.import_playbook: adhoc.yml
+
+- name: 未作成VMに必要なProxmoxテンプレートを収束させる
+  hosts: "{{ target | default('lab', true) }}"
+  connection: local
+  gather_facts: false
+  # 同一(OS,ノード)テンプレートを複数ホストが同時作成する競合を防ぐ。
+  serial: 1
+  vars:
+    # connection: localでproxmoxerを利用できるコントローラ側Pythonへ固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/proxmox_api.yml"
+  module_defaults:
+    group/community.proxmox.proxmox:
+      api_host: "{{ vault_proxmox_api_host }}"
+      api_user: "{{ vault_proxmox_api_user }}"
+      api_token_id: "{{ vault_proxmox_api_token_id }}"
+      api_token_secret: "{{ vault_proxmox_api_token_secret }}"
+      validate_certs: false
+
+  tasks:
+    # group_vars/all が届かない実行環境(AWXの手動インベントリ等)を、API操作の前に
+    # 検出する。この4つは roles/*/defaults に既定値が無く、inventory/group_vars/all/pve.yml
+    # だけが供給源のため、未定義や空のまま進むと収束の途中で止まってしまう。
+    - name: クラスタ共通の基本変数が届いていることを確認する
+      ansible.builtin.assert:
+        that:
+          - pve_provision_missing_vars | length == 0
+        fail_msg: >-
+          {{ pve_provision_missing_vars | join(' / ') }} が未定義または空です。
+          inventory/group_vars/all/pve.yml が読み込まれていません。
+          AWXではインベントリをプロジェクトのinventory/から同期するか(docs/utils/awx/README.md)、
+          不足している値を変数で指定してください。
+        quiet: true
+      vars:
+        # 未定義だけでなく空文字・nullも「不足」として名前ごと列挙する。
+        pve_provision_required_vars:
+          pve_storage: "{{ pve_storage | default('', true) }}"
+          pve_bridge: "{{ pve_bridge | default('', true) }}"
+          pve_ipv4_prefix: "{{ pve_ipv4_prefix | default('', true) }}"
+          pve_ipv4_gw: "{{ pve_ipv4_gw | default('', true) }}"
+        pve_provision_missing_vars: >-
+          {{ pve_provision_required_vars | dict2items
+             | selectattr('value', 'eq', '')
+             | map(attribute='key') | list }}
+
+    # ホスト固有の3つはVM検索・クローン先・cloud-initの必須入力で、roles/*/defaults に
+    # 既定値が無い(nodeへ既定を与えると10ノード環境で意図しないノードへ配置されるため
+    # あえて与えない)。未定義のままProxmox APIへ進むと途中で難解なエラーになるので、
+    # クラスタ共通値と同じ様式で実行前に列挙して止める。
+    - name: ホスト固有の必須変数が届いていることを確認する
+      ansible.builtin.assert:
+        that:
+          - pve_provision_missing_host_vars | length == 0
+        fail_msg: >-
+          {{ inventory_hostname }}: {{ pve_provision_missing_host_vars | join(' / ') }}
+          が未定義または空です。インベントリ実行では inventory/hosts.yml の
+          ホスト定義を確認してください。インベントリ外のVMを変数だけで構築する場合は
+          -e profile= とあわせて -e vmid= -e node= -e ip= を指定します(docs/pve/adhoc.md)。
+        quiet: true
+      vars:
+        pve_provision_required_host_vars:
+          vmid: "{{ vmid | default('', true) }}"
+          node: "{{ node | default('', true) }}"
+          ansible_host: "{{ ansible_host | default('', true) }}"
+        pve_provision_missing_host_vars: >-
+          {{ pve_provision_required_host_vars | dict2items
+             | selectattr('value', 'eq', '')
+             | map(attribute='key') | list }}
+
+    - name: 対象VMを検索する
+      ansible.builtin.import_role:
+        name: pve
+        tasks_from: find_vm
+      vars:
+        pve_vmid: "{{ vmid }}"
+        pve_require_vm: false
+        # pve_vm_nameを上書きした既存VMでは、解決後のPVE上の実名を照合する。
+        pve_expected_name: "{{ pve_vm_name | default(inventory_hostname) }}"
+        pve_expected_node: "{{ node }}"
+
+    - name: 未作成VM用のテンプレートを収束させる
+      ansible.builtin.include_role:
+        name: pve_template
+        apply:
+          throttle: 1
+      vars:
+        # hostvars[inventory_hostname] 経由で読み、タスクvarsの同名定義が自分自身を参照する
+        # 再帰を避ける(extra varsもhostvars経由で見えるため直接実行でも同じ変数名で上書きできる)。
+        pve_os: "{{ hostvars[inventory_hostname].pve_os | default('debian') }}"
+        pve_os_version: >-
+          {{ hostvars[inventory_hostname].pve_os_version | default('13') | string }}
+        node: "{{ hostvars[inventory_hostname].node }}"
+      # 未作成の目印は空辞書(roles/pve/tasks/find_vm.yml)。
+      when: pve_found_vm | length == 0
+
+- name: Proxmox VMを宣言どおりに収束させる
+  hosts: "{{ target | default('lab', true) }}"
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: localでproxmoxerを利用できるコントローラ側Pythonへ固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/proxmox_api.yml"
+  module_defaults:
+    group/community.proxmox.proxmox:
+      api_host: "{{ vault_proxmox_api_host }}"
+      api_user: "{{ vault_proxmox_api_user }}"
+      api_token_id: "{{ vault_proxmox_api_token_id }}"
+      api_token_secret: "{{ vault_proxmox_api_token_secret }}"
+      validate_certs: false
+
+  roles:
+    - pve_vm

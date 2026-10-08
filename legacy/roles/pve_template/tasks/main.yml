@@ -1,0 +1,20 @@
+# OS・ノード固有のProxmoxテンプレートを一度だけ構築するロール入口。
+---
+- name: テンプレートのカタログ項目・VMID・名前を解決する
+  ansible.builtin.import_tasks: resolve.yml
+
+- name: 既存テンプレートを確認する
+  ansible.builtin.import_tasks: check_existing.yml
+
+# 完成済みテンプレートならネットワーク取得を含む以降の全処理を行わない。
+- name: 未作成のテンプレートを構築する
+  when: not pve_template_complete
+  block:
+    - name: Cloud imageを準備する
+      ansible.builtin.import_tasks: prepare_image.yml
+
+    - name: テンプレート元VMを作成する
+      ansible.builtin.import_tasks: create_vm.yml
+
+    - name: VMをテンプレート化する
+      ansible.builtin.import_tasks: convert_template.yml

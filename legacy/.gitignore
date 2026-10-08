@@ -1,0 +1,13 @@
+*.retry
+.ansible
+.cache/pip/*
+__pycache__/
+*.pyc
+.venv/
+.env
+# ansible-builder が ee/ から生成するビルドコンテキスト
+context/
+# SAML SP証明書・秘密鍵(実体は vault/k8s_secrets.yml に置く)
+*.pem
+# authentik/users.yml へ -e @users.yml で渡す平文のユーザー定義
+/users.yml

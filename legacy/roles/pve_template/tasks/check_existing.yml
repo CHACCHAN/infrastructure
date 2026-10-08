@@ -1,0 +1,39 @@
+# 対象VMIDの衝突と完成済みテンプレートを最初に判定する。
+---
+- name: 対象VMIDを検索する  # noqa: args[module]
+  community.proxmox.proxmox_vm_info:
+    vmid: "{{ pve_template_resolved_vmid }}"
+  register: pve_template_vm_info
+
+# 未作成の目印は空辞書(roles/pve/tasks/find_vm.yml)。
+- name: 既存VMと完成状態を記録する
+  ansible.builtin.set_fact:
+    pve_template_existing_vm: >-
+      {{ pve_template_vm_info.proxmox_vms | first | default({}) }}
+    pve_template_complete: >-
+      {{ (pve_template_vm_info.proxmox_vms | first | default({})).template
+         | default(false) | bool }}
+
+- name: テンプレートではない既存VMとの衝突を拒否する
+  ansible.builtin.fail:
+    msg: >-
+      VMID {{ pve_template_resolved_vmid }} は既に存在しますがテンプレートではありません。
+      中断された構築か別VMの可能性があるため、PVE上で状態を手動確認してください。
+  when:
+    - pve_template_existing_vm | length > 0
+    - not pve_template_complete
+
+# 同じVMIDが別ノードや別名のテンプレートに使われている場合は、収束させずに止める。
+- name: 既存テンプレートが解決した名前とノードと一致することを確認する
+  ansible.builtin.assert:
+    that:
+      - pve_template_existing_vm.name | default('') == pve_template_resolved_name
+      - pve_template_existing_vm.node | default('') == node
+    fail_msg: >-
+      VMID {{ pve_template_resolved_vmid }} の既存テンプレートは
+      期待値(name={{ pve_template_resolved_name }}, node={{ node }})と一致しません。
+      実体: name={{ pve_template_existing_vm.name | default('(不明)') }},
+      node={{ pve_template_existing_vm.node | default('(不明)') }}。
+      PVE上のテンプレートを手動確認してください。
+    quiet: true
+  when: pve_template_existing_vm | length > 0

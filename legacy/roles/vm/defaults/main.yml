@@ -1,0 +1,24 @@
+# 全VM共通の初期セットアップ(vmロール)の既定値。
+# VMごとに変える場合は inventory/group_vars/<役割>.yml か -e で指定する。
+#
+# 共有タスクが呼び出し側から受け取る引数(svc_*)はここには置かない
+# (呼び出しごとに決まる値のため、各タスクの冒頭コメントを参照)。
+---
+# システムのタイムゾーン
+vm_timezone: Asia/Tokyo
+
+# システムのロケール(生成して /etc/default/locale のLANGに設定する)
+vm_locale: ja_JP.UTF-8
+
+# zramで確保するswapの割り当て率(物理メモリに対する%)
+vm_zram_percent: 50
+
+# --- 仕上げの再起動(tasks_from: reboot_vm を呼ぶplaybookが使う) ---
+# カーネル更新などの再起動要求があるときに再起動するか
+vm_reboot_after_setup: true
+# 再起動要求が無くても再起動する
+vm_reboot_force: false
+
+# --- 共有タスクが導入するツールの版 ---
+# Helm(tasks_from: install_helm)。https://get.helm.sh から取得する版
+vm_helm_version: v4.2.4
