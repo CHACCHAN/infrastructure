@@ -10,7 +10,6 @@
     "host_vars": "constant",
     "vault": "keys",
     "collections": "packages",
-    "ee": "container",
     "docs": "docs",
     "templates": "template",
     "defaults": "config",

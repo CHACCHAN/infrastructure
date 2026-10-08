@@ -1,1 +1,13 @@
-../ee/requirements.yml
+# 必要なAnsibleコレクション。使用する全コレクションをバージョン範囲つきで明示する。
+#
+# インストール: ansible-galaxy collection install -r collections/requirements.yml
+---
+collections:
+  - name: community.proxmox # pveドメイン全般(proxmox_kvm / proxmox_vm_info 等)
+    version: ">=2.0.0,<3.0.0"
+  - name: kubernetes.core # k8sドメイン(k8s / k8s_info / helm)
+    version: ">=6.5.0,<7.0.0"
+  - name: community.general # 各vmロールの補助モジュール
+    version: ">=13.0.0,<14.0.0"
+  - name: ansible.posix # mount 等
+    version: ">=2.0.0,<3.0.0"

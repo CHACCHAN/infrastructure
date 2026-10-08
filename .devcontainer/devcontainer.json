@@ -9,25 +9,22 @@
             "version": "3.12"
         },
         "ghcr.io/devcontainers-extra/features/apt-packages:1": {
-            "packages": "openssh-client,rsync,sshpass,jq,less"
+            "packages": "openssh-client,rsync,jq,less"
         },
         "ghcr.io/devcontainers-extra/features/ansible:2": {
-            "injections": "proxmoxer requests kubernetes ansible-lint ansible-builder"
+            "injections": "proxmoxer requests kubernetes ansible-lint"
         },
         "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
             "helm": "latest",
             "kubectl": "latest",
             "minikube": "none"
         },
-        "ghcr.io/devcontainers-extra/features/kubectx-kubens:1": {},
-        "ghcr.io/dhoeric/features/k9s:1": {},
-        "ghcr.io/schlich/devcontainer-features/helmfile:1": {}
+        "ghcr.io/dhoeric/features/k9s:1": {}
     },
-    "postCreateCommand": "ansible-galaxy collection install -r ee/requirements.yml",
+    "postCreateCommand": "ansible-galaxy collection install -r collections/requirements.yml && helm plugin install https://github.com/databus23/helm-diff --version v3.15.15 --verify=false",
     "workspaceFolder": "/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder},target=/${localWorkspaceFolderBasename},type=bind,consistency=cached",
     "mounts": [
-        "source=${localEnv:HOME}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
         "source=${localEnv:HOME}/.ansible_vault_pass,target=/home/vscode/.ansible_vault_pass,type=bind,consistency=cached"
     ],
     "containerEnv": {
@@ -45,13 +42,10 @@
             "extensions": [
                 "redhat.ansible",
                 "redhat.vscode-yaml",
-                "ms-python.python",
-                "ms-python.pylint",
                 "eamodio.gitlens",
                 "mhutchie.git-graph",
                 "editorconfig.editorconfig",
                 "streetsidesoftware.code-spell-checker",
-                "gruntfuss.vscode-nginx-conf-hint",
                 "timonwong.shellcheck",
                 "foxundermoon.shell-format",
                 "mikestead.dotenv",

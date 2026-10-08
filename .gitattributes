@@ -26,7 +26,6 @@
 # 3-way merge で行単位に書き換えられたりすると復号できなくなる。
 # 平文ではないため diff を表示しても意味がない。
 vault/*.yml                      -text -diff -merge
-vault/default.yml                text eol=lf diff merge
 *.vault                          -text -diff -merge
 
 # --- バイナリ(改行変換しない) -----------------------------------------

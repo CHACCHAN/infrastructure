@@ -1,24 +1,15 @@
 # ansible-lint 設定。VSCode の Ansible 拡張(redhat.ansible)もこのファイルを読む。
-# production profile で 0 failure を維持する。
 ---
+profile: production
+offline: true
+
 skip_list:
-  # 変数名は層(pve_/vm_/k8s_)を落としたサービス名で揃える(role vm_authentik -> authentik_*)。
-  # 共有ロール roles/vm・roles/vm_docker が受け取る引数は svc_*。
+  # 変数名は層(pve_/vm_/k8s_)を落としたサービス名で揃える(role vm_k3s -> k3s_*)。
   - var-naming[no-role-prefix]
   # タスク名は日本語。文頭の製品名(cert-manager / k3s 等)は公式表記の小文字を使う。
   - name[casing]
 
-# community.proxmox のAPI認証は module_defaults(group/community.proxmox.proxmox)で供給する。
-# args ルールは action group を解決できないため、該当タスクに `# noqa: args[module]` を付けている。
-
-# 各ディレクトリに置く雛形。プレースホルダを含むため検証の対象にしない。
 exclude_paths:
-  - playbooks/k8s/default.yml
-  - playbooks/pve/default.yml
-  - playbooks/utils/default.yml
-  - playbooks/vm/default.yml
-  - playbooks/vm/dev/default.yml
-  - roles/default.yml
-  - inventory/group_vars/default.yml
-  - awx/default.yml
-  - vault/default.yml
+  # 旧構成。移行完了まで参照用に残すだけで、検証の対象にしない。
+  - legacy/
+  - .ansible/
