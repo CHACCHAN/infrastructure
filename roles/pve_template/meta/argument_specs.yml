@@ -1,0 +1,9 @@
+---
+argument_specs:
+  main:
+    short_description: OS のテンプレートをノードへ作る
+    options:
+      template_storage:
+        type: str
+        required: true
+        description: テンプレートのディスクを置くストレージ

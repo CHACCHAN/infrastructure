@@ -1,0 +1,89 @@
+# 定数。インベントリからは上書きしない。
+# 値の比べ方: bool/int/str は一致、prop(key=value の並び)は宣言した要素がすべて現在値に含まれること、
+# set は要素の完全一致、list は区切り文字で分けた並びの一致。default は、現在値に項目が無いときの Proxmox の既定値。
+---
+__pve_vm_specs:
+  acpi: {"type": "bool", "default": true}
+  agent: {"type": "prop", "default": "0", "bare": "enabled"}
+  balloon: {"type": "int"}
+  bios: {"type": "str", "default": "seabios"}
+  boot: {"type": "prop", "default": ""}
+  bootdisk: {"type": "str", "default": ""}
+  cicustom: {"type": "str", "default": ""}
+  citype: {"type": "str", "default": ""}
+  ciupgrade: {"type": "bool", "default": true}
+  ciuser: {"type": "str", "default": ""}
+  cores: {"type": "int", "default": 1}
+  cpu: {"type": "prop", "default": "kvm64", "bare": "cputype"}
+  cpulimit: {"type": "int", "default": 0}
+  cpuunits: {"type": "int", "default": 100}
+  description: {"type": "str", "default": ""}
+  hookscript: {"type": "str", "default": ""}
+  hotplug: {"type": "set", "default": "network,disk,usb", "sep": ","}
+  hugepages: {"type": "str", "default": ""}
+  keyboard: {"type": "str", "default": ""}
+  kvm: {"type": "bool", "default": true}
+  localtime: {"type": "bool", "default": false}
+  machine: {"type": "str", "default": ""}
+  memory: {"type": "int", "default": 512}
+  migrate_downtime: {"type": "int"}
+  migrate_speed: {"type": "int", "default": 0}
+  nameservers: {"type": "list", "default": "", "key": "nameserver", "split": " ,"}
+  numa_enabled: {"type": "bool", "default": false, "key": "numa"}
+  onboot: {"type": "bool", "default": false}
+  ostype: {"type": "str", "default": "other"}
+  protection: {"type": "bool", "default": false}
+  reboot: {"type": "bool", "default": true}
+  rng0: {"type": "prop", "default": ""}
+  scsihw: {"type": "str", "default": "lsi"}
+  searchdomains: {"type": "list", "default": "", "key": "searchdomain", "split": " ,"}
+  shares: {"type": "int", "default": 1000}
+  smbios: {"type": "prop", "default": "", "key": "smbios1"}
+  sockets: {"type": "int", "default": 1}
+  spice_enhancements: {"type": "prop", "default": ""}
+  startdate: {"type": "str", "default": "now"}
+  startup: {"type": "prop", "default": "", "bare": "order"}
+  tablet: {"type": "bool", "default": true}
+  tags: {"type": "list", "default": "", "key": "tags", "split": ";,", "sorted": true}
+  tdf: {"type": "bool", "default": false}
+  vcpus: {"type": "int", "default": 0}
+  vga: {"type": "prop", "default": "std", "bare": "type"}
+  watchdog: {"type": "prop", "default": "", "bare": "model"}
+# デバイスの辞書(キーは audio0 のように番号付き)。宣言したキーだけを設定し、削除はしない。
+__pve_vm_devices:
+  - audio
+  - hostpci
+  - numa
+  - parallel
+  - serial
+  - usb
+# スカラー項目とデバイスの、オプション名の一覧。
+__pve_vm_option_names: "{{ __pve_vm_specs.keys() | list + __pve_vm_devices }}"
+# 専用タスクで扱うロール変数(pve_vm_ を付けた名前が既知の変数になる)。
+__pve_vm_dedicated:
+  - name
+  - node
+  - storage
+  - ssh_pubkeys
+  - nets
+  - allow_nic_change
+  - disk_size
+  - start
+  - clone_timeout
+# 一覧にはあるが、このロールが収束させない項目。宣言するとエラーにする。
+__pve_vm_unsupported:
+  - args
+  - autostart
+  - freeze
+  - lock
+  - skiplock
+  - digest
+  - pool
+  - cipassword
+  - ide
+  - sata
+  - scsi
+  - virtio
+  - efidisk0
+  - tpmstate0
+  - virtiofs

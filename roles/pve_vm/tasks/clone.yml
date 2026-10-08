@@ -1,72 +1,41 @@
-# 未作成のProxmox VMを同一ノードのOSテンプレートからフルクローンする。
+# 未作成の VM を、同じノードのテンプレートからフルクローンする。
 ---
-- name: 未作成VMをテンプレートからクローンする
-  # 未作成の目印は空辞書(roles/pve/tasks/find_vm.yml)。
-  when: pve_found_vm | length == 0
+- name: 未作成の VM をクローンする
+  when: __pve_vm_found | length == 0
   block:
-    - name: クローン元のOSとノードを選択する
-      ansible.builtin.set_fact:
-        pve_clone_os: "{{ pve_os | default('debian') }}"
-        pve_clone_os_version: "{{ pve_os_version | default('13') | string }}"
-        pve_clone_node: "{{ node }}"
-
-    - name: クローン元テンプレートのVMIDと名前を解決する
+    - name: テンプレートの VMID と名前を解決する
       ansible.builtin.include_role:
         name: pve_template
         tasks_from: resolve
       vars:
-        pve_os: "{{ pve_clone_os }}"
-        pve_os_version: "{{ pve_clone_os_version }}"
-        node: "{{ pve_clone_node }}"
+        template_node: "{{ pve_vm_node }}"
 
-    - name: クローン元テンプレートを検索する  # noqa: args[module]
+    - name: テンプレートを検索する
       community.proxmox.proxmox_vm_info:
-        vmid: "{{ pve_template_resolved_vmid }}"
-      register: pve_clone_template_info
+        vmid: "{{ template_resolved.vmid }}"
+      register: __pve_vm_template_info
 
-    - name: クローン元が完成済みテンプレートであることを確認する
-      ansible.builtin.fail:
-        msg: >-
-          {{ pve_template_resolved_name }} (VMID {{ pve_template_resolved_vmid }}) が
-          テンプレートとして見つかりません。
-          provision.ymlのテンプレート収束プレイが先に走っているか確認してください。
-      when: >-
-        pve_clone_template_info.proxmox_vms | length == 0
-        or not ((pve_clone_template_info.proxmox_vms | first).template
-                | default(false) | bool)
-
-    # VMIDが別ノードや別名のテンプレートを指していると、意図しない中身のVMができる。
-    - name: クローン元が解決した名前とノードのテンプレートであることを確認する
+    - name: テンプレートが期待どおりに存在することを確認する
       ansible.builtin.assert:
         that:
-          - (pve_clone_template_info.proxmox_vms | first).name | default('') == pve_template_resolved_name
-          - (pve_clone_template_info.proxmox_vms | first).node | default('') == pve_clone_node
+          - __pve_vm_template_info.proxmox_vms | length > 0
+          - (__pve_vm_template_info.proxmox_vms | first).template | default(false) | bool
+          - (__pve_vm_template_info.proxmox_vms | first).name == template_resolved.name
+          - (__pve_vm_template_info.proxmox_vms | first).node == pve_vm_node
         fail_msg: >-
-          VMID {{ pve_template_resolved_vmid }} のテンプレートは
-          期待値(name={{ pve_template_resolved_name }}, node={{ pve_clone_node }})と一致しません。
-          実体: name={{ (pve_clone_template_info.proxmox_vms | first).name | default('(不明)') }},
-          node={{ (pve_clone_template_info.proxmox_vms | first).node | default('(不明)') }}。
-          PVE上のテンプレートを手動確認してください。
+          {{ template_resolved.name }}(VMID {{ template_resolved.vmid }})が
+          ノード {{ pve_vm_node }} にテンプレートとして見つかりません。
+          先に playbooks/pve/template.yml を実行してください。
         quiet: true
 
-    - name: テンプレートからVMをフルクローンする  # noqa: args[module]
+    - name: テンプレートからフルクローンする
       community.proxmox.proxmox_kvm:
-        clone: "{{ pve_template_resolved_name }}"
-        vmid: "{{ pve_template_resolved_vmid }}"
+        state: present
+        clone: "{{ template_resolved.name }}"
+        vmid: "{{ template_resolved.vmid }}"
         newid: "{{ vmid }}"
         name: "{{ pve_vm_name }}"
+        node: "{{ pve_vm_node }}"
         full: true
-        storage: "{{ pve_storage }}"
-        # 同一ノードクローンのため target は指定しない
-        # (共有ストレージ以外で target を渡すとAPIが拒否する場合がある)
-        node: "{{ node }}"
+        storage: "{{ pve_vm_storage }}"
         timeout: "{{ pve_vm_clone_timeout }}"
-
-    - name: クローン後のVMを検索する  # noqa: args[module]
-      community.proxmox.proxmox_vm_info:
-        vmid: "{{ vmid }}"
-      register: pve_cloned_vm_info
-
-    - name: 後続処理へクローン後の現在値を渡す
-      ansible.builtin.set_fact:
-        pve_found_vm: "{{ pve_cloned_vm_info.proxmox_vms | first | default({}) }}"

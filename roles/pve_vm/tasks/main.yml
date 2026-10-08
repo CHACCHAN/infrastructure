@@ -1,27 +1,24 @@
-# Proxmox VMを必要なら作成し、設定・cloud-init・電源まで順番に収束させる入口。
 ---
-- name: 対象VMを検索する
-  ansible.builtin.import_role:
-    name: pve
-    tasks_from: find_vm
-  vars:
-    pve_vmid: "{{ vmid }}"
-    pve_expected_name: "{{ pve_vm_name }}"
-    pve_expected_node: "{{ node }}"
-    # VMが存在しない場合は後続のclone.ymlがテンプレートから作成する。
-    pve_require_vm: false
+- name: 変数が既知の項目であることを確認する
+  ansible.builtin.import_tasks: validate.yml
 
-- name: 未作成のVMをテンプレートからクローンする
+- name: 対象の VM を検索する
+  ansible.builtin.import_tasks: find.yml
+
+- name: 未作成の VM をテンプレートから作る
   ansible.builtin.import_tasks: clone.yml
 
-- name: VMの基本設定を収束させる
+- name: VM のデバイス設定を宣言どおりにする
   ansible.builtin.import_tasks: configure.yml
 
-- name: VMのディスクを収束させる
-  ansible.builtin.import_tasks: disks.yml
+- name: 起動ディスクを拡張する
+  ansible.builtin.import_tasks: disk.yml
 
-- name: VMのcloud-init設定を収束させる
+- name: cloud-init の設定を宣言どおりにする
   ansible.builtin.import_tasks: cloudinit.yml
 
-- name: VMの電源状態を収束させる
+- name: 再起動が必要な変更を知らせる
+  ansible.builtin.import_tasks: pending.yml
+
+- name: VM を起動する
   ansible.builtin.import_tasks: power.yml

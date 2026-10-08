@@ -1,69 +1,30 @@
-# 既存Proxmox VMのユーザー・公開鍵・IP・DNSをcloud-init宣言へ収束させる。
+# SSH 公開鍵と IP を cloud-init へ渡す。差分があるときだけ更新する。
+# ユーザー・DNS などの、現在値と比べるだけの項目は configure.yml が扱う。
 ---
-- name: cloud-initの宣言値を組み立てる
+- name: cloud-init の宣言値を組み立てる
   ansible.builtin.set_fact:
-    # 鍵は本文(pve_ssh_pubkey_value)を優先し、無ければファイルから読む(docs/vm/ssh_key.md)。
-    # どちらも未定義なら空文字にしてユーザー・鍵の設定をスキップする
-    # (未指定の目印にnoneは使わない。roles/pve/tasks/find_vm.yml)。
-    pve_cloudinit_sshkeys: >-
-      {{ pve_ssh_pubkey_value | trim
-         if pve_ssh_pubkey_value | default('') | trim | length > 0
-         else (lookup('ansible.builtin.file', pve_ssh_pubkey_file | expanduser)
-               if pve_ssh_pubkey_file | default('', true) | length > 0 else '') }}
-    pve_cloudinit_ipconfig: >-
-      {{ {'ipconfig0': 'ip=' ~ ansible_host ~ '/' ~ pve_ipv4_prefix
-                         ~ ',gw=' ~ pve_ipv4_gw}
-         | combine((cluster_ip | default('', true) | length > 0)
-                   | ternary({'ipconfig1':
-                                'ip=' ~ (cluster_ip | default(''))}, {})) }}
+    __pve_vm_ci_sshkeys: "{{ pve_vm_ssh_pubkeys | map('trim') | join('\n') }}"
+    __pve_vm_ci_ipconfig:
+      ipconfig0: "ip={{ ansible_host }}/{{ network_prefix }},gw={{ gateway }}"
 
-- name: cloud-initの現在設定を取得する  # noqa: args[module]
+- name: cloud-init の現在設定を取得する
   community.proxmox.proxmox_vm_info:
     vmid: "{{ vmid }}"
-    # 稼働中VMの再起動待ち設定も収束済みとして比較する。
     config: pending
-  register: pve_cloudinit_info
+  register: __pve_vm_ci_info
 
-- name: cloud-init設定を収束させる  # noqa: args[module]
+# Proxmox は sshkeys を URL エンコードして返すことがあるため、両方の形で比べる。
+- name: cloud-init を更新する
   community.proxmox.proxmox_kvm:
+    state: present
     vmid: "{{ vmid }}"
-    node: "{{ node }}"
-    # ユーザー・鍵が未定義(または空文字)のホストでは既存設定に触れない(omit)
-    ciuser: >-
-      {{ pve_ssh_user
-         if pve_ssh_user | default('', true) | length > 0
-         else omit }}
-    sshkeys: "{{ pve_cloudinit_sshkeys if pve_cloudinit_sshkeys | length > 0 else omit }}"
-    ipconfig: "{{ pve_cloudinit_ipconfig }}"
-    # 未定義時はPVEホストのDNS設定を継承し、既存値を意図せず消さない。
-    nameservers: "{{ [pve_nameserver] if pve_nameserver is defined else omit }}"
+    node: "{{ pve_vm_node }}"
+    sshkeys: "{{ __pve_vm_ci_sshkeys }}"
+    ipconfig: "{{ __pve_vm_ci_ipconfig }}"
     update: true
-  register: pve_cloudinit_update
   vars:
-    pve_cloudinit_current: "{{ (pve_cloudinit_info.proxmox_vms | first).config }}"
+    __pve_vm_ci_current: "{{ (__pve_vm_ci_info.proxmox_vms | first).config }}"
   when: >-
-    (pve_ssh_user | default('', true) | length > 0
-     and pve_cloudinit_current.ciuser | default('') != pve_ssh_user)
-    or (pve_cloudinit_sshkeys | length > 0
-        and (pve_cloudinit_current.sshkeys | default('') | trim)
-            != (pve_cloudinit_sshkeys | trim)
-        and (pve_cloudinit_current.sshkeys | default('') | urldecode | trim)
-            != (pve_cloudinit_sshkeys | trim))
-    or pve_cloudinit_current.ipconfig0 | default('')
-       != pve_cloudinit_ipconfig.ipconfig0
-    or (cluster_ip | default('', true) | length > 0
-        and pve_cloudinit_current.ipconfig1 | default('')
-            != pve_cloudinit_ipconfig.ipconfig1)
-    or (pve_nameserver is defined
-        and pve_cloudinit_current.nameserver | default('')
-            != pve_nameserver | string)
-
-- name: 稼働中VMのcloud-init変更が再起動待ちになる可能性を表示する
-  ansible.builtin.debug:
-    msg: >-
-      VMID {{ vmid }} は稼働中です。今回のcloud-init変更はPVE上で保留され、
-      VMを再起動するまで反映されない可能性があります。
-      このロールでは電源操作を追加実行しません。
-  when:
-    - (pve_cloudinit_info.proxmox_vms | first).status == 'running'
-    - pve_cloudinit_update is changed
+    __pve_vm_ci_current.ipconfig0 | default('') != __pve_vm_ci_ipconfig.ipconfig0
+    or ((__pve_vm_ci_current.sshkeys | default('') | trim) != __pve_vm_ci_sshkeys | trim
+        and (__pve_vm_ci_current.sshkeys | default('') | urldecode | trim) != __pve_vm_ci_sshkeys | trim)

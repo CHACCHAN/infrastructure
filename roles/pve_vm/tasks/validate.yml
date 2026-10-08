@@ -1,0 +1,21 @@
+# pve_vm_ で始まる変数が、既知の項目であることを確かめる(打ち間違いは Ansible では無視されるため)。
+---
+- name: 宣言された pve_vm_ 変数を集める
+  ansible.builtin.set_fact:
+    __pve_vm_declared_names: "{{ lookup('ansible.builtin.varnames', '^pve_vm_', wantlist=True) }}"
+    __pve_vm_known_names: >-
+      {{ (__pve_vm_option_names + __pve_vm_dedicated)
+         | map('regex_replace', '^', 'pve_vm_') | list }}
+    __pve_vm_unsupported_names: "{{ __pve_vm_unsupported | map('regex_replace', '^', 'pve_vm_') | list }}"
+
+- name: 未知の変数と未対応の項目がないことを確認する
+  ansible.builtin.assert:
+    that:
+      - (__pve_vm_declared_names | difference(__pve_vm_known_names) | difference(__pve_vm_unsupported_names)) | length == 0
+      - (__pve_vm_declared_names | intersect(__pve_vm_unsupported_names)) | length == 0
+    fail_msg: >-
+      {% set unknown = __pve_vm_declared_names | difference(__pve_vm_known_names) | difference(__pve_vm_unsupported_names) %}
+      {% set unsupported = __pve_vm_declared_names | intersect(__pve_vm_unsupported_names) %}
+      {% if unknown %}未知の変数があります(打ち間違いの可能性): {{ unknown | join(', ') }}。{% endif %}
+      {% if unsupported %}このロールが対応しない項目です: {{ unsupported | join(', ') }}。{% endif %}
+    quiet: true

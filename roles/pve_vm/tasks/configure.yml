@@ -1,121 +1,59 @@
-# 既存Proxmox VMのCPU・メモリ・オプション・NICを宣言値へ収束させる。
-# cpu・agentの現在値はプレフィックス付き(cputype= / enabled=)と値だけの形式が
-# 混在するため、比較時にプレフィックスを剥がして正規化する。
+# VM のデバイス設定と NIC を宣言どおりにする。
+# 現在値と宣言値を比べ、差分があるときだけ更新する(proxmox_kvm の update は差分を判定しない)。
 ---
-- name: VMの現在設定を取得する  # noqa: args[module]
+- name: VM の現在設定を取得する
   community.proxmox.proxmox_vm_info:
     vmid: "{{ vmid }}"
-    # 稼働中VMの再起動待ち設定も収束済みとして比較する。
     config: pending
-  register: pve_config_info
+  register: __pve_vm_config_info
 
-- name: VMの基本設定とNIC設定を比較用に組み立てる
+# null の項目は宣言していないものとして外す。
+- name: 宣言された項目を集める
   ansible.builtin.set_fact:
-    pve_current_config: "{{ (pve_config_info.proxmox_vms | first).config }}"
-    pve_vm_net: {}
-    pve_vm_current_net: {}
-    # 辞書全体を1つの式で作り、値の型(int / bool / str)を現在値側の比較と揃える。
-    pve_vm_config_desired: >-
-      {{ {'name': pve_vm_name,
-          'cores': pve_vm_cores | int,
-          'memory': pve_vm_memory | int,
-          'onboot': pve_vm_onboot | bool,
-          'agent': pve_vm_agent | string,
-          'bios': pve_vm_bios,
-          'machine': pve_vm_machine,
-          'vga': pve_vm_vga,
-          'cpu': pve_vm_cpu_type} }}
+    __pve_vm_current: "{{ (__pve_vm_config_info.proxmox_vms | first).config }}"
+    __pve_vm_declared: >-
+      {{ dict(__pve_vm_option_names
+              | zip(query('ansible.builtin.vars', *(__pve_vm_option_names | map('regex_replace', '^', 'pve_vm_') | list))))
+         | dict2items | rejectattr('value', 'none') | items2dict }}
 
-- name: NIC設定をnet番号の辞書へ変換する
+- name: 現在の設定と違う項目を求める
   ansible.builtin.set_fact:
-    # 既存NICのMACを宣言文字列へ引き継ぐ(更新時のMAC再生成を防ぐ)。新規NICはPVEに採番させる。
-    # 文字列はPVEの出力順(model=MAC,bridge,firewall,tag)で組み立て、現在値と直接比較する。
-    # 宣言に無いオプションは更新時に外れる。
-    pve_vm_net: >-
-      {{ pve_vm_net | combine({
-        'net' ~ pve_net_index:
-          (item.model | default('virtio'))
-          ~ ((pve_net_mac | length > 0) | ternary('=' ~ pve_net_mac, ''))
-          ~ ',bridge=' ~ item.bridge
-          ~ (',firewall=1' if item.firewall | default(false) | bool else '')
-          ~ (',tag=' ~ (item.tag | string) if item.tag is defined else '')
-      }) }}
-    pve_vm_current_net: >-
-      {{ pve_vm_current_net | combine({
-        'net' ~ pve_net_index:
-          pve_current_config['net' ~ pve_net_index] | default('')
-      }) }}
-  vars:
-    pve_net_mac: >-
-      {{ pve_current_config['net' ~ pve_net_index] | default('')
-         | regex_search('(?i)[0-9A-F]{2}(?::[0-9A-F]{2}){5}')
-         | default('', true) }}
-  loop: "{{ pve_vm_nets }}"
-  loop_control:
-    index_var: pve_net_index
-    label: "net{{ pve_net_index }}"
+    __pve_vm_changes: "{{ __pve_vm_current | pve_vm_changes(__pve_vm_declared, __pve_vm_specs, __pve_vm_devices) }}"
 
-- name: VMの基本設定を収束させる  # noqa: args[module]
+- name: VM のデバイス設定を更新する
   community.proxmox.proxmox_kvm:
+    state: present
     vmid: "{{ vmid }}"
-    node: "{{ node }}"
+    node: "{{ pve_vm_node }}"
     name: "{{ pve_vm_name }}"
-    cores: "{{ pve_vm_cores }}"
-    memory: "{{ pve_vm_memory }}"
-    onboot: "{{ pve_vm_onboot | bool }}"
-    agent: "{{ pve_vm_agent }}"
-    bios: "{{ pve_vm_bios }}"
-    machine: "{{ pve_vm_machine }}"
-    vga: "{{ pve_vm_vga }}"
-    cpu: "{{ pve_vm_cpu_type }}"
     update: true
-  register: pve_vm_basic_update
-  when: >-
-    pve_vm_config_desired != {
-      'name': pve_current_config.name | default(''),
-      'cores': pve_current_config.cores | default(0) | int,
-      'memory': pve_current_config.memory | default(0) | int,
-      'onboot': pve_current_config.onboot | default(false) | bool,
-      'agent': (pve_current_config.agent | default('0') | string).split(',') | first
-               | regex_replace('^enabled=', ''),
-      'bios': pve_current_config.bios | default(''),
-      'machine': pve_current_config.machine | default(''),
-      'vga': pve_current_config.vga | default(''),
-      'cpu': (pve_current_config.cpu | default('') | string).split(',') | first
-             | regex_replace('^cputype=', '')
-    }
+  args: "{{ __pve_vm_changes }}"
+  when: __pve_vm_changes | length > 0
 
-- name: VMのNIC設定を収束させる  # noqa: args[module]
+# 宣言したキーだけを比べ、宣言にない MAC・MTU などは現在値を保つ。
+- name: 宣言した NIC と現在の NIC を比べる
+  ansible.builtin.set_fact:
+    __pve_vm_nics: "{{ __pve_vm_current | pve_vm_nics(pve_vm_nets) }}"
+
+# ブリッジ・VLAN タグ・モデル・MAC・キュー数・MTU・ファイアウォール・リンク切断 の変更は、起動中の VM の通信を切るおそれがある。
+- name: 起動中の VM の NIC を、確認なしに変更しないことを確認する
+  ansible.builtin.assert:
+    that: >-
+      __pve_vm_nics.disruptive | length == 0
+      or __pve_vm_found.status | default('stopped') != 'running'
+      or pve_vm_allow_nic_change | bool
+    fail_msg: >-
+      起動中の VM で、{{ __pve_vm_nics.disruptive | join(', ') }} の接続に関わる設定(ブリッジ・VLAN タグ・モデル・MAC・キュー数・MTU・ファイアウォール・リンク切断)が変わります。
+      通信が切れるおそれがあります。承知のうえなら pve_vm_allow_nic_change を true にしてください。
+    quiet: true
+
+- name: NIC を更新する
   community.proxmox.proxmox_kvm:
     vmid: "{{ vmid }}"
-    node: "{{ node }}"
-    net: "{{ pve_vm_net }}"
+    node: "{{ pve_vm_node }}"
+    state: present
+    net: "{{ __pve_vm_nics.changes }}"
     update: true
-    # proxmox_kvmは安全策としてnet更新を既定で無視するため、差分確認後だけ解除する。
+    # proxmox_kvm は NIC の更新を既定で無視するため、差分を確かめたあとだけ許可する。
     update_unsafe: true
-  register: pve_vm_net_update
-  when: pve_vm_net != pve_vm_current_net
-
-- name: 宣言に無いNICがPVE上に残っていることを通知する
-  ansible.builtin.debug:
-    msg: >-
-      VMID {{ vmid }} には宣言(pve_vm_nets)に無いNIC
-      {{ pve_vm_undeclared_nets | join(', ') }} があります。
-      このロールは削除しません。不要ならPVE上で外してください。
-  vars:
-    pve_vm_undeclared_nets: >-
-      {{ pve_current_config.keys() | list | select('match', '^net[0-9]+$')
-         | difference(pve_vm_net.keys() | list) | sort | list }}
-  when: pve_vm_undeclared_nets | length > 0
-
-- name: 稼働中VMの変更が再起動待ちになる可能性を表示する
-  ansible.builtin.debug:
-    msg: >-
-      VMID {{ vmid }} は稼働中です。今回の構成変更はPVE上で保留され、
-      VMを再起動するまで実行中の構成へ反映されない可能性があります。
-      このロールでは電源操作を追加実行しません。
-  when:
-    - (pve_config_info.proxmox_vms | first).status == 'running'
-    - >-
-      (pve_vm_basic_update is changed)
-      or (pve_vm_net_update is changed)
+  when: __pve_vm_nics.changes | length > 0

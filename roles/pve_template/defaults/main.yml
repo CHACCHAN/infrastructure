@@ -1,16 +1,28 @@
-# Proxmoxテンプレート収束で利用する変数の既定値一覧。
+# OS のテンプレート(第2層の器)を作るロールの既定値。ノードごとに1つ作る。
 ---
-# VMディスクとイメージ置き場は別ストレージとして扱えるようにする。
-pve_template_storage: "{{ pve_storage }}"
-pve_template_image_storage: local
-pve_template_download_timeout: 300
-pve_template_disk_import_timeout: 600
+template_node: "{{ node | default(inventory_hostname) }}"
 
-# 単体テストでは明示値を渡せる。nullならOS・ノードから規則どおり算出する。
-pve_template_vmid: null
-pve_template_name: null
+# cloud イメージ(import 用)の置き場所と、ダウンロード・取り込みの待ち時間(秒)。
+template_image_storage: local
+template_download_timeout: 300
+template_import_timeout: 600
 
-# roles/pve_vm/defaults/main.yml の同名既定値の写し(クローン後も揃えるため常に同じ値にする)。
-pve_vm_disk_ssd: 1
-pve_vm_disk_iothread: 1
-pve_vm_disk_discard: "on"
+# OS イメージ。テンプレートの VMID は 9<template_index><ノード番号>。
+template_name_prefix: debian13
+template_index: "00"
+template_image_filename: debian-13-genericcloud-amd64.qcow2
+template_image_url: "https://cloud.debian.org/images/cloud/trixie/latest/{{ template_image_filename }}"
+template_checksum_url: https://cloud.debian.org/images/cloud/trixie/latest/SHA512SUMS
+template_checksum_algorithm: sha512
+
+# テンプレート元の VM のメモリ(MiB)とコア数。クローンした VM は pve_vm が上書きする。
+template_memory: 2048
+template_cores: 2
+
+# テンプレートのディスクの性能設定。クローンへ引き継がれる。
+template_disk_ssd: true
+template_disk_iothread: true
+template_disk_discard: "on"
+
+template_vmid: "{{ ('9' ~ template_index ~ template_node[-2:]) | int }}"
+template_name: "{{ template_name_prefix }}-template-{{ template_node }}"

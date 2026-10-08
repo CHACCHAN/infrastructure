@@ -1,0 +1,22 @@
+# 起動ディスク(scsi0)を宣言のサイズまで拡張する。縮小はデータを壊すため行わない。
+---
+- name: ディスクの現在設定を取得する
+  community.proxmox.proxmox_vm_info:
+    vmid: "{{ vmid }}"
+    config: current
+  register: __pve_vm_disk_info
+
+- name: scsi0 の現在のサイズを GiB で求める
+  ansible.builtin.set_fact:
+    __pve_vm_disk_current_gib: >-
+      {{ (((__pve_vm_disk_info.proxmox_vms | first).config.scsi0 | default('')
+           | regex_search('(?:^|,)size=[^,]+') | default('', true))
+          | regex_replace('^,?size=', '') | human_to_bytes) / 1073741824 }}
+
+- name: scsi0 を宣言のサイズまで拡張する
+  community.proxmox.proxmox_disk:
+    vmid: "{{ vmid }}"
+    disk: scsi0
+    size: "{{ pve_vm_disk_size }}G"
+    state: resized
+  when: pve_vm_disk_size | float > __pve_vm_disk_current_gib | float

@@ -1,38 +1,150 @@
-# Proxmox VMの宣言収束で利用するpve_vm_*変数の既定値一覧。
+# VM を、テンプレートから作って宣言どおりにするロールの既定値。
+# 変数名は pve_vm_ に community.proxmox.proxmox_kvm のオプション名を続けた形(net だけ pve_vm_nets)。
+# null は「指定しない」。API へ送らず、現在値とも比べない。
+# vmid は inventory/group_vars/all/network.yml が vlan と id から導出する。
 ---
-# インベントリのホスト名をPVE上のVM名として扱い、必要なホストだけ上書きする。
+# ロール自体の設定。
+# VM 名。VMID が同じ別の VM を取り違えないための照合にも使う
 pve_vm_name: "{{ inventory_hostname }}"
-
-# 未作成時のクローン元OSと、クローン完了を待つ上限を宣言から上書きできるようにする。
-pve_os: debian
-pve_os_version: "13"
+# VM を置く Proxmox ノード
+pve_vm_node: "{{ node }}"
+# クローンしたディスクを置くストレージ(必須。未定義なら停止する)
+# pve_vm_storage:
+# cloud-init で登録する SSH 公開鍵のリスト(必須。未定義なら停止する)
+# pve_vm_ssh_pubkeys:
+# NIC のリスト。net の代わりの形。並び順が net0、net1 … になる。宣言したキー以外の NIC のオプションと MAC は、現在値を保つ
+pve_vm_nets:
+  - bridge: "vmbr0{{ vlan }}"
+# 起動中の VM で、NIC の接続に関わる設定(ブリッジ・VLAN タグ・モデル・MAC・キュー数・MTU・ファイアウォール・リンク切断)の変更を許可する。通信が切れるおそれがあるため、既定は拒否
+pve_vm_allow_nic_change: false
+# 起動ディスク(scsi0)のサイズ(GiB)。拡張だけを行い、縮小しない
+pve_vm_disk_size: 20
+# 設定のあとに VM を起動する。電源を操作したくない VM は false にする
+pve_vm_start: true
+# クローンの待ち時間(秒)
 pve_vm_clone_timeout: 600
 
-# provisionの最後に起動する。停止状態で維持したいVMはプロファイルで上書きする。
-pve_vm_power: started
-
-# 小規模VM向けの安全なベース値。役割ごとの差分はgroup_varsで上書きする。
+# Proxmox の VM の設定。
+# ACPI を有効にする
+pve_vm_acpi: null
+# QEMU Guest Agent。`1` か `enabled=1,fstrim_cloned_disks=1` の形。ゲストにエージェントがないと、停止や再起動が待ち時間で失敗する
+pve_vm_agent: null
+# バルーニングの下限メモリ(MiB)。0 でバルーニングを無効にする
+pve_vm_balloon: 0
+# BIOS の実装(seabios か ovmf)
+pve_vm_bios: "seabios"
+# 起動順。`order=scsi0;net0` の形
+pve_vm_boot: null
+# 旧式の起動ディスク指定。通常は boot を使う
+pve_vm_bootdisk: null
+# cloud-init の自動生成ファイルを置き換えるファイルの指定
+pve_vm_cicustom: null
+# cloud-init の形式(nocloud か configdrive2)
+pve_vm_citype: null
+# 初回起動後にパッケージを自動更新する
+pve_vm_ciupgrade: null
+# cloud-init で作る既定ユーザー。未指定ならイメージの既定
+pve_vm_ciuser: null
+# ソケットあたりのコア数
 pve_vm_cores: 2
+# CPU の種類。AVX2 のないノートでも同じ設定で動く x86-64-v2-AES
+pve_vm_cpu: "x86-64-v2-AES"
+# CPU 使用率の上限(コア数換算)。0 は無制限
+pve_vm_cpulimit: null
+# CPU の重み。0 で公平スケジューラを外す
+pve_vm_cpuunits: null
+# VM の説明(Web UI の表示用)
+pve_vm_description: null
+# VM のライフサイクルで実行するスクリプト
+pve_vm_hookscript: null
+# ホットプラグする機能(カンマ区切り。宣言と現在値を完全一致で比べる)
+pve_vm_hotplug: null
+# ヒュージページ(any、2、1024)
+pve_vm_hugepages: null
+# VNC のキーボード配列
+pve_vm_keyboard: null
+# KVM のハードウェア仮想化を有効にする
+pve_vm_kvm: null
+# RTC をローカル時刻にする(Windows 系は既定で有効)
+pve_vm_localtime: null
+# QEMU のマシン型(q35、pc など)
+pve_vm_machine: "q35"
+# メモリ(MiB)
 pve_vm_memory: 2048
-pve_vm_disk_size: 20
-# NICはリスト順に net0, net1, … になる。項目: bridge(必須) / model / tag(VLAN) / firewall
-pve_vm_nets:
-  - bridge: "{{ pve_bridge }}"
-pve_vm_disks: []
+# マイグレーションで許容する停止時間(秒)
+pve_vm_migrate_downtime: null
+# マイグレーションの速度上限(MB/s)。0 は無制限
+pve_vm_migrate_speed: null
+# cloud-init の DNS サーバー(リスト)。未指定なら Proxmox ホストの設定を継承する
+pve_vm_nameservers: null
+# NUMA を有効にする
+pve_vm_numa_enabled: null
+# ノードの起動時にこの VM を起動する
+pve_vm_onboot: true
+# ゲスト OS の種類(Linux 6.x は l26)
+pve_vm_ostype: null
+# VM とディスクの削除を防ぐ保護フラグ
+pve_vm_protection: null
+# false にすると、ゲストの再起動で VM を終了させる
+pve_vm_reboot: null
+# 乱数デバイス。`source=/dev/urandom` の形
+pve_vm_rng0: null
+# SCSI コントローラ(virtio-scsi-single など)
+pve_vm_scsihw: null
+# cloud-init の DNS 検索ドメイン(リスト)
+pve_vm_searchdomains: null
+# 自動バルーニングのメモリ配分の重み(0〜50000)
+pve_vm_shares: null
+# SMBIOS type 1 のフィールド
+pve_vm_smbios: null
+# CPU ソケット数
+pve_vm_sockets: null
+# SPICE の拡張(foldersharing、videostreaming)
+pve_vm_spice_enhancements: null
+# RTC の初期日時
+pve_vm_startdate: null
+# 起動と停止の順序・待ち時間。`order=1,up=30` の形
+pve_vm_startup: null
+# USB タブレットデバイスを有効にする
+pve_vm_tablet: null
+# VM のタグ(リスト。並び順は比較しない)
+pve_vm_tags: null
+# 時刻ずれの補正を有効にする
+pve_vm_tdf: null
+# ホットプラグする vCPU 数
+pve_vm_vcpus: null
+# VGA の種類(std、qxl、serial0 など)。未指定ならテンプレートの設定を引き継ぐ
+pve_vm_vga: null
+# 仮想ウォッチドッグ。`model=i6300esb,action=reset` の形
+pve_vm_watchdog: null
 
-# 自動起動・エージェント・ファームウェアのベース値。
-pve_vm_onboot: 1
-pve_vm_agent: 1
-pve_vm_bios: seabios
-pve_vm_machine: q35
-pve_vm_vga: std
-pve_vm_cpu_type: x86-64-v2-AES
+# デバイス。宣言したキーだけを設定し、宣言にないキーは触らない。
+# 音声デバイス。`{audio0: "device=ich9-intel-hda,driver=none"}` の形
+pve_vm_audio: null
+# ホストの PCI デバイスのパススルー。`{hostpci0: "0000:01:00.0,pcie=1"}` の形
+pve_vm_hostpci: null
+# NUMA トポロジ。`{numa0: "cpus=0-1,memory=1024"}` の形
+pve_vm_numa: null
+# ホストのパラレルポート。`{parallel0: "/dev/parport0"}` の形
+pve_vm_parallel: null
+# シリアルデバイス。`{serial0: socket}` の形
+pve_vm_serial: null
+# USB デバイスのパススルー。`{usb0: "host=1234:5678"}` の形
+pve_vm_usb: null
 
-# scsi0のディスクオプション。テンプレート作成時(roles/pve_template)にだけ使い、既存VMには反映しない。
-pve_vm_disk_ssd: 1
-pve_vm_disk_iothread: 1
-pve_vm_disk_discard: "on"
-
-# pve_ssh_user / pve_ssh_pubkey_file には既定値を置かない。
-# 各役割プロファイル(group_vars)が定義し、未定義のホストでは
-# cloud-initのユーザー・鍵設定をスキップする(誤った値の暗黙適用を防ぐ)。
+# 未対応の項目(宣言するとエラーになる)。
+# pve_vm_args: root@pam でしか使えず、API トークンでは使えない
+# pve_vm_autostart: API が無視する項目
+# pve_vm_freeze: 起動時に CPU を止めるデバッグ用の動作
+# pve_vm_lock: ロックの操作
+# pve_vm_skiplock: ロックの無視
+# pve_vm_digest: 設定の同時変更を防ぐ照合
+# pve_vm_pool: リソースプールへの追加(作成時のみ)
+# pve_vm_cipassword: パスワードを Proxmox へ書き込まないため(認証は SSH 公開鍵)
+# pve_vm_ide: ストレージを確保するデバイス(ディスク・CD-ROM)
+# pve_vm_sata: ストレージを確保するデバイス(ディスク・CD-ROM)
+# pve_vm_scsi: ストレージを確保するデバイス。起動ディスクの拡張だけ disk_size で扱う
+# pve_vm_virtio: ストレージを確保するデバイス(ディスク・CD-ROM)
+# pve_vm_efidisk0: ストレージを確保するデバイス(bios=ovmf のとき必要)
+# pve_vm_tpmstate0: ストレージを確保するデバイス
+# pve_vm_virtiofs: 更新に update_unsafe が必要なデバイス

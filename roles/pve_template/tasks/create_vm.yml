@@ -1,14 +1,13 @@
-# Cloud imageを起動ディスクに取り込んだテンプレート元VMを作成する。
+# 取り込んだイメージを起動ディスクにした VM を作り、テンプレートへ変換する。
+# NIC は持たない。個体の NIC はクローン後に pve_vm が設定する。
 ---
-- name: 空のテンプレート元VMを作成する  # noqa: args[module]
+- name: テンプレート元の空の VM を作る
   community.proxmox.proxmox_kvm:
-    vmid: "{{ pve_template_resolved_vmid }}"
-    name: "{{ pve_template_resolved_name }}"
-    node: "{{ node }}"
-    memory: 2048
-    cores: 2
-    net:
-      net0: "virtio,bridge={{ pve_bridge }}"
+    vmid: "{{ template_vmid }}"
+    name: "{{ template_name }}"
+    node: "{{ template_node }}"
+    memory: "{{ template_memory }}"
+    cores: "{{ template_cores }}"
     scsihw: virtio-scsi-single
     ostype: l26
     serial:
@@ -16,19 +15,24 @@
     vga: serial0
     boot: "order=scsi0"
     ide:
-      ide2: "{{ pve_template_storage }}:cloudinit"
+      ide2: "{{ template_storage }}:cloudinit"
     state: present
 
-- name: Cloud imageからscsi0を作成する  # noqa: args[module]
+- name: cloud イメージから起動ディスクを作る
   community.proxmox.proxmox_disk:
-    vmid: "{{ pve_template_resolved_vmid }}"
+    vmid: "{{ template_vmid }}"
     disk: scsi0
-    storage: "{{ pve_template_storage }}"
-    import_from: >-
-      {{ pve_template_image_storage }}:import/{{ pve_template_catalog.image_filename }}
-    ssd: "{{ pve_vm_disk_ssd | bool }}"
-    iothread: "{{ pve_vm_disk_iothread | bool }}"
-    discard: "{{ pve_vm_disk_discard }}"
+    storage: "{{ template_storage }}"
+    import_from: "{{ template_image_storage }}:import/{{ template_image_filename }}"
+    ssd: "{{ template_disk_ssd }}"
+    iothread: "{{ template_disk_iothread }}"
+    discard: "{{ template_disk_discard }}"
     create: regular
     state: present
-    timeout: "{{ pve_template_disk_import_timeout }}"
+    timeout: "{{ template_import_timeout }}"
+
+- name: VM をテンプレートへ変換する
+  community.proxmox.proxmox_kvm:
+    vmid: "{{ template_vmid }}"
+    node: "{{ template_node }}"
+    state: template

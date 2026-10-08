@@ -1,0 +1,23 @@
+# 起動中の VM に、再起動するまで反映されない変更が残っていることを知らせる。
+---
+- name: 更新後の現在の設定と保留中の設定を取得する
+  community.proxmox.proxmox_vm_info:
+    vmid: "{{ vmid }}"
+    config: "{{ item }}"
+  loop:
+    - current
+    - pending
+  register: __pve_vm_after_info
+  when: __pve_vm_found.status | default('stopped') == 'running'
+
+- name: 再起動が必要な変更を知らせる
+  ansible.builtin.debug:
+    msg: >-
+      次の設定は保留中で、VM を再起動するまで反映されません: {{ __pve_vm_pending_keys | join(', ') }}
+  vars:
+    __pve_vm_pending_keys: >-
+      {{ (__pve_vm_after_info.results[0].proxmox_vms | first).config
+         | pve_vm_pending_keys((__pve_vm_after_info.results[1].proxmox_vms | first).config) }}
+  when:
+    - __pve_vm_found.status | default('stopped') == 'running'
+    - __pve_vm_pending_keys | length > 0

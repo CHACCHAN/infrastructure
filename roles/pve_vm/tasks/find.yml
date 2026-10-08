@@ -1,0 +1,21 @@
+# VMID で VM を探し、見つかった VM が宣言の名前とノードと一致することを確かめる。
+---
+- name: VMID で VM を検索する
+  community.proxmox.proxmox_vm_info:
+    vmid: "{{ vmid }}"
+  register: __pve_vm_found_info
+
+- name: 見つかった VM を記録する
+  ansible.builtin.set_fact:
+    __pve_vm_found: "{{ __pve_vm_found_info.proxmox_vms | first | default({}) }}"
+
+- name: 既存の VM が宣言の名前とノードと一致することを確認する
+  ansible.builtin.assert:
+    that:
+      - __pve_vm_found.name | default('') == pve_vm_name
+      - __pve_vm_found.node | default('') == pve_vm_node
+    fail_msg: >-
+      VMID {{ vmid }} の VM が、宣言(name={{ pve_vm_name }}、node={{ pve_vm_node }})と一致しません。
+      実体は name={{ __pve_vm_found.name | default('不明') }}、node={{ __pve_vm_found.node | default('不明') }} です。
+    quiet: true
+  when: __pve_vm_found | length > 0

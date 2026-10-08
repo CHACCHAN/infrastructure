@@ -1,0 +1,227 @@
+---
+argument_specs:
+  main:
+    short_description: VM をテンプレートから作り、宣言どおりにする
+    description:
+      - 変数名は pve_vm_ に community.proxmox.proxmox_kvm のオプション名を続けた形。
+      - null は「指定しない」。
+    options:
+      pve_vm_name:
+        type: str
+        description: "VM 名。VMID が同じ別の VM を取り違えないための照合にも使う"
+      pve_vm_node:
+        type: str
+        description: "VM を置く Proxmox ノード"
+      pve_vm_storage:
+        type: str
+        required: true
+        description: "クローンしたディスクを置くストレージ(必須。未定義なら停止する)"
+      pve_vm_ssh_pubkeys:
+        type: list
+        elements: str
+        required: true
+        description: "cloud-init で登録する SSH 公開鍵のリスト(必須。未定義なら停止する)"
+      pve_vm_nets:
+        type: list
+        elements: dict
+        options:
+          bridge:
+            type: str
+            required: true
+            description: "接続するブリッジ(例: vmbr021)"
+          model:
+            type: str
+            description: "NIC のモデル。既定は virtio"
+          macaddr:
+            type: str
+            description: "MAC アドレス。未指定なら、現在の値を保つ(新規なら Proxmox が生成する)"
+          tag:
+            type: int
+            description: "VLAN タグ"
+          firewall:
+            type: bool
+            description: "Proxmox のファイアウォールを有効にする"
+          link_down:
+            type: bool
+            description: "リンクを切断状態にする"
+          mtu:
+            type: int
+            description: "MTU"
+          queues:
+            type: int
+            description: "マルチキューの数"
+          rate:
+            type: str
+            description: "帯域の上限(MB/s)"
+        description: "NIC のリスト。net の代わりの形。並び順が net0、net1 … になる。宣言したキー以外の NIC のオプションと MAC は、現在値を保つ"
+      pve_vm_allow_nic_change:
+        type: bool
+        description: "起動中の VM で、NIC の接続に関わる設定(ブリッジ・VLAN タグ・モデル・MAC・キュー数・MTU・ファイアウォール・リンク切断)の変更を許可する。通信が切れるおそれがあるため、既定は拒否"
+      pve_vm_disk_size:
+        type: int
+        description: "起動ディスク(scsi0)のサイズ(GiB)。拡張だけを行い、縮小しない"
+      pve_vm_start:
+        type: bool
+        description: "設定のあとに VM を起動する。電源を操作したくない VM は false にする"
+      pve_vm_clone_timeout:
+        type: int
+        description: "クローンの待ち時間(秒)"
+      pve_vm_acpi:
+        type: bool
+        description: "ACPI を有効にする"
+      pve_vm_agent:
+        type: str
+        description: "QEMU Guest Agent。`1` か `enabled=1,fstrim_cloned_disks=1` の形。ゲストにエージェントがないと、停止や再起動が待ち時間で失敗する"
+      pve_vm_balloon:
+        type: int
+        description: "バルーニングの下限メモリ(MiB)。0 でバルーニングを無効にする"
+      pve_vm_bios:
+        type: str
+        description: "BIOS の実装(seabios か ovmf)"
+      pve_vm_boot:
+        type: str
+        description: "起動順。`order=scsi0;net0` の形"
+      pve_vm_bootdisk:
+        type: str
+        description: "旧式の起動ディスク指定。通常は boot を使う"
+      pve_vm_cicustom:
+        type: str
+        description: "cloud-init の自動生成ファイルを置き換えるファイルの指定"
+      pve_vm_citype:
+        type: str
+        description: "cloud-init の形式(nocloud か configdrive2)"
+      pve_vm_ciupgrade:
+        type: bool
+        description: "初回起動後にパッケージを自動更新する"
+      pve_vm_ciuser:
+        type: str
+        description: "cloud-init で作る既定ユーザー。未指定ならイメージの既定"
+      pve_vm_cores:
+        type: int
+        description: "ソケットあたりのコア数"
+      pve_vm_cpu:
+        type: str
+        description: "CPU の種類。AVX2 のないノートでも同じ設定で動く x86-64-v2-AES"
+      pve_vm_cpulimit:
+        type: int
+        description: "CPU 使用率の上限(コア数換算)。0 は無制限"
+      pve_vm_cpuunits:
+        type: int
+        description: "CPU の重み。0 で公平スケジューラを外す"
+      pve_vm_description:
+        type: str
+        description: "VM の説明(Web UI の表示用)"
+      pve_vm_hookscript:
+        type: str
+        description: "VM のライフサイクルで実行するスクリプト"
+      pve_vm_hotplug:
+        type: str
+        description: "ホットプラグする機能(カンマ区切り。宣言と現在値を完全一致で比べる)"
+      pve_vm_hugepages:
+        type: str
+        description: "ヒュージページ(any、2、1024)"
+      pve_vm_keyboard:
+        type: str
+        description: "VNC のキーボード配列"
+      pve_vm_kvm:
+        type: bool
+        description: "KVM のハードウェア仮想化を有効にする"
+      pve_vm_localtime:
+        type: bool
+        description: "RTC をローカル時刻にする(Windows 系は既定で有効)"
+      pve_vm_machine:
+        type: str
+        description: "QEMU のマシン型(q35、pc など)"
+      pve_vm_memory:
+        type: int
+        description: "メモリ(MiB)"
+      pve_vm_migrate_downtime:
+        type: int
+        description: "マイグレーションで許容する停止時間(秒)"
+      pve_vm_migrate_speed:
+        type: int
+        description: "マイグレーションの速度上限(MB/s)。0 は無制限"
+      pve_vm_nameservers:
+        type: list
+        elements: str
+        description: "cloud-init の DNS サーバー(リスト)。未指定なら Proxmox ホストの設定を継承する"
+      pve_vm_numa_enabled:
+        type: bool
+        description: "NUMA を有効にする"
+      pve_vm_onboot:
+        type: bool
+        description: "ノードの起動時にこの VM を起動する"
+      pve_vm_ostype:
+        type: str
+        description: "ゲスト OS の種類(Linux 6.x は l26)"
+      pve_vm_protection:
+        type: bool
+        description: "VM とディスクの削除を防ぐ保護フラグ"
+      pve_vm_reboot:
+        type: bool
+        description: "false にすると、ゲストの再起動で VM を終了させる"
+      pve_vm_rng0:
+        type: str
+        description: "乱数デバイス。`source=/dev/urandom` の形"
+      pve_vm_scsihw:
+        type: str
+        description: "SCSI コントローラ(virtio-scsi-single など)"
+      pve_vm_searchdomains:
+        type: list
+        elements: str
+        description: "cloud-init の DNS 検索ドメイン(リスト)"
+      pve_vm_shares:
+        type: int
+        description: "自動バルーニングのメモリ配分の重み(0〜50000)"
+      pve_vm_smbios:
+        type: str
+        description: "SMBIOS type 1 のフィールド"
+      pve_vm_sockets:
+        type: int
+        description: "CPU ソケット数"
+      pve_vm_spice_enhancements:
+        type: str
+        description: "SPICE の拡張(foldersharing、videostreaming)"
+      pve_vm_startdate:
+        type: str
+        description: "RTC の初期日時"
+      pve_vm_startup:
+        type: str
+        description: "起動と停止の順序・待ち時間。`order=1,up=30` の形"
+      pve_vm_tablet:
+        type: bool
+        description: "USB タブレットデバイスを有効にする"
+      pve_vm_tags:
+        type: list
+        elements: str
+        description: "VM のタグ(リスト。並び順は比較しない)"
+      pve_vm_tdf:
+        type: bool
+        description: "時刻ずれの補正を有効にする"
+      pve_vm_vcpus:
+        type: int
+        description: "ホットプラグする vCPU 数"
+      pve_vm_vga:
+        type: str
+        description: "VGA の種類(std、qxl、serial0 など)。未指定ならテンプレートの設定を引き継ぐ"
+      pve_vm_watchdog:
+        type: str
+        description: "仮想ウォッチドッグ。`model=i6300esb,action=reset` の形"
+      pve_vm_audio:
+        type: dict
+        description: "音声デバイス。`{audio0: \"device=ich9-intel-hda,driver=none\"}` の形"
+      pve_vm_hostpci:
+        type: dict
+        description: "ホストの PCI デバイスのパススルー。`{hostpci0: \"0000:01:00.0,pcie=1\"}` の形"
+      pve_vm_numa:
+        type: dict
+        description: "NUMA トポロジ。`{numa0: \"cpus=0-1,memory=1024\"}` の形"
+      pve_vm_parallel:
+        type: dict
+        description: "ホストのパラレルポート。`{parallel0: \"/dev/parport0\"}` の形"
+      pve_vm_serial:
+        type: dict
+        description: "シリアルデバイス。`{serial0: socket}` の形"
+      pve_vm_usb:
+        type: dict
+        description: "USB デバイスのパススルー。`{usb0: \"host=1234:5678\"}` の形"
