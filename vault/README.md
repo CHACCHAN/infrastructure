@@ -1,26 +1,18 @@
-# Vault(暗号化された秘密情報)
+# vault
 
-このディレクトリのYAMLはすべて `ansible-vault` で暗号化されています。
-**すべて同じVaultパスワードで暗号化してください**(playbookが複数ファイルを同時に読むため)。
+Ansible Vault で暗号化した秘密情報。規則は [docs/conventions.md](../docs/conventions.md) の「秘密情報」。**平文の秘密を、チャット・ログ・コミットに出さない。**
 
-| ファイル | 内容 | 使うplaybook |
+## ファイル
+
+| ファイル | 変数 | 使う playbook |
 | --- | --- | --- |
-| `proxmox_api.yml` | Proxmox VE APIトークン認証の4変数(`vault_proxmox_api_host` / `vault_proxmox_api_user` / `vault_proxmox_api_token_id` / `vault_proxmox_api_token_secret`) | `playbooks/pve/`(①。②のprovision部も) |
-| `k8s_secrets.yml` | k8sアプリのSecret実値(`k8s_secret_<Secret名スネークケース>`)と、オペレータ生成物のバックアップ(`k8s_backup_*`) | `playbooks/k8s/deploy.yml`(③) |
-| `cloudflare.yml` | Cloudflare APIトークンとゾーンID(`vault_cloudflare_api_token` / `vault_cloudflare_zone_id`) | `playbooks/vm/ddns.yml` |
-| `wg-easy.yml` | wg-easyの初期管理者パスワードとAuthentik OIDCクライアント(`vault_wg_easy_init_password` / `vault_wg_easy_oidc_client_id` / `vault_wg_easy_oidc_client_secret`) | `playbooks/vm/wg-easy.yml` |
-| `awx_api.yml` | AWXのURL・OAuthトークン・Project同期用SSH鍵(`vault_awx_host` / `vault_awx_oauthtoken` / `vault_awx_scm_prikey`) | `playbooks/utils/awx/*.yml` |
-| `authentik.yml` | Authentik APIの接続先とトークン(`vault_authentik_host` / `vault_authentik_api_token`) | `playbooks/utils/authentik/users.yml` |
-| `rancher.yml` | Rancherの初期管理者パスワード(`vault_rancher_bootstrap_password`) | `playbooks/vm/rancher.yml` |
-| `livekit.yml` | LiveKit APIキーペアの辞書(`vault_livekit_api_keys`) | `playbooks/vm/livekit.yml` |
-| `hermes.yml` | Hermes Agentのweb dashboardの管理者パスワードとセッション署名鍵(`vault_hermes_dashboard_password` / `vault_hermes_dashboard_secret`)。SSOをconfidential clientで組む場合のみ `vault_hermes_oidc_client_secret` も置く | `playbooks/vm/hermes.yml` |
+| `proxmox.yml` | `vault_proxmox_token_id`(`user@realm!name` の形)、`vault_proxmox_token_secret` | `playbooks/pve/` の `template.yml`・`provision.yml` |
 
-> **注意**: `k8s_secrets.yml` 内のSecretの**内部キー名**は、pgadminだけ大文字スネークケース(`PGADMIN_OAUTH2_CLIENT_ID` 等)で書く。pgadminはチャートの `envVarsFromSecrets`(キー名がそのまま環境変数名になる)方式のため。他アプリは `db-password` のようなケバブケース + マニフェスト側の `secretKeyRef.key` 明示。
+ファイル名はサービス名、変数名は `vault_<サービス>_<用途>`。
 
-## コマンドリスト
+## 使い方
 
-- 暗号化: `ansible-vault encrypt vault/<ファイル名>.yml`
-- 編集: `ansible-vault edit vault/<ファイル名>.yml`
-- 確認: `ansible-vault view vault/<ファイル名>.yml`
-
-Dev Containerでは `ANSIBLE_VAULT_PASSWORD_FILE` が設定されるため復号は自動。それ以外では `--ask-vault-pass`(またはAWXのVaultクレデンシャル)で復号します。
+- 必要な playbook だけが `vars_files` で読み込む。`group_vars` には置かない。
+- 編集は `ansible-vault edit vault/<ファイル>.yml`。パスワードは `ANSIBLE_VAULT_PASSWORD_FILE` が指すファイル。
+- パスワードは、開発マシン以外にも控えを持つ。失うと復号できない。
+- 競合は、テキストをマージせず、再暗号化で解消する(`.gitattributes` で `-text -diff -merge`)。
