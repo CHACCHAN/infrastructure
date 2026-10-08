@@ -1,0 +1,9 @@
+# VLAN20 172.20.20.0/24: Proxmox ノード
+---
+pve:
+  vars:
+    vlan: 20
+  hosts:
+    pve01:
+      id: 1
+      template_storage: ssd01

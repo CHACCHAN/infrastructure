@@ -1,0 +1,6 @@
+# VLAN22 172.20.22.0/24: Private(開発専用機など)
+---
+private:
+  vars:
+    vlan: 22
+  hosts: {}

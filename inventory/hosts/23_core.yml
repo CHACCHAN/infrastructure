@@ -1,0 +1,6 @@
+# VLAN23 172.20.23.0/24: 基幹システム系(PBS・TrueNAS)
+---
+core:
+  vars:
+    vlan: 23
+  hosts: {}

@@ -1,0 +1,7 @@
+# VLAN台帳とVMID/IPの導出規則(全ホスト共通)。規則は docs/design/network.md。
+# グループが vlan を、ホストが id を宣言し、残りはここから導く。
+---
+network_prefix: 24
+vmid: "{{ vlan * 100 + id }}"
+ansible_host: "172.20.{{ vlan }}.{{ id }}"
+gateway: "172.20.{{ vlan }}.254"

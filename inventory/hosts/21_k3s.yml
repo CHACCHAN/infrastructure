@@ -1,0 +1,12 @@
+# VLAN21 172.20.21.0/24: Kubernetes(k3s)ノード
+---
+k3s:
+  vars:
+    vlan: 21
+  hosts:
+    k3s01:
+      id: 1
+      node: pve01
+      pve_vm_storage: ssd01
+      pve_vm_cores: 4
+      pve_vm_disk_size: 256
