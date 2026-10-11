@@ -1,0 +1,12 @@
+# クラスタ内からの公開ホスト名の問い合わせを、Traefik の Service へ向ける。
+# Pod が、外の DNS やルータに頼らずに、公開ホスト名でクラスタ内のアプリへ届くようにする。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  ingress.override: |
+{% for host in k3s_ingress_hosts %}
+    rewrite name exact {{ host }} {{ k3s_ingress_service }}
+{% endfor %}

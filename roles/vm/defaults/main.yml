@@ -1,2 +1,4 @@
+# VM の OS(Debian 13)の共通設定をするロールの既定値。
 ---
-{}
+# cloud-init の完了を待つ時間(秒)
+vm_cloud_init_timeout: 600

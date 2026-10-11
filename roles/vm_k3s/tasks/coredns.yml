@@ -1,0 +1,9 @@
+---
+# k3s の CoreDNS は、ConfigMap coredns-custom の *.override を設定に取り込み、変更を自動で読み直す。
+- name: 公開ホスト名をクラスタ内の Traefik へ向ける CoreDNS の設定を置く
+  ansible.builtin.template:
+    src: coredns-custom.yaml.j2
+    dest: "{{ __k3s_manifests_dir }}/coredns-custom.yaml"
+    owner: root
+    group: root
+    mode: "0600"

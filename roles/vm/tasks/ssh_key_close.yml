@@ -1,0 +1,10 @@
+# ssh_key_open.yml で置いた SSH の秘密鍵を消す。
+---
+- name: SSH 秘密鍵を消す
+  ansible.builtin.file:
+    path: "{{ __vm_ssh_key_file.path }}"
+    state: absent
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when: __vm_ssh_key_file is defined and __vm_ssh_key_file.path is defined

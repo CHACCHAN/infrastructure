@@ -1,0 +1,32 @@
+---
+argument_specs:
+  main:
+    short_description: k3s サーバーを構築する
+    description:
+      - 組み込み etcd つきの k3s サーバーと、Kubernetes API の VIP(kube-vip)を構築する。
+      - vlan(グループ変数)から API の VIP を導出する。
+    options:
+      k3s_version:
+        type: str
+        description: "k3s のバージョン(リリースのタグ。例: v1.36.5+k3s1)"
+      k3s_kube_vip_version:
+        type: str
+        description: "kube-vip のバージョン(イメージのタグ)"
+      k3s_api_vip_id:
+        type: int
+        required: true
+        description: "Kubernetes API の VIP のホスト部(同じ VLAN の ID。インベントリで宣言する)"
+      k3s_disable:
+        type: list
+        elements: str
+        description: "無効にする k3s 内蔵のコンポーネント"
+      k3s_ready_timeout:
+        type: int
+        description: "ノードが Ready になるまで待つ時間(秒)"
+      k3s_ingress_hosts:
+        type: list
+        elements: str
+        description: "クラスタ内から Traefik へ向ける公開ホスト名"
+      k3s_ingress_service:
+        type: str
+        description: "上のホスト名の向け先(Traefik の Service の名前)"

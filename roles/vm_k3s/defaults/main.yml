@@ -1,2 +1,17 @@
+# k3s サーバー(Debian 13 の VM)を構築するロールの既定値。
 ---
-{}
+# k3s のバージョン(リリースのタグ)
+k3s_version: "v1.36.5+k3s1"
+# kube-vip のバージョン(Kubernetes API の VIP を持つ)
+k3s_kube_vip_version: "v1.2.4"
+# Kubernetes API の VIP のホスト部(k3s_api_vip_id)は、インベントリ(group_vars/k3s.yml)で宣言する
+# 無効にする k3s 内蔵のコンポーネント
+k3s_disable:
+  - servicelb
+  - local-storage
+# ノードが Ready になるまで待つ時間(秒)
+k3s_ready_timeout: 300
+# クラスタ内から Traefik へ向ける公開ホスト名(Pod が公開ホスト名でクラスタ内のアプリへ届くようにする)
+k3s_ingress_hosts: []
+# 上のホスト名の向け先(Traefik の Service)
+k3s_ingress_service: traefik.kube-system.svc.cluster.local

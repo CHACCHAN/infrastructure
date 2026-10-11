@@ -1,0 +1,6 @@
+---
+- name: k3s を再起動する
+  ansible.builtin.systemd_service:
+    name: k3s
+    state: restarted
+    daemon_reload: true

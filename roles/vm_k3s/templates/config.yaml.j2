@@ -1,0 +1,11 @@
+# Ansible(roles/vm_k3s)が生成。手動編集は次回実行で上書きされる。
+cluster-init: true
+node-name: {{ inventory_hostname }}
+node-ip: {{ ansible_host }}
+tls-san:
+  - {{ __k3s_api_vip }}
+disable:
+{% for item in k3s_disable %}
+  - {{ item }}
+{% endfor %}
+write-kubeconfig-mode: "0600"

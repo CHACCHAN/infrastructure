@@ -1,0 +1,16 @@
+---
+# 起動と有効化は、仮想マシン側のデバイスが付いたときに udev が行う。デバイスが付く前は起動できないため、サービスは操作しない。
+# 入れ終えたら、インベントリで pve_vm_agent を有効にする。
+- name: qemu-guest-agent を入れる
+  ansible.builtin.apt:
+    name: qemu-guest-agent
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# 削除したディスク領域をシンプールへ返し、使用率を実態に近づける(docs/design/pve.md)。
+- name: fstrim の定期実行を有効にする
+  ansible.builtin.systemd_service:
+    name: fstrim.timer
+    enabled: true
+    state: started

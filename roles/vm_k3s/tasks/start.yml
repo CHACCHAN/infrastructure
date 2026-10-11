@@ -1,0 +1,22 @@
+---
+# 変更があれば、ここで再起動する(停止中なら起動する)。
+- name: 設定の変更を反映する
+  ansible.builtin.meta: flush_handlers
+
+- name: k3s を有効にして起動する
+  ansible.builtin.systemd_service:
+    name: k3s
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: ノードが Ready になるまで待つ
+  ansible.builtin.command: >-
+    k3s kubectl get node {{ inventory_hostname }}
+    -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  register: __k3s_node_ready
+  until: __k3s_node_ready.stdout == 'True'
+  retries: "{{ (k3s_ready_timeout / 5) | int }}"
+  delay: 5
+  changed_when: false
+  check_mode: false

@@ -1,0 +1,12 @@
+---
+# 証明書の SAN に VIP が入っているかも、検証つきの接続で確かめる。
+- name: API の VIP から応答があるか確認する
+  ansible.builtin.uri:
+    url: "https://{{ __k3s_api_vip }}:6443/readyz"
+    ca_path: /var/lib/rancher/k3s/server/tls/server-ca.crt
+    status_code: [200, 401]
+  register: __k3s_api_vip_check
+  until: __k3s_api_vip_check.status in [200, 401]
+  retries: 12
+  delay: 5
+  check_mode: false

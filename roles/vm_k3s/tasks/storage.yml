@@ -1,0 +1,27 @@
+# Longhorn がノードに要求する前提(iSCSI イニシエーター、NFS クライアント、暗号化、カーネルモジュール)。
+---
+- name: Longhorn の前提パッケージを入れる
+  ansible.builtin.apt:
+    name:
+      - open-iscsi
+      - nfs-common
+      - cryptsetup
+      - dmsetup
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: iSCSI と暗号化のカーネルモジュールを読み込み、起動時にも読み込む
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+    persistent: present
+  loop:
+    - iscsi_tcp
+    - dm_crypt
+
+- name: iscsid を起動して有効にする
+  ansible.builtin.systemd_service:
+    name: iscsid
+    enabled: true
+    state: started

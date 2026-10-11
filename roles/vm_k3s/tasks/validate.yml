@@ -1,0 +1,9 @@
+---
+- name: VLAN とアーキテクチャが想定どおりか確認する
+  ansible.builtin.assert:
+    that:
+      - vlan is defined
+      - groups['k3s'] | length == 1
+      - ansible_facts['architecture'] == 'x86_64'
+    fail_msg: "グループ変数 vlan が必要です。アーキテクチャは x86_64 だけ、k3s のノードは1台だけに対応します(ノードの追加は未実装)。"
+    quiet: true

@@ -1,0 +1,48 @@
+---
+- name: k3s のバイナリを入れる(チェックサムを検証する)
+  ansible.builtin.get_url:
+    url: "{{ __k3s_release_url }}/k3s"
+    dest: /usr/local/bin/k3s
+    checksum: "sha256:{{ __k3s_release_url }}/sha256sum-amd64.txt"
+    owner: root
+    group: root
+    mode: "0755"
+  notify: k3s を再起動する
+
+- name: k3s の同梱コマンドへのリンクを作る
+  ansible.builtin.file:
+    src: /usr/local/bin/k3s
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+  loop:
+    - kubectl
+    - crictl
+    - ctr
+
+- name: k3s の設定ディレクトリを作る
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/rancher/k3s
+
+- name: k3s の設定を置く
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: k3s を再起動する
+
+- name: k3s の systemd ユニットを置く
+  ansible.builtin.template:
+    src: k3s.service.j2
+    dest: /etc/systemd/system/k3s.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: k3s を再起動する

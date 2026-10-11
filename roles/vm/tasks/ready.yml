@@ -1,0 +1,9 @@
+---
+# 終了コード 2 は、動作に影響しない警告つきの完了
+- name: cloud-init が終わるまで待つ
+  ansible.builtin.command: cloud-init status --wait
+  register: __vm_cloud_init
+  changed_when: false
+  check_mode: false
+  failed_when: __vm_cloud_init.rc not in [0, 2]
+  timeout: "{{ vm_cloud_init_timeout }}"

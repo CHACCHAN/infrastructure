@@ -1,0 +1,48 @@
+# SSH の秘密鍵(vault_ssh_private_key)を、実行の間だけ tmpfs に置き、接続に使う。
+# 呼び出す playbook が vault/ssh.yml を読み込んでいること。終わりに ssh_key_close.yml で消す。
+---
+# 消せなかったときのために、前回の分も消す。
+- name: SSH 秘密鍵の置き場から前回の残りを探す
+  ansible.builtin.find:
+    paths: /dev/shm
+    patterns: "ansible-ssh-*"
+    file_type: file
+  delegate_to: localhost
+  become: false
+  run_once: true
+  register: __vm_stale_keys
+
+- name: 前回の SSH 秘密鍵を消す
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ __vm_stale_keys.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: SSH 秘密鍵の置き場を作る
+  ansible.builtin.tempfile:
+    state: file
+    path: /dev/shm
+    prefix: ansible-ssh-
+  delegate_to: localhost
+  become: false
+  run_once: true
+  register: __vm_ssh_key_file
+
+- name: SSH 秘密鍵を書き出す
+  ansible.builtin.copy:
+    content: "{{ vault_ssh_private_key }}"
+    dest: "{{ __vm_ssh_key_file.path }}"
+    mode: "0600"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  no_log: true
+
+- name: 接続に使う秘密鍵を指定する
+  ansible.builtin.set_fact:
+    ansible_ssh_private_key_file: "{{ __vm_ssh_key_file.path }}"

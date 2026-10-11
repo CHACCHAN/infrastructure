@@ -1,0 +1,25 @@
+---
+# k3s は、このディレクトリのマニフェストを自動で適用する。
+- name: マニフェストのディレクトリを作る
+  ansible.builtin.file:
+    path: "{{ __k3s_manifests_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: kube-vip の RBAC を置く
+  ansible.builtin.copy:
+    src: kube-vip-rbac.yaml
+    dest: "{{ __k3s_manifests_dir }}/kube-vip-rbac.yaml"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: kube-vip の DaemonSet を置く
+  ansible.builtin.template:
+    src: kube-vip.yaml.j2
+    dest: "{{ __k3s_manifests_dir }}/kube-vip.yaml"
+    owner: root
+    group: root
+    mode: "0600"

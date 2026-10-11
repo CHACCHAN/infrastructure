@@ -1,0 +1,10 @@
+---
+argument_specs:
+  main:
+    short_description: VM の OS(Debian 13)の共通設定
+    description:
+      - cloud-init の完了を待ち、qemu-guest-agent を入れ、fstrim の定期実行を有効にする。
+    options:
+      vm_cloud_init_timeout:
+        type: int
+        description: "cloud-init の完了を待つ時間(秒)"

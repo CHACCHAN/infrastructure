@@ -1,0 +1,37 @@
+# k3s ノードの VM の中を設定する(OS の共通設定と k3s の構築)。
+# 先に playbooks/pve/provision.yml で VM を作っておく。
+# 実行例: ansible-playbook playbooks/vm/k3s.yml [-l k3s01] 2>&1 | cat
+---
+- name: k3s ノードの OS と k3s を設定する
+  hosts: k3s
+  gather_facts: false
+  become: true
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/ssh.yml"
+  tasks:
+    - name: VM の設定を、SSH 秘密鍵を使って行う
+      block:
+        - name: SSH 秘密鍵を用意する
+          ansible.builtin.include_role:
+            name: vm
+            tasks_from: ssh_key_open
+
+        - name: VM に入れるようになるまで待つ
+          ansible.builtin.wait_for_connection:
+            timeout: 600
+
+        - name: OS の共通設定をする
+          ansible.builtin.include_role:
+            name: vm
+
+        - name: ファクトを集める
+          ansible.builtin.setup:
+
+        - name: k3s を構築する
+          ansible.builtin.include_role:
+            name: vm_k3s
+      always:
+        - name: SSH 秘密鍵を消す
+          ansible.builtin.include_role:
+            name: vm
+            tasks_from: ssh_key_close

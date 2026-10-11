@@ -1,2 +1,21 @@
 ---
-[]
+- name: 前提を確認する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: Longhorn の前提をノードに用意する
+  ansible.builtin.import_tasks: storage.yml
+
+- name: k3s を入れて設定する
+  ansible.builtin.import_tasks: install.yml
+
+- name: Kubernetes API の VIP(kube-vip)を設定する
+  ansible.builtin.import_tasks: kube_vip.yml
+
+- name: クラスタ内の名前解決を設定する
+  ansible.builtin.import_tasks: coredns.yml
+
+- name: k3s を起動してノードの Ready を待つ
+  ansible.builtin.import_tasks: start.yml
+
+- name: 設定が効いていることを確認する
+  ansible.builtin.import_tasks: verify.yml

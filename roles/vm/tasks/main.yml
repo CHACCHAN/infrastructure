@@ -1,2 +1,6 @@
 ---
-[]
+- name: cloud-init の完了を待つ
+  ansible.builtin.import_tasks: ready.yml
+
+- name: パッケージと定期処理を設定する
+  ansible.builtin.import_tasks: install.yml
