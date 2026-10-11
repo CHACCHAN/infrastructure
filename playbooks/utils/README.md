@@ -1,0 +1,34 @@
+# playbooks/utils
+
+単発で使うツール。繰り返し流す前提ではない。
+
+**実機を変更する。** 実行は、実行を頼まれたときだけ行う([AGENTS.md](../../AGENTS.md) の安全規則)。
+
+## playbook
+
+| playbook | 内容 | 実行例 |
+| --- | --- | --- |
+| `k3s_token.yml` | k3s に ServiceAccount(`cluster-admin`)と長期トークンを作り、トークンと認証局の証明書を `vault/k3s.yml` に暗号化して保存する | `ansible-playbook playbooks/utils/k3s_token.yml 2>&1 \| cat` |
+| `homarr_admin.yml` | Homarr の緊急用の管理者(`admin`)を、無ければ作り、パスワードを `vault/homarr.yml` の値に設定する | `ansible-playbook playbooks/utils/homarr_admin.yml 2>&1 \| cat` |
+| `k3s_app_remove.yml` | クラスタからアプリを取り除く(Helm のリリースと namespace を消す) | `ansible-playbook playbooks/utils/k3s_app_remove.yml -e k3s_app_remove_namespace=<名前> -e k3s_app_remove_confirm=<名前> 2>&1 \| cat` |
+
+## k3s_token.yml
+
+- 初回の1回だけ行う。`vault/k3s.yml` があれば何もしない。作り直すときは、そのファイルを消してから実行する(クラスタ側の Secret はそのまま使う)。
+- k3s01 に SSH し、ノード上の管理用 kubeconfig(`k3s kubectl`)を使う。SSH の鍵は [playbooks/vm](../vm/README.md) と同じ。
+- 平文のトークンは、`/dev/shm` に一時的に置き、暗号化したあとに消す。
+- 作ったトークンは [k3s](../../roles/k3s/README.md) ロールが使う。
+
+## homarr_admin.yml
+
+- Homarr はユーザーを宣言で作れないため、Pod の中で Homarr の CLI を実行する(`kubectl exec`。接続は `vault/k3s.yml` のトークン)。
+- 実行のたびにパスワードを設定し直し、そのユーザーのセッションを切る。パスワードを変えるときは、`vault/homarr.yml` を変えてから実行する。
+- 先に [playbooks/k3s/homarr.yml](../k3s/README.md) を適用しておく。ユーザーを作ったあと、初回の設定(管理者にする外部グループなど)は、このユーザーでログインして画面で行う。
+- パスワードは標準入力で Pod へ渡すが、Pod の中では CLI の引数になる。API のトークンは、実行中の `kubectl` の引数に載る(開発コンテナの中のプロセスから見える)。
+
+## k3s_app_remove.yml
+
+- 使わなくなったアプリを、クラスタから取り除く。Helm のリリースを消し、namespace ごと消す。**ボリュームのデータも消える。**
+- 取り違えを防ぐため、消す namespace の名前を `k3s_app_remove_confirm` にも渡す。クラスタ自体の namespace(`kube-system` など)と、ほかのアプリが頼る基盤(MetalLB、cert-manager、Longhorn、CloudNativePG、PostgreSQL、Authentik)は消せない。
+- リリース名が namespace と違うときは、`-e k3s_app_remove_release=<名前>` を付ける。リリースが見つからないときは止まる(リリースを消したあとの残りを消すときは `-e k3s_app_remove_no_release=true`)。
+- 消すのはクラスタの中だけ。ロール・playbook・vault・インベントリのホスト名・Authentik の OIDC クライアント・PostgreSQL の DB は、別に取り除く。

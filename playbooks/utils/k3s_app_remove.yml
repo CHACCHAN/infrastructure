@@ -1,0 +1,114 @@
+# クラスタからアプリを取り除く。Helm のリリースを消し、namespace ごと消す(ボリュームのデータも消える)。
+# 取り違えを防ぐため、消す namespace の名前を k3s_app_remove_confirm にも渡す。
+# 実行例: ansible-playbook playbooks/utils/k3s_app_remove.yml -e k3s_app_remove_namespace=<名前> -e k3s_app_remove_confirm=<名前> 2>&1 | cat
+---
+- name: クラスタからアプリを取り除く
+  hosts: "k3s[0]"
+  connection: local
+  gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/k3s.yml"
+  vars:
+    # connection: local は kubernetes ライブラリを持たないシステムの Python を選ぶため、ansible 本体の Python に固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    k3s_app_remove_api_host: "https://172.20.{{ vlan }}.{{ k3s_api_vip_id }}:6443"
+    # リリース名は、namespace と同じ名前を既定にする
+    k3s_app_remove_release: "{{ k3s_app_remove_namespace }}"
+    k3s_app_remove_confirm: ""
+    # リリースが無くても、namespace だけを消す
+    k3s_app_remove_no_release: false
+    # クラスタ自体と、ほかのアプリが頼る基盤の namespace は消さない
+    k3s_app_remove_protected:
+      - default
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - metallb-system
+      - cert-manager
+      - longhorn-system
+      - cnpg-system
+      - postgresql
+      - authentik
+  tasks:
+    - name: 消す対象と、確認の値を確かめる
+      ansible.builtin.assert:
+        that:
+          - k3s_app_remove_namespace is defined
+          - k3s_app_remove_namespace | length > 0
+          - k3s_app_remove_namespace not in k3s_app_remove_protected
+          - k3s_app_remove_confirm == k3s_app_remove_namespace
+        fail_msg: "k3s_app_remove_namespace と k3s_app_remove_confirm に、消す namespace の名前を渡す(クラスタ自体と基盤の namespace は消せない)"
+        quiet: true
+
+    - name: Kubernetes API へ接続して取り除く
+      block:
+        - name: 認証局の証明書の置き場を作る
+          ansible.builtin.tempfile:
+            state: file
+            path: /dev/shm
+            prefix: ansible-k3s-ca-
+          register: __k3s_app_remove_ca_file
+          changed_when: false
+          check_mode: false
+
+        - name: 認証局の証明書を書き出す
+          ansible.builtin.copy:
+            content: "{{ vault_k3s_ca_cert }}"
+            dest: "{{ __k3s_app_remove_ca_file.path }}"
+            mode: "0600"
+          changed_when: false
+          check_mode: false
+          no_log: true
+
+        - name: リリースと namespace を消す
+          module_defaults:
+            group/kubernetes.core.helm:
+              host: "{{ k3s_app_remove_api_host }}"
+              api_key: "{{ vault_k3s_api_token }}"
+              ca_cert: "{{ __k3s_app_remove_ca_file.path }}"
+              validate_certs: true
+            group/kubernetes.core.k8s:
+              host: "{{ k3s_app_remove_api_host }}"
+              api_key: "{{ vault_k3s_api_token }}"
+              ca_cert: "{{ __k3s_app_remove_ca_file.path }}"
+              validate_certs: true
+          block:
+            # リリース名の取り違えで、namespace の外に作られたもの(CRD、ClusterRoleBinding など)を残さない
+            - name: Helm のリリースを調べる
+              kubernetes.core.helm_info:
+                name: "{{ k3s_app_remove_release }}"
+                release_namespace: "{{ k3s_app_remove_namespace }}"
+              register: __k3s_app_remove_info
+
+            - name: リリースがあることを確かめる
+              ansible.builtin.assert:
+                that: __k3s_app_remove_info.status is defined or k3s_app_remove_no_release | bool
+                fail_msg: >-
+                  {{ k3s_app_remove_namespace }} にリリース {{ k3s_app_remove_release }} がありません
+                  (名前は k3s_app_remove_release で渡す。リリースを消したあとの残りを消すときは k3s_app_remove_no_release=true)
+                quiet: true
+
+            # namespace の外に作られたもの(ClusterRoleBinding など)も、リリースと一緒に消える
+            - name: Helm のリリースを消す
+              kubernetes.core.helm:
+                name: "{{ k3s_app_remove_release }}"
+                release_namespace: "{{ k3s_app_remove_namespace }}"
+                release_state: absent
+                wait: true
+
+            - name: namespace を消す
+              kubernetes.core.k8s:
+                api_version: v1
+                kind: Namespace
+                name: "{{ k3s_app_remove_namespace }}"
+                state: absent
+                wait: true
+                wait_timeout: 300
+      always:
+        - name: 認証局の証明書を消す
+          ansible.builtin.file:
+            path: "{{ __k3s_app_remove_ca_file.path }}"
+            state: absent
+          changed_when: false
+          check_mode: false
+          when: __k3s_app_remove_ca_file is defined and __k3s_app_remove_ca_file.path is defined
