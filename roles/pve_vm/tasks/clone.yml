@@ -25,7 +25,7 @@
         fail_msg: >-
           {{ template_resolved.name }}(VMID {{ template_resolved.vmid }})が
           ノード {{ pve_vm_node }} にテンプレートとして見つかりません。
-          先に playbooks/pve/template.yml を実行してください。
+          playbooks/pve/provision.yml が、VM を作る前にテンプレートを用意します。
         quiet: true
 
     - name: テンプレートからフルクローンする

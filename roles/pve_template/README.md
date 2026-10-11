@@ -1,12 +1,12 @@
 # pve_template
 
-OS のテンプレート(第2層の器)を、Proxmox ノードごとに1つ作る。OS だけを持ち、IP・ユーザー・SSH 公開鍵などの個体の値は持たない(クローンするとき [pve_vm](../pve_vm/README.md) が cloud-init で渡す)。設計は [docs/design/pve.md](../../docs/design/pve.md)。
+OS のテンプレート(第2層の器)を、Proxmox ノードごとに1つ作る。作ったテンプレートは残す。OS だけを持ち、IP・ユーザー・SSH 公開鍵などの個体の値は持たない(クローンするとき [pve_vm](../pve_vm/README.md) が cloud-init で渡す)。設計は [docs/design/pve.md](../../docs/design/pve.md)。
 
 ## 使い方
 
-`playbooks/pve/template.yml` から使う([playbooks/pve/README.md](../../playbooks/pve/README.md))。
+`playbooks/pve/provision.yml` から使う([playbooks/pve/README.md](../../playbooks/pve/README.md))。作るのは、未作成の VM があり、テンプレートが無いノードだけ。
 
-- 必須の変数は `template_storage`(テンプレートのディスクを置くストレージ)。`inventory/hosts/20_pve.yml` のホストに書く。
+- 必須の変数は `template_storage`(テンプレートのディスクを置くストレージ)。`inventory/hosts/20_pve.yml` のノードのホストに書く。
 - 変数の一覧は `ansible-doc -t role pve_template` と `defaults/main.yml`。
 - テンプレートの VMID は `9<template_index><ノード番号>`(pve01 は `90001`)、名前は `<template_name_prefix>-template-<ノード名>`。
 
@@ -17,3 +17,7 @@ OS のテンプレート(第2層の器)を、Proxmox ノードごとに1つ作�
 3. `create_vm.yml`: 空の VM を作り、イメージからディスクを作ってテンプレートへ変換する。
 
 `resolve.yml` は、テンプレートの VMID と名前を求める。`pve_vm` が `include_role` の `tasks_from: resolve` で使う。
+
+## テンプレートを作り直す
+
+イメージを新しくしたいときは、Proxmox の画面でテンプレート(VMID `90001` など)と `local` の取り込み用イメージを削除してから、`provision.yml` をもう一度実行する。

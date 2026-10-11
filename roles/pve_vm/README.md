@@ -4,7 +4,7 @@ VM を、テンプレートから作り、宣言どおりにする。API だけ�
 
 ## 使い方
 
-`playbooks/pve/provision.yml` から使う([playbooks/pve/README.md](../../playbooks/pve/README.md))。先に [pve_template](../pve_template/README.md) でテンプレートを作っておく。
+`playbooks/pve/provision.yml` から使う([playbooks/pve/README.md](../../playbooks/pve/README.md))。未作成の VM があるノードにテンプレートが無ければ、先に [pve_template](../pve_template/README.md) が作る。
 
 - 必須の変数は `pve_vm_storage`(ディスクを置くストレージ)と `pve_vm_ssh_pubkeys`(cloud-init で登録する公開鍵のリスト)。
 - ホストは `vlan`・`id`・`node` と、既定値との差分だけを書く。VMID・IP・ゲートウェイは導出される([inventory/README.md](../../inventory/README.md))。例: `inventory/group_vars/k3s.yml`。

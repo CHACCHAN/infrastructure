@@ -1,5 +1,5 @@
 # VM を、テンプレートから作って宣言どおりにする(API だけを使い、VM へ SSH しない)。
-# 先に template.yml で、VM を置くノードにテンプレートを作っておく。
+# 作る VM があるノードに OS のテンプレートが無ければ、先に作る(作ったテンプレートは残す)。
 # 実行例: ansible-playbook playbooks/pve/provision.yml -e target=k3s [-l k3s01]
 ---
 # target を渡し忘れると、どのホストにも一致せず何もしない。
@@ -14,10 +14,34 @@
     - "{{ playbook_dir }}/../../vault/proxmox.yml"
   module_defaults:
     group/community.proxmox.proxmox:
-      api_host: "{{ hostvars[node | default(inventory_hostname)].ansible_host }}"
+      api_host: "{{ hostvars[template_node | default(node | default(inventory_hostname))].ansible_host }}"
       api_user: "{{ vault_proxmox_token_id.split('!')[0] }}"
       api_token_id: "{{ vault_proxmox_token_id.split('!')[1] }}"
       api_token_secret: "{{ vault_proxmox_token_secret }}"
       validate_certs: "{{ pve_validate_certs | default(true) }}"
-  roles:
-    - pve_vm
+  tasks:
+    - name: 作成済みの VM を検索する
+      community.proxmox.proxmox_vm_info:
+        vmid: "{{ vmid }}"
+      register: __provision_found
+
+    - name: 未作成かどうかを記録する
+      ansible.builtin.set_fact:
+        provision_vm_missing: "{{ __provision_found.proxmox_vms | length == 0 }}"
+
+    - name: 未作成の VM があるノードに、OS のテンプレートが無ければ作る
+      ansible.builtin.include_role:
+        name: pve_template
+        apply:
+          run_once: true
+      vars:
+        template_node: "{{ item }}"
+        template_storage: "{{ hostvars[item].template_storage }}"
+      loop: >-
+        {{ ansible_play_hosts | map('extract', hostvars) | selectattr('provision_vm_missing')
+           | map(attribute='node') | unique | list }}
+      run_once: true
+
+    - name: VM を宣言どおりにする
+      ansible.builtin.include_role:
+        name: pve_vm
