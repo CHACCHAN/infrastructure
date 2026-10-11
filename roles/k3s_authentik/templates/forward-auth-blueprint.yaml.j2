@@ -1,0 +1,50 @@
+# 認証プロキシ(forward auth)で守るアプリケーション。OIDC クライアントの Blueprint と分け、片方の失敗がもう片方を止めないようにする。
+version: 1
+metadata:
+  name: forward-auth
+entries:
+  # 守る画面は権限を分けられないため、使えるユーザーをグループで絞る。グループが無い間は、誰も通さない
+  - model: authentik_policies_expression.expressionpolicy
+    id: access-policy
+    identifiers:
+      name: forward-auth-access
+    attrs:
+      expression: |
+        return ak_is_group_member(request.user, name={{ authentik_proxy_access_group | to_json }})
+{% for app in authentik_proxy_apps %}
+  # 認証プロキシで守るアプリケーション。Traefik からの問い合わせに答えるだけで、通信そのものは中継しない
+  - model: authentik_providers_proxy.proxyprovider
+    id: {{ app.slug }}-provider
+    identifiers:
+      name: {{ app.name }}
+    attrs:
+      mode: forward_single
+      external_host: https://{{ app.host }}
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+  - model: authentik_core.application
+    id: {{ app.slug }}-application
+    identifiers:
+      slug: {{ app.slug }}
+    attrs:
+      name: {{ app.name }}
+      provider: !KeyOf {{ app.slug }}-provider
+  - model: authentik_policies.policybinding
+    identifiers:
+      order: 0
+      target: !KeyOf {{ app.slug }}-application
+      policy: !KeyOf access-policy
+{% endfor %}
+  # 認証プロキシの問い合わせに答える、Authentik 内蔵のアウトポスト。受け持つプロバイダーは、ここに書いたものに置き換わる
+  - model: authentik_outposts.outpost
+    identifiers:
+      managed: goauthentik.io/outposts/embedded
+    attrs:
+      name: authentik Embedded Outpost
+      type: proxy
+      providers:
+{% for app in authentik_proxy_apps %}
+        - !KeyOf {{ app.slug }}-provider
+{% else %}
+        []
+{% endfor %}

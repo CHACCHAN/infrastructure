@@ -1,0 +1,16 @@
+# Longhorn を Helm で入れ、既定の StorageClass にする。
+# 実行例: ansible-playbook playbooks/k3s/longhorn.yml [--check --diff] 2>&1 | cat
+---
+- name: Longhorn を適用する
+  hosts: "k3s[0]"
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: local は kubernetes ライブラリを持たないシステムの Python を選ぶため、ansible 本体の Python に固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    helm_api_token: "{{ vault_k3s_api_token }}"
+    helm_ca_cert: "{{ vault_k3s_ca_cert }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/k3s.yml"
+  roles:
+    - k3s_longhorn

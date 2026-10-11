@@ -1,0 +1,26 @@
+# k3s
+
+k3s のクラスタへ、Helm のリリースを適用する共通処理。kubeconfig を使わず、ServiceAccount のトークンで Kubernetes API の VIP に接続する。設計は [docs/design/k3s.md](../../docs/design/k3s.md)(「クラスタ内アプリの管理」)。
+
+## 使い方
+
+単独では使わない。各 `k3s_<app>` ロールが `include_role` で呼び、チャート・バージョン・values を渡す(例: [k3s_metallb](../k3s_metallb/README.md))。
+
+- 変数は `helm_*`。一覧は `ansible-doc -t role k3s` と `defaults/main.yml`。
+- トークン(`helm_api_token`)と認証局の証明書(`helm_ca_cert`)は、playbook が `vault/k3s.yml` から渡す。作り方は [playbooks/utils](../../playbooks/utils/README.md)。
+- 接続先は、インベントリの `vlan` と `k3s_api_vip_id` から導出する。ロールは、グループ `k3s` のホストの文脈で動かす。
+- 認証局の証明書は、実行の間だけ `/dev/shm` に置き、終わると消す。
+
+## 処理の流れ
+
+認証局の証明書を書き出す → `helm_secrets` を適用する(あれば namespace を先に作る)→ Helm のリリースを適用する(`helm_wait` で Ready を待つ)→ `helm_manifests` と `helm_ingress` の Ingress を適用する → NetworkPolicy を適用する(`helm_network_policy` が false なら消す)→ 証明書を消す。
+
+`--check --diff` のときは helm-diff プラグインで差分を見る。リリースが新規または更新になる場合は、CRD などが揃っていないことがあるため、`helm_manifests`・Ingress・NetworkPolicy の確認を飛ばす。マニフェストが webhook に拒否されることがあるため、数回再試行する。
+
+values に秘密値を渡すアプリは、`helm_no_log: true` にする。
+
+## 通信の制限
+
+`helm_network_policy: true` にすると、namespace の Pod が受ける通信を、同じ namespace、Traefik(`helm_ingress` があるとき)、`helm_network_policy_from` の namespace だけに絞る。外向きの通信は絞らない。ノード自身からの通信(kubelet のヘルスチェック)は、NetworkPolicy の対象にならない。
+
+`helm_ingress.middlewares` で、Ingress に Traefik のミドルウェアを掛ける(Authentik の認証プロキシは `authentik-forward-auth@kubernetescrd`)。

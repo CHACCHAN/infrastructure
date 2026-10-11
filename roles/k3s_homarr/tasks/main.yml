@@ -1,0 +1,38 @@
+---
+- name: Homarr を適用する
+  ansible.builtin.include_role:
+    name: k3s
+  vars:
+    helm_release_name: "{{ homarr_release_name }}"
+    helm_chart: homarr
+    helm_chart_repo_url: "{{ homarr_chart_repo_url }}"
+    helm_chart_version: "{{ homarr_chart_version }}"
+    helm_namespace: "{{ homarr_namespace }}"
+    helm_values: "{{ __homarr_values | combine(homarr_values, recursive=True) }}"
+    helm_secrets:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: homarr-oidc
+          namespace: "{{ homarr_namespace }}"
+        data:
+          oidc-client-id: "{{ homarr_oidc_client_id | b64encode }}"
+          oidc-client-secret: "{{ homarr_oidc_client_secret | b64encode }}"
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: homarr-db-encryption
+          namespace: "{{ homarr_namespace }}"
+        data:
+          db-encryption-key: "{{ homarr_db_encryption_key | b64encode }}"
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: homarr-db
+          namespace: "{{ homarr_namespace }}"
+        data:
+          db-url: "{{ __homarr_db_url | b64encode }}"
+    helm_ingress:
+      host: "{{ homarr_host }}"
+      service_port: 7575
+    helm_network_policy: true

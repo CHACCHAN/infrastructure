@@ -1,0 +1,19 @@
+---
+argument_specs:
+  main:
+    short_description: CloudNativePG のオペレーターを Helm で入れる
+    description:
+      - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
+    options:
+      cnpg_chart_version:
+        type: str
+        description: "チャートのバージョン"
+      cnpg_chart_repo_url:
+        type: str
+        description: "チャートの配布元の URL"
+      cnpg_release_name:
+        type: str
+        description: "Helm のリリース名"
+      cnpg_namespace:
+        type: str
+        description: "リリースの namespace"

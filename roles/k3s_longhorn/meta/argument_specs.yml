@@ -1,0 +1,45 @@
+---
+argument_specs:
+  main:
+    short_description: Longhorn を Helm で入れ、既定の StorageClass にする
+    description:
+      - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
+      - ノードの前提(open-iscsi など)は vm_k3s が用意する。
+    options:
+      longhorn_chart_version:
+        type: str
+        description: "チャートのバージョン"
+      longhorn_chart_repo_url:
+        type: str
+        description: "チャートの配布元の URL"
+      longhorn_release_name:
+        type: str
+        description: "Helm のリリース名"
+      longhorn_namespace:
+        type: str
+        description: "リリースの namespace"
+      longhorn_replica_count:
+        type: int
+        description: "ボリュームの複製数(StorageClass の既定)"
+      longhorn_control_replicas:
+        type: int
+        description: "CSI・マネージャー・UI の Pod の数"
+      longhorn_node_down_pod_deletion_policy:
+        type: str
+        description: "ノード停止時の Pod の削除ポリシー"
+      longhorn_concurrent_rebuild_limit:
+        type: int
+        description: "ノードあたりの同時リビルド数"
+      longhorn_host:
+        type: str
+        required: true
+        description: "管理 UI の公開ホスト名(インベントリで宣言する)"
+      longhorn_ingress_middleware:
+        type: str
+        description: "管理 UI の Ingress に掛ける、Authentik の認証プロキシのミドルウェア(<namespace>-<名前>@kubernetescrd)"
+      longhorn_timeout:
+        type: str
+        description: "Ready を待つ時間(Go の期間の形)"
+      longhorn_values:
+        type: dict
+        description: "Longhorn の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"

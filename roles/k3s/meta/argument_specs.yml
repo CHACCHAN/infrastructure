@@ -1,0 +1,92 @@
+---
+argument_specs:
+  main:
+    short_description: k3s のクラスタへ Helm のリリースを適用する
+    description:
+      - kubeconfig を使わず、ServiceAccount のトークンで Kubernetes API に接続する。
+      - 認証局の証明書は、実行の間だけ tmpfs に書き出す。
+      - 各 k3s_<app> ロールが include_role で呼び、チャートとバージョンと values を渡す。
+    options:
+      helm_api_host:
+        type: str
+        description: "Kubernetes API の URL"
+      helm_api_token:
+        type: str
+        required: true
+        no_log: true
+        description: "ServiceAccount のトークン(vault/k3s.yml の vault_k3s_api_token)"
+      helm_ca_cert:
+        type: str
+        required: true
+        no_log: true
+        description: "API の認証局の証明書(PEM。vault/k3s.yml の vault_k3s_ca_cert)"
+      helm_release_name:
+        type: str
+        required: true
+        description: "Helm のリリース名"
+      helm_chart:
+        type: str
+        required: true
+        description: "チャートの名前(helm_chart_repo_url があるときはリポジトリ内の名前)"
+      helm_chart_repo_url:
+        type: str
+        description: "チャートの配布元の URL。使わないときは空"
+      helm_chart_version:
+        type: str
+        required: true
+        description: "チャートのバージョン(各 k3s_<app> の defaults にだけ書く)"
+      helm_namespace:
+        type: str
+        required: true
+        description: "リリースの namespace"
+      helm_create_namespace:
+        type: bool
+        description: "namespace が無ければ作る"
+      helm_values:
+        type: dict
+        description: "チャートの values"
+      helm_secrets:
+        type: list
+        elements: dict
+        no_log: true
+        description: "リリースの適用前に適用する Secret(data に base64 で書く)"
+      helm_manifests:
+        type: list
+        elements: dict
+        description: "リリースの適用後に続けて適用する Kubernetes のマニフェスト"
+      helm_no_log:
+        type: bool
+        description: "Helm の実行結果(values を含む)をログに出さない"
+      helm_ingress:
+        type: dict
+        description: "公開する Ingress(Traefik)。空なら作らない。作るときは host と service_port が要る"
+        options:
+          host:
+            type: str
+            description: "ホスト名"
+          service_port:
+            type: int
+            description: "Service のポート番号"
+          service_name:
+            type: str
+            description: "Service の名前(省略時はリリース名)"
+          middlewares:
+            type: list
+            elements: str
+            description: "ルーターに掛ける Traefik のミドルウェア(<namespace>-<名前>@kubernetescrd)"
+      helm_network_policy:
+        type: bool
+        description: "Pod が受ける通信を絞る NetworkPolicy を置く(同じ namespace、Traefik、helm_network_policy_from だけを通す)。false なら消す"
+      helm_network_policy_from:
+        type: list
+        elements: str
+        description: "追加で通信を通す namespace"
+      helm_network_policy_pod_labels:
+        type: dict
+        description: "絞る対象の Pod のラベル。空なら namespace のすべての Pod"
+      helm_wait:
+        type: bool
+        description: "リソースが Ready になるまで待つ"
+      helm_timeout:
+        type: str
+        description: "Ready を待つ時間(Go の期間の形。例: 10m)"

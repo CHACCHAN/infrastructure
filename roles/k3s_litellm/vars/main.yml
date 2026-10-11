@@ -1,0 +1,65 @@
+# Secret の導出。プロバイダーの API キーは、キーがある場合だけ Secret にする。
+---
+__litellm_provider_data: >-
+  {%- set out = {} -%}
+  {%- for key, value in litellm_provider_keys.items() -%}
+  {%- set _ = out.update({key: value | b64encode}) -%}
+  {%- endfor -%}
+  {{ out }}
+__litellm_secrets: >-
+  {%- set out = [
+    {'apiVersion': 'v1', 'kind': 'Secret',
+     'metadata': {'name': 'litellm-masterkey', 'namespace': litellm_namespace},
+     'data': {'masterkey': litellm_master_key | b64encode}},
+    {'apiVersion': 'v1', 'kind': 'Secret',
+     'metadata': {'name': 'litellm-db', 'namespace': litellm_namespace},
+     'type': 'kubernetes.io/basic-auth',
+     'data': {'username': litellm_db_user | b64encode, 'password': litellm_db_password | b64encode}},
+    {'apiVersion': 'v1', 'kind': 'Secret',
+     'metadata': {'name': 'litellm-salt', 'namespace': litellm_namespace},
+     'data': {'LITELLM_SALT_KEY': litellm_salt_key | b64encode}},
+    {'apiVersion': 'v1', 'kind': 'Secret',
+     'metadata': {'name': 'litellm-oidc', 'namespace': litellm_namespace},
+     'data': {'GENERIC_CLIENT_ID': litellm_oidc_client_id | b64encode,
+              'GENERIC_CLIENT_SECRET': litellm_oidc_client_secret | b64encode}},
+    {'apiVersion': 'v1', 'kind': 'Secret',
+     'metadata': {'name': 'litellm-ui', 'namespace': litellm_namespace},
+     'data': {'UI_USERNAME': litellm_ui_username | b64encode,
+              'UI_PASSWORD': litellm_ui_password | b64encode}}] -%}
+  {%- if litellm_provider_keys | length > 0 -%}
+  {%- set _ = out.append({'apiVersion': 'v1', 'kind': 'Secret',
+     'metadata': {'name': 'litellm-provider-keys', 'namespace': litellm_namespace},
+     'data': __litellm_provider_data}) -%}
+  {%- endif -%}
+  {{ out }}
+__litellm_values:
+  image:
+    pullPolicy: IfNotPresent
+  masterkeySecretName: litellm-masterkey
+  masterkeySecretKey: masterkey
+  environmentSecrets: "{{ ['litellm-salt', 'litellm-oidc', 'litellm-ui'] + (['litellm-provider-keys'] if litellm_provider_keys | length > 0 else []) }}"
+  # Authentik の OIDC でログインする。グループ(groups クレーム)が litellm_admin_group のユーザーを、管理者にする
+  envVars:
+    PROXY_BASE_URL: "https://{{ litellm_host }}"
+    GENERIC_AUTHORIZATION_ENDPOINT: "https://{{ authentik_host }}/application/o/authorize/"
+    GENERIC_TOKEN_ENDPOINT: "https://{{ authentik_host }}/application/o/token/"
+    GENERIC_USERINFO_ENDPOINT: "https://{{ authentik_host }}/application/o/userinfo/"
+    GENERIC_SCOPE: "openid email profile"
+    GENERIC_ROLE_MAPPINGS_GROUP_CLAIM: groups
+    GENERIC_ROLE_MAPPINGS_ROLES: "{{ {'proxy_admin': [litellm_admin_group]} | to_json }}"
+    GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE: internal_user_viewer
+  db:
+    useExisting: true
+    deployStandalone: false
+    endpoint: "{{ litellm_db_host }}"
+    database: "{{ litellm_db_name }}"
+    secret:
+      name: litellm-db
+      usernameKey: username
+      passwordKey: password
+  proxy_config:
+    model_list: "{{ litellm_models }}"
+    general_settings:
+      master_key: os.environ/PROXY_MASTER_KEY
+      # 管理画面で登録したモデルと認証情報を DB に保存する(LITELLM_SALT_KEY で暗号化される)
+      store_model_in_db: true

@@ -1,0 +1,7 @@
+# CloudNativePG のオペレーターを Helm で入れるロールの既定値。DB 本体は k3s_postgresql が作る。
+---
+# チャートのバージョン
+cnpg_chart_version: "0.29.1"
+cnpg_chart_repo_url: https://cloudnative-pg.github.io/charts
+cnpg_release_name: cnpg
+cnpg_namespace: cnpg-system

@@ -1,0 +1,68 @@
+---
+argument_specs:
+  main:
+    short_description: OpenWebUI を Helm で入れ、Authentik の OIDC でログインできるようにする
+    description:
+      - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
+      - OIDC のクライアントは k3s_authentik が Blueprint で宣言する。同じ client_secret を両方に渡す。
+      - LLM への接続は管理画面で登録する(設定は PostgreSQL に保存される)。
+    options:
+      openwebui_chart_version:
+        type: str
+        description: "チャートのバージョン"
+      openwebui_chart_repo_url:
+        type: str
+        description: "チャートの配布元の URL"
+      openwebui_release_name:
+        type: str
+        description: "Helm のリリース名"
+      openwebui_namespace:
+        type: str
+        description: "リリースの namespace"
+      openwebui_host:
+        type: str
+        required: true
+        description: "OpenWebUI の公開ホスト名(インベントリで宣言する)"
+      authentik_host:
+        type: str
+        required: true
+        description: "Authentik の公開ホスト名(OIDC の発行者。インベントリで宣言する)"
+      openwebui_db_host:
+        type: str
+        description: "PostgreSQL のホスト"
+      openwebui_db_name:
+        type: str
+        description: "DB 名"
+      openwebui_db_user:
+        type: str
+        description: "DB のロール"
+      openwebui_db_password:
+        type: str
+        required: true
+        no_log: true
+        description: "DB のパスワード(vault/postgresql.yml)"
+      openwebui_oidc_client_id:
+        type: str
+        description: "OIDC の client_id"
+      openwebui_oidc_client_secret:
+        type: str
+        required: true
+        no_log: true
+        description: "OIDC の client_secret(vault/openwebui.yml)"
+      openwebui_secret_key:
+        type: str
+        required: true
+        no_log: true
+        description: "セッションの署名鍵(vault/openwebui.yml。変えると全員がログアウトされる)"
+      openwebui_admin_email:
+        type: str
+        required: true
+        description: "緊急用の管理者のメールアドレス(ログイン名。SSO のユーザーと重ならない値をインベントリで宣言する)"
+      openwebui_admin_password:
+        type: str
+        required: true
+        no_log: true
+        description: "緊急用の管理者のパスワード(vault/openwebui.yml。ユーザーが1人もいないときにだけ使われる)"
+      openwebui_values:
+        type: dict
+        description: "OpenWebUI の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"

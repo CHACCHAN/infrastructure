@@ -1,0 +1,55 @@
+# helm_ingress から導出する Ingress。TLS は Traefik の既定の証明書(TLSStore)を使うため、secretName は書かない。
+---
+__helm_ingress_annotations: >-
+  {{ {'traefik.ingress.kubernetes.io/router.entrypoints': 'websecure'}
+     | combine({'traefik.ingress.kubernetes.io/router.middlewares': helm_ingress.middlewares | default([]) | join(',')}
+               if helm_ingress.middlewares | default([]) | length > 0 else {}) }}
+__helm_ingress_manifests: >-
+  {%- if helm_ingress | length > 0 -%}
+  {{ [{
+    'apiVersion': 'networking.k8s.io/v1',
+    'kind': 'Ingress',
+    'metadata': {
+      'name': helm_release_name,
+      'namespace': helm_namespace,
+      'annotations': __helm_ingress_annotations},
+    'spec': {
+      'ingressClassName': 'traefik',
+      'tls': [{'hosts': [helm_ingress.host]}],
+      'rules': [{
+        'host': helm_ingress.host,
+        'http': {'paths': [{
+          'path': '/',
+          'pathType': 'Prefix',
+          'backend': {'service': {
+            'name': helm_ingress.service_name | default(helm_release_name),
+            'port': {'number': helm_ingress.service_port | int}}}}]}}]}}] }}
+  {%- else -%}
+  {{ [] }}
+  {%- endif -%}
+# k3s 内蔵の Traefik の Pod
+__helm_traefik_peer:
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: kube-system
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+# Pod が受ける通信を絞る NetworkPolicy。外向きの通信は絞らない
+__helm_network_policy_manifest:
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: "{{ helm_release_name }}-ingress"
+    namespace: "{{ helm_namespace }}"
+  spec:
+    podSelector: "{{ {'matchLabels': helm_network_policy_pod_labels} if helm_network_policy_pod_labels | length > 0 else {} }}"
+    policyTypes:
+      - Ingress
+    ingress:
+      - from: >-
+          {%- set peers = [{'podSelector': {}}] + ([__helm_traefik_peer] if helm_ingress | length > 0 else []) -%}
+          {%- for namespace in helm_network_policy_from -%}
+          {%- set _ = peers.append({'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': namespace}}}) -%}
+          {%- endfor -%}
+          {{ peers }}

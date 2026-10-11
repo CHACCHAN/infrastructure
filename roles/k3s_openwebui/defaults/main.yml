@@ -1,0 +1,16 @@
+# OpenWebUI を Helm で入れ、Authentik の OIDC でログインするロールの既定値。
+# 秘密情報と、公開ホスト名(openwebui_host、authentik_host)、緊急用の管理者のメールアドレス(openwebui_admin_email)は、既定値を持たない。
+---
+# チャートのバージョン
+openwebui_chart_version: "16.6.0"
+openwebui_chart_repo_url: https://helm.openwebui.com
+openwebui_release_name: open-webui
+openwebui_namespace: open-webui
+# PostgreSQL への接続(DB とロールは k3s_postgresql が作る。ベクトルは同じ DB の pgvector)
+openwebui_db_host: postgresql-rw.postgresql.svc.cluster.local
+openwebui_db_name: openwebui
+openwebui_db_user: openwebui
+# OIDC の client_id(Authentik の OIDC クライアントの slug と同じ)
+openwebui_oidc_client_id: openwebui
+# Helm values の上書き(基本値へ再帰的に合成する)
+openwebui_values: {}

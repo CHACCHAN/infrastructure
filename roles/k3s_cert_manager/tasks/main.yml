@@ -1,0 +1,73 @@
+---
+- name: cert-manager と発行者・ワイルドカード証明書を適用する
+  ansible.builtin.include_role:
+    name: k3s
+  vars:
+    helm_release_name: "{{ cert_manager_release_name }}"
+    helm_chart: cert-manager
+    helm_chart_repo_url: "{{ cert_manager_chart_repo_url }}"
+    helm_chart_version: "{{ cert_manager_chart_version }}"
+    helm_namespace: "{{ cert_manager_namespace }}"
+    helm_values: "{{ __cert_manager_values | combine(cert_manager_values, recursive=True) }}"
+    helm_secrets:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: cloudflare-api-token
+          namespace: "{{ cert_manager_namespace }}"
+        type: Opaque
+        data:
+          api-token: "{{ cert_manager_cloudflare_api_token | b64encode }}"
+    helm_manifests:
+      - apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: letsencrypt-staging
+        spec:
+          acme:
+            server: "{{ cert_manager_acme_staging_server }}"
+            email: "{{ cert_manager_acme_email }}"
+            privateKeySecretRef:
+              name: letsencrypt-staging-account
+            solvers:
+              - dns01:
+                  cloudflare:
+                    apiTokenSecretRef:
+                      name: cloudflare-api-token
+                      key: api-token
+      - apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: letsencrypt-production
+        spec:
+          acme:
+            server: "{{ cert_manager_acme_production_server }}"
+            email: "{{ cert_manager_acme_email }}"
+            privateKeySecretRef:
+              name: letsencrypt-production-account
+            solvers:
+              - dns01:
+                  cloudflare:
+                    apiTokenSecretRef:
+                      name: cloudflare-api-token
+                      key: api-token
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: wildcard
+          namespace: "{{ cert_manager_certificate_namespace }}"
+        spec:
+          secretName: "{{ cert_manager_certificate_secret }}"
+          issuerRef:
+            kind: ClusterIssuer
+            name: "{{ cert_manager_issuer }}"
+          dnsNames: "{{ cert_manager_dns_names }}"
+      # Traefik が、Ingress に証明書の指定がないときに使う証明書
+      - apiVersion: traefik.io/v1alpha1
+        kind: TLSStore
+        metadata:
+          name: default
+          namespace: "{{ cert_manager_certificate_namespace }}"
+        spec:
+          defaultCertificate:
+            secretName: "{{ cert_manager_certificate_secret }}"

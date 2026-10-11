@@ -1,0 +1,22 @@
+# OpenWebUI を Helm で入れ、Authentik の OIDC でログインできるようにする。
+# 実行例: ansible-playbook playbooks/k3s/openwebui.yml [--check --diff] 2>&1 | cat
+---
+- name: OpenWebUI を適用する
+  hosts: "k3s[0]"
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: local は kubernetes ライブラリを持たないシステムの Python を選ぶため、ansible 本体の Python に固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    helm_api_token: "{{ vault_k3s_api_token }}"
+    helm_ca_cert: "{{ vault_k3s_ca_cert }}"
+    openwebui_db_password: "{{ vault_postgresql_passwords.openwebui }}"
+    openwebui_oidc_client_secret: "{{ vault_openwebui_oidc_client_secret }}"
+    openwebui_secret_key: "{{ vault_openwebui_secret_key }}"
+    openwebui_admin_password: "{{ vault_openwebui_admin_password }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/k3s.yml"
+    - "{{ playbook_dir }}/../../vault/postgresql.yml"
+    - "{{ playbook_dir }}/../../vault/openwebui.yml"
+  roles:
+    - k3s_openwebui

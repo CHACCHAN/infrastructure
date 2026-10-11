@@ -1,0 +1,58 @@
+---
+argument_specs:
+  main:
+    short_description: cert-manager を Helm で入れ、ワイルドカード証明書を自動取得する
+    description:
+      - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
+      - Cloudflare の DNS-01 で、ワイルドカード証明書を発行し、Traefik の既定の証明書にする。
+    options:
+      cert_manager_chart_version:
+        type: str
+        description: "チャートのバージョン"
+      cert_manager_chart_repo_url:
+        type: str
+        description: "チャートの配布元の URL"
+      cert_manager_release_name:
+        type: str
+        description: "Helm のリリース名"
+      cert_manager_namespace:
+        type: str
+        description: "リリースの namespace"
+      cert_manager_acme_email:
+        type: str
+        required: true
+        description: "ACME の連絡先メールアドレス(インベントリで宣言する)"
+      cert_manager_cloudflare_api_token:
+        type: str
+        required: true
+        no_log: true
+        description: "Cloudflare の API トークン(対象ゾーンの DNS 編集のみ。vault/cloudflare.yml の vault_cloudflare_api_token)"
+      cert_manager_dns_resolvers:
+        type: list
+        elements: str
+        description: "自己チェックで TXT レコードを引く DNS サーバー(host:port)"
+      cert_manager_acme_staging_server:
+        type: str
+        description: "staging の ACME サーバー"
+      cert_manager_acme_production_server:
+        type: str
+        description: "本番の ACME サーバー"
+      cert_manager_issuer:
+        type: str
+        choices:
+          - letsencrypt-staging
+          - letsencrypt-production
+        description: "証明書を発行する発行者"
+      cert_manager_certificate_namespace:
+        type: str
+        description: "証明書の Secret を置く namespace"
+      cert_manager_certificate_secret:
+        type: str
+        description: "証明書の Secret の名前"
+      cert_manager_dns_names:
+        type: list
+        elements: str
+        description: "証明書の対象の DNS 名"
+      cert_manager_values:
+        type: dict
+        description: "cert-manager の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"

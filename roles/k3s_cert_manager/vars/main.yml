@@ -1,0 +1,9 @@
+# cert-manager の Helm values の基本値。導出する値と秘密でない既定を持ち、インベントリでは cert_manager_values で上書きする。
+---
+__cert_manager_values:
+  crds:
+    enabled: true
+    keep: true
+  extraArgs:
+    - --dns01-recursive-nameservers-only
+    - "--dns01-recursive-nameservers={{ cert_manager_dns_resolvers | join(',') }}"

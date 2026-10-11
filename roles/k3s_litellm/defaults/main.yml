@@ -1,0 +1,27 @@
+# LiteLLM Proxy(LLM API のゲートウェイ)を Helm で入れるロールの既定値。
+# 秘密情報と、公開ホスト名(litellm_host、authentik_host)は、既定値を持たない。
+---
+# チャートのバージョン(OCI)。イメージのタグは、チャートの appVersion
+litellm_chart_version: "1.104.2"
+litellm_chart_url: oci://ghcr.io/berriai/litellm-helm
+litellm_release_name: litellm
+litellm_namespace: litellm
+# PostgreSQL への接続(DB とロールは k3s_postgresql が作る)
+litellm_db_host: postgresql-rw.postgresql.svc.cluster.local
+litellm_db_name: litellm
+litellm_db_user: litellm
+# 管理者(proxy_admin)にする Authentik のグループの名前(グループ自体は Authentik の画面で作る)
+litellm_admin_group: admins
+# OIDC の client_id(Authentik の OIDC クライアントの slug と同じ)
+litellm_oidc_client_id: litellm
+# 緊急用の管理者(管理画面のパスワードでのログイン。パスワードは vault)
+litellm_ui_username: admin
+# 宣言で持つモデル(model_list)。空なら、管理画面で登録したものだけを使う
+litellm_models: []
+# モデルのプロバイダーの API キー。環境変数名をキーにした辞書(例: ANTHROPIC_API_KEY)
+litellm_provider_keys: {}
+# Traefik を通さず、クラスタ内の Service(litellm.<namespace>.svc)へ直接つなげる namespace
+litellm_client_namespaces:
+  - open-webui
+# Helm values の上書き(基本値へ再帰的に合成する)
+litellm_values: {}

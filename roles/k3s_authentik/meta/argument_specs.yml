@@ -1,0 +1,119 @@
+---
+argument_specs:
+  main:
+    short_description: Authentik を Helm で入れ、アプリの OIDC クライアントと認証プロキシを Blueprint で宣言する
+    description:
+      - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
+      - OIDC クライアントの client_id は slug と同じ。client_secret は vault で決め、アプリ側にも同じ値を渡す。
+    options:
+      authentik_chart_version:
+        type: str
+        description: "チャートのバージョン"
+      authentik_chart_repo_url:
+        type: str
+        description: "チャートの配布元の URL"
+      authentik_release_name:
+        type: str
+        description: "Helm のリリース名"
+      authentik_namespace:
+        type: str
+        description: "リリースの namespace"
+      authentik_host:
+        type: str
+        required: true
+        description: "Authentik の公開ホスト名(インベントリで宣言する)"
+      authentik_db_host:
+        type: str
+        description: "PostgreSQL のホスト"
+      authentik_db_name:
+        type: str
+        description: "DB 名"
+      authentik_db_user:
+        type: str
+        description: "DB のロール"
+      authentik_db_password:
+        type: str
+        required: true
+        no_log: true
+        description: "DB のパスワード(vault/postgresql.yml)"
+      authentik_secret_key:
+        type: str
+        required: true
+        no_log: true
+        description: "Cookie の署名などに使う鍵(vault/authentik.yml。初回のあとは変えない)"
+      authentik_bootstrap_password:
+        type: str
+        required: true
+        no_log: true
+        description: "初期管理者 akadmin のパスワード(vault/authentik.yml。初回の作成にだけ使われる)"
+      authentik_bootstrap_token:
+        type: str
+        required: true
+        no_log: true
+        description: "初期管理者の API トークン(vault/authentik.yml。初回の作成にだけ使われる)"
+      authentik_oidc_clients:
+        type: list
+        elements: dict
+        description: "OIDC クライアント(name、slug、redirect_uris)"
+        options:
+          name:
+            type: str
+            required: true
+            description: "アプリケーションの表示名"
+          slug:
+            type: str
+            required: true
+            description: "スラッグ。client_id と、発行者 URL の一部になる"
+          redirect_uris:
+            type: list
+            elements: str
+            required: true
+            description: "リダイレクト URI(完全一致)"
+      authentik_proxy_apps:
+        type: list
+        elements: dict
+        description: "認証プロキシ(forward auth)で守るアプリケーション(name、slug、host)"
+        options:
+          name:
+            type: str
+            required: true
+            description: "アプリケーションの表示名"
+          slug:
+            type: str
+            required: true
+            description: "スラッグ"
+          host:
+            type: str
+            required: true
+            description: "守る画面の公開ホスト名"
+      authentik_proxy_access_group:
+        type: str
+        description: "認証プロキシで守る画面を使える Authentik のグループの名前"
+      authentik_forward_auth_middleware:
+        type: str
+        description: "認証プロキシの Traefik のミドルウェアの名前"
+      authentik_login_failure_limit:
+        type: int
+        description: "IP ごとに、ログインの失敗が成功をこの回数だけ上回ると、その IP からのログインを拒否する。0 なら制限しない"
+      authentik_login_failure_expiry:
+        type: int
+        description: "失敗と成功の記録を保つ秒数"
+      authentik_mfa_required:
+        type: bool
+        description: "MFA を登録していないユーザーに、ログインの途中で登録させる"
+      authentik_google_client_id:
+        type: str
+        no_log: true
+        description: "Google でのログインに使う OAuth クライアントの client_id(vault/authentik.yml)。空なら、Google でのログインを置かない"
+      authentik_google_client_secret:
+        type: str
+        no_log: true
+        description: "Google でのログインに使う OAuth クライアントの client_secret(vault/authentik.yml)"
+      authentik_oidc_client_secrets:
+        type: dict
+        required: true
+        no_log: true
+        description: "slug ごとの client_secret(アプリ側の vault ファイルの値)"
+      authentik_values:
+        type: dict
+        description: "Authentik の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"

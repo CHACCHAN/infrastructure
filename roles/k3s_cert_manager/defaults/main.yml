@@ -1,0 +1,25 @@
+# cert-manager を Helm で入れ、Let's Encrypt(Cloudflare の DNS-01)でワイルドカード証明書を自動取得するロールの既定値。
+# ACME の連絡先(cert_manager_acme_email)と、Cloudflare の API トークン(cert_manager_cloudflare_api_token)は、既定値を持たない。
+---
+# チャートのバージョン
+cert_manager_chart_version: "v1.21.2"
+cert_manager_chart_repo_url: https://charts.jetstack.io
+cert_manager_release_name: cert-manager
+cert_manager_namespace: cert-manager
+# 自己チェックで TXT レコードを引く DNS サーバー(公開リゾルバ)
+cert_manager_dns_resolvers:
+  - 1.1.1.1:53
+  - 1.0.0.1:53
+# Let's Encrypt の ACME サーバー
+cert_manager_acme_staging_server: https://acme-staging-v02.api.letsencrypt.org/directory
+cert_manager_acme_production_server: https://acme-v02.api.letsencrypt.org/directory
+# 証明書を発行する発行者。動作を確認したら letsencrypt-production に切り替える
+cert_manager_issuer: letsencrypt-staging
+# ワイルドカード証明書を置く namespace(k3s 内蔵の Traefik と同じ)と、Secret の名前
+cert_manager_certificate_namespace: kube-system
+cert_manager_certificate_secret: wildcard-tls
+# 証明書の対象(ワイルドカード)
+cert_manager_dns_names:
+  - "*.{{ lab_domain }}"
+# Helm values の上書き(基本値へ再帰的に合成する)
+cert_manager_values: {}

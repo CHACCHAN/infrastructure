@@ -1,0 +1,16 @@
+# Homarr(ダッシュボード)を Helm で入れ、Authentik の OIDC でログインするロールの既定値。
+# 秘密情報と、公開ホスト名(homarr_host、authentik_host)は、既定値を持たない。
+---
+# チャートのバージョン
+homarr_chart_version: "8.32.0"
+homarr_chart_repo_url: https://homarr-labs.github.io/charts/
+homarr_release_name: homarr
+homarr_namespace: homarr
+# PostgreSQL への接続(DB とロールは k3s_postgresql が作る)
+homarr_db_host: postgresql-rw.postgresql.svc.cluster.local
+homarr_db_name: homarr
+homarr_db_user: homarr
+# OIDC の client_id(Authentik の OIDC クライアントの slug と同じ)
+homarr_oidc_client_id: homarr
+# Helm values の上書き(基本値へ再帰的に合成する)
+homarr_values: {}

@@ -1,0 +1,33 @@
+# playbooks/k3s
+
+k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconfig を使わず、vault のトークンで Kubernetes API の VIP に接続する。設計は [docs/design/k3s.md](../../docs/design/k3s.md)(「クラスタ内アプリの管理」)。
+
+**`--check` なしの実行は、実機のクラスタを変更する。** 実行は、実行を頼まれたときだけ行う([AGENTS.md](../../AGENTS.md) の安全規則)。`--check --diff`(helm-diff)は読み取り専用。
+
+## playbook
+
+| playbook | 内容 | 実行例 |
+| --- | --- | --- |
+| `metallb.yml` | MetalLB(L2)を入れ、Ingress の VIP を LoadBalancer に割り当てる。内蔵の Traefik の配置も設定する(変えると Traefik が入れ替わり、Ingress が一時的に途切れる) | `ansible-playbook playbooks/k3s/metallb.yml [--check --diff] 2>&1 \| cat` |
+| `cert_manager.yml` | cert-manager を入れ、Let's Encrypt(Cloudflare の DNS-01)のワイルドカード証明書を Traefik の既定の証明書にする | `ansible-playbook playbooks/k3s/cert_manager.yml [--check --diff] 2>&1 \| cat` |
+| `longhorn.yml` | Longhorn を入れ、既定の StorageClass にする。管理 UI を、Authentik の認証プロキシを通して公開する | `ansible-playbook playbooks/k3s/longhorn.yml [--check --diff] 2>&1 \| cat` |
+| `postgresql.yml` | CloudNativePG のオペレーターと、PostgreSQL(アプリごとの DB・ロール)を入れる | `ansible-playbook playbooks/k3s/postgresql.yml [--check --diff] 2>&1 \| cat` |
+| `authentik.yml` | Authentik を入れ、アプリの OIDC クライアントと認証プロキシを Blueprint で宣言する | `ansible-playbook playbooks/k3s/authentik.yml [--check --diff] 2>&1 \| cat` |
+| `homarr.yml` | Homarr を入れる | `ansible-playbook playbooks/k3s/homarr.yml [--check --diff] 2>&1 \| cat` |
+| `openwebui.yml` | OpenWebUI を入れる | `ansible-playbook playbooks/k3s/openwebui.yml [--check --diff] 2>&1 \| cat` |
+| `litellm.yml` | LiteLLM Proxy を入れる | `ansible-playbook playbooks/k3s/litellm.yml [--check --diff] 2>&1 \| cat` |
+
+## 実行の順序
+
+`metallb.yml` → `cert_manager.yml` → `longhorn.yml` → `postgresql.yml` → `authentik.yml` の順に実行する。そのあとの `homarr.yml`・`openwebui.yml`・`litellm.yml` は、順不同。OIDC の client_secret は vault で決まっているため、アプリを `authentik.yml` より先に入れてもよい(ログインできるのは Authentik の起動後)。Longhorn の管理 UI は、`authentik.yml` を実行するまで開けない(認証プロキシのミドルウェアが無いため)。Longhorn は、ノード側の前提(`vm_k3s` の `storage`)が先に要るので、`playbooks/vm/k3s.yml` を流してから実行する。
+
+## 前提
+
+- k3s が動いている([playbooks/vm](../vm/README.md))。
+- `vault/k3s.yml` にトークンと認証局の証明書がある。無ければ、先に [playbooks/utils](../utils/README.md) の `k3s_token.yml` を実行する。
+- アプリごとの前提は、各ロールの README に書く。
+- 開発マシンから API の VIP(`172.20.<vlan>.<k3s_api_vip_id>`、6443)に届く。
+
+## アプリを足す
+
+`new-role` スキルに従い、`k3s_<app>` ロールを作る。ロールは [k3s](../../roles/k3s/README.md) を `include_role` で呼ぶだけにし、チャート・バージョン・values を `defaults/main.yml` に書く。playbook は `metallb.yml` と同じ形にする。

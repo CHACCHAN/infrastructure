@@ -1,0 +1,47 @@
+# postgresql_databases から導出する、Cluster のロール・DB と、ロールのパスワードの Secret。
+---
+__postgresql_roles: >-
+  {%- set out = [] -%}
+  {%- for db in postgresql_databases -%}
+  {%- set _ = out.append({
+    'name': db.name,
+    'ensure': 'present',
+    'login': true,
+    'passwordSecret': {'name': 'postgresql-role-' ~ db.name}}) -%}
+  {%- endfor -%}
+  {{ out }}
+__postgresql_database_specs: >-
+  {%- set out = [] -%}
+  {%- for db in postgresql_databases -%}
+  {%- set _ = out.append({
+    'name': db.name,
+    'owner': db.name,
+    'extensions': (db.extensions | default([])) | map('community.general.dict_kv', 'name') | list}) -%}
+  {%- endfor -%}
+  {{ out }}
+__postgresql_secrets: >-
+  {%- set out = [] -%}
+  {%- for db in postgresql_databases -%}
+  {%- set _ = out.append({
+    'apiVersion': 'v1',
+    'kind': 'Secret',
+    'metadata': {
+      'name': 'postgresql-role-' ~ db.name,
+      'namespace': postgresql_namespace,
+      'labels': {'cnpg.io/reload': 'true'}},
+    'type': 'kubernetes.io/basic-auth',
+    'data': {
+      'username': db.name | b64encode,
+      'password': postgresql_passwords[db.name] | b64encode}}) -%}
+  {%- endfor -%}
+  {{ out }}
+__postgresql_values:
+  fullnameOverride: "{{ postgresql_release_name }}"
+  cluster:
+    instances: "{{ postgresql_instances }}"
+    imageName: "{{ postgresql_image }}"
+    enableSuperuserAccess: false
+    storage:
+      size: "{{ postgresql_storage_size }}"
+    roles: "{{ __postgresql_roles }}"
+  databases: "{{ __postgresql_database_specs }}"

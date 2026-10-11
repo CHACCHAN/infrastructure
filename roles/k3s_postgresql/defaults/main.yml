@@ -1,0 +1,31 @@
+# PostgreSQL(CloudNativePG の Cluster)を Helm で作り、アプリごとの DB とロールを宣言するロールの既定値。
+# オペレーターは k3s_cnpg が入れる。ロールのパスワード(postgresql_passwords)は、既定値を持たない。
+---
+# チャート(cluster)のバージョン
+postgresql_chart_version: "0.9.0"
+postgresql_chart_repo_url: https://cloudnative-pg.github.io/charts
+postgresql_release_name: postgresql
+postgresql_namespace: postgresql
+# PostgreSQL のイメージ(pgvector を含む standard)
+postgresql_image: ghcr.io/cloudnative-pg/postgresql:17-standard-trixie
+# インスタンスの数
+postgresql_instances: 1
+# ボリュームのサイズ
+postgresql_storage_size: 20Gi
+# アプリごとの DB。同名のロールが所有者になる
+postgresql_databases:
+  - name: authentik
+  - name: homarr
+  - name: openwebui
+    extensions:
+      - vector
+  - name: litellm
+# PostgreSQL へ接続できる namespace(オペレーターと、DB を使うアプリ)。ほかの namespace からの通信は通さない
+postgresql_client_namespaces:
+  - cnpg-system
+  - authentik
+  - homarr
+  - open-webui
+  - litellm
+# Helm values の上書き(基本値へ再帰的に合成する)
+postgresql_values: {}

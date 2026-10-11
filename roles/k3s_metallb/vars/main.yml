@@ -1,0 +1,8 @@
+# k3s 内蔵の Traefik のチャートへ渡す values(HelmChartConfig)。
+---
+__metallb_traefik_values:
+  deployment:
+    kind: DaemonSet
+  service:
+    spec:
+      externalTrafficPolicy: Local

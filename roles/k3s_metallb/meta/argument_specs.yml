@@ -1,0 +1,25 @@
+---
+argument_specs:
+  main:
+    short_description: MetalLB(L2)を Helm で入れ、Ingress の VIP を割り当て、内蔵の Traefik の配置を設定する
+    description:
+      - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
+    options:
+      metallb_chart_version:
+        type: str
+        description: "チャートのバージョン"
+      metallb_chart_repo_url:
+        type: str
+        description: "チャートの配布元の URL"
+      metallb_release_name:
+        type: str
+        description: "Helm のリリース名"
+      metallb_namespace:
+        type: str
+        description: "リリースの namespace"
+      metallb_pool_name:
+        type: str
+        description: "アドレスのプール名"
+      metallb_pool_address:
+        type: str
+        description: "プールのアドレス(CIDR)"

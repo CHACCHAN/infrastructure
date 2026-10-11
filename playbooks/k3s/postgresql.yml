@@ -1,0 +1,19 @@
+# CloudNativePG のオペレーターと、PostgreSQL(アプリごとの DB・ロール)を Helm で入れる。
+# 実行例: ansible-playbook playbooks/k3s/postgresql.yml [--check --diff] 2>&1 | cat
+---
+- name: PostgreSQL を適用する
+  hosts: "k3s[0]"
+  connection: local
+  gather_facts: false
+  vars:
+    # connection: local は kubernetes ライブラリを持たないシステムの Python を選ぶため、ansible 本体の Python に固定する。
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    helm_api_token: "{{ vault_k3s_api_token }}"
+    helm_ca_cert: "{{ vault_k3s_ca_cert }}"
+    postgresql_passwords: "{{ vault_postgresql_passwords }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/k3s.yml"
+    - "{{ playbook_dir }}/../../vault/postgresql.yml"
+  roles:
+    - k3s_cnpg
+    - k3s_postgresql

@@ -1,0 +1,44 @@
+# Secret authentik-config のキー。チャートがサーバーとワーカーに環境変数として渡す。
+---
+__authentik_secret_data: >-
+  {%- set out = {
+    'AUTHENTIK_SECRET_KEY': authentik_secret_key | b64encode,
+    'AUTHENTIK_POSTGRESQL__HOST': authentik_db_host | b64encode,
+    'AUTHENTIK_POSTGRESQL__NAME': authentik_db_name | b64encode,
+    'AUTHENTIK_POSTGRESQL__USER': authentik_db_user | b64encode,
+    'AUTHENTIK_POSTGRESQL__PASSWORD': authentik_db_password | b64encode,
+    'AUTHENTIK_BOOTSTRAP_PASSWORD': authentik_bootstrap_password | b64encode,
+    'AUTHENTIK_BOOTSTRAP_TOKEN': authentik_bootstrap_token | b64encode,
+    'AUTHENTIK_ERROR_REPORTING__ENABLED': 'false' | b64encode} -%}
+  {%- for client in authentik_oidc_clients -%}
+  {%- set _ = out.update({
+    'OIDC_' ~ (client.slug | upper) ~ '_SECRET': authentik_oidc_client_secrets[client.slug] | b64encode}) -%}
+  {%- endfor -%}
+  {%- if authentik_google_client_id | length > 0 -%}
+  {%- set _ = out.update({
+    'GOOGLE_CLIENT_ID': authentik_google_client_id | b64encode,
+    'GOOGLE_CLIENT_SECRET': authentik_google_client_secret | b64encode}) -%}
+  {%- endif -%}
+  {{ out }}
+__authentik_values:
+  global:
+    # Secret(環境変数)が変わったら、Pod を入れ替えて読み直す
+    podAnnotations:
+      checksum/authentik-config: "{{ __authentik_secret_data | to_json | hash('sha256') }}"
+    env:
+      - name: AUTHENTIK_REPUTATION__EXPIRY
+        value: "{{ authentik_login_failure_expiry | string }}"
+  authentik:
+    existingSecret:
+      secretName: authentik-config
+  blueprints:
+    configMaps:
+      - authentik-blueprints
+  additionalObjects:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: authentik-blueprints
+      data:
+        oidc-clients.yaml: "{{ __authentik_blueprint }}"
+        forward-auth.yaml: "{{ __authentik_forward_auth_blueprint }}"

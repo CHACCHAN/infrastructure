@@ -1,0 +1,18 @@
+---
+- name: LiteLLM を適用する
+  ansible.builtin.include_role:
+    name: k3s
+  vars:
+    helm_release_name: "{{ litellm_release_name }}"
+    helm_chart: "{{ litellm_chart_url }}"
+    helm_chart_version: "{{ litellm_chart_version }}"
+    helm_namespace: "{{ litellm_namespace }}"
+    helm_timeout: 15m
+    helm_values: "{{ __litellm_values | combine(litellm_values, recursive=True) }}"
+    helm_secrets: "{{ __litellm_secrets }}"
+    helm_ingress:
+      host: "{{ litellm_host }}"
+      service_name: litellm
+      service_port: 4000
+    helm_network_policy: true
+    helm_network_policy_from: "{{ litellm_client_namespaces }}"

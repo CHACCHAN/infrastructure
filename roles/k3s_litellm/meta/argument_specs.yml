@@ -1,0 +1,86 @@
+---
+argument_specs:
+  main:
+    short_description: LiteLLM Proxy を Helm で入れる
+    description:
+      - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
+      - 設定ファイルのモデルのほか、管理画面から足したモデルも DB に保存される。
+    options:
+      litellm_chart_version:
+        type: str
+        description: "チャートのバージョン"
+      litellm_chart_url:
+        type: str
+        description: "チャートの OCI の URL"
+      litellm_release_name:
+        type: str
+        description: "Helm のリリース名"
+      litellm_namespace:
+        type: str
+        description: "リリースの namespace"
+      litellm_host:
+        type: str
+        required: true
+        description: "LiteLLM の公開ホスト名(インベントリで宣言する)"
+      litellm_models:
+        type: list
+        elements: dict
+        description: "宣言で持つ model_list(model_name、litellm_params)。空なら、管理画面で登録したものだけを使う"
+      litellm_db_host:
+        type: str
+        description: "PostgreSQL のホスト"
+      litellm_db_name:
+        type: str
+        description: "DB 名"
+      litellm_db_user:
+        type: str
+        description: "DB のロール"
+      litellm_db_password:
+        type: str
+        required: true
+        no_log: true
+        description: "DB のパスワード(vault/postgresql.yml)"
+      litellm_master_key:
+        type: str
+        required: true
+        no_log: true
+        description: "マスターキー(vault/litellm.yml。sk- で始める)。API の鍵で、管理画面のログインには使わない"
+      litellm_ui_username:
+        type: str
+        description: "緊急用の管理者のユーザー名(管理画面のパスワードでのログイン)"
+      litellm_ui_password:
+        type: str
+        required: true
+        no_log: true
+        description: "緊急用の管理者のパスワード(vault/litellm.yml)"
+      litellm_salt_key:
+        type: str
+        required: true
+        no_log: true
+        description: "DB に保存する認証情報の暗号化キー(vault/litellm.yml。モデルを登録したあとは変えない)"
+      authentik_host:
+        type: str
+        required: true
+        description: "Authentik の公開ホスト名(インベントリで宣言する)"
+      litellm_oidc_client_id:
+        type: str
+        description: "OIDC の client_id(Authentik の OIDC クライアントの slug と同じ)"
+      litellm_oidc_client_secret:
+        type: str
+        required: true
+        no_log: true
+        description: "OIDC の client_secret(vault/litellm.yml。Authentik にも同じ値を渡す)"
+      litellm_admin_group:
+        type: str
+        description: "管理者(proxy_admin)にする Authentik のグループの名前(グループ自体は Authentik の画面で作る)"
+      litellm_provider_keys:
+        type: dict
+        no_log: true
+        description: "プロバイダーの API キー(環境変数名をキーにした辞書。vault/litellm.yml)"
+      litellm_client_namespaces:
+        type: list
+        elements: str
+        description: "Traefik を通さず、クラスタ内の Service へ直接つなげる namespace"
+      litellm_values:
+        type: dict
+        description: "LiteLLM の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"

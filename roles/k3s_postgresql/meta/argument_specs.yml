@@ -1,0 +1,54 @@
+---
+argument_specs:
+  main:
+    short_description: PostgreSQL(CloudNativePG の Cluster)と、アプリごとの DB・ロールを作る
+    description:
+      - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
+      - ロールのパスワードは Secret(kubernetes.io/basic-auth)として、リリースの前に渡す。
+    options:
+      postgresql_chart_version:
+        type: str
+        description: "cluster チャートのバージョン"
+      postgresql_chart_repo_url:
+        type: str
+        description: "チャートの配布元の URL"
+      postgresql_release_name:
+        type: str
+        description: "Helm のリリース名(Cluster の名前にもなる)"
+      postgresql_namespace:
+        type: str
+        description: "リリースの namespace"
+      postgresql_image:
+        type: str
+        description: "PostgreSQL のイメージ"
+      postgresql_instances:
+        type: int
+        description: "インスタンスの数"
+      postgresql_storage_size:
+        type: str
+        description: "ボリュームのサイズ"
+      postgresql_databases:
+        type: list
+        elements: dict
+        description: "アプリごとの DB(name、extensions)。同名のロールが所有者になる"
+        options:
+          name:
+            type: str
+            required: true
+            description: "DB とロールの名前"
+          extensions:
+            type: list
+            elements: str
+            description: "作成する拡張"
+      postgresql_passwords:
+        type: dict
+        required: true
+        no_log: true
+        description: "ロール名ごとのパスワード(vault/postgresql.yml の vault_postgresql_passwords)"
+      postgresql_client_namespaces:
+        type: list
+        elements: str
+        description: "PostgreSQL へ接続できる namespace(オペレーターと、DB を使うアプリ)"
+      postgresql_values:
+        type: dict
+        description: "PostgreSQL の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"

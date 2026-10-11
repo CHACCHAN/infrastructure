@@ -1,0 +1,45 @@
+# PostgreSQL の接続 URL(パスワードを含むため、Secret にだけ置く)。
+---
+__homarr_db_url: >-
+  postgresql://{{ homarr_db_user }}:{{ homarr_db_password | urlencode | replace('/', '%2F') }}@{{ homarr_db_host }}:5432/{{ homarr_db_name }}
+__homarr_values:
+  strategyType: Recreate
+  replicaCount: 1
+  env:
+    TZ: Asia/Tokyo
+    # Authentik が落ちているときの退避経路として credentials を残す
+    AUTH_PROVIDERS: "credentials,oidc"
+    # Authentik の発行者は、末尾のスラッシュが要る
+    AUTH_OIDC_ISSUER: "https://{{ authentik_host }}/application/o/{{ homarr_oidc_client_id }}/"
+    AUTH_OIDC_CLIENT_NAME: Authentik
+    AUTH_OIDC_AUTO_LOGIN: "false"
+    AUTH_OIDC_SCOPE_OVERWRITE: "openid email profile"
+    AUTH_OIDC_GROUPS_ATTRIBUTE: groups
+  database:
+    type: postgresql
+  envSecrets:
+    authOidcCredentials:
+      existingSecret: homarr-oidc
+      oidcClientId: oidc-client-id
+      oidcClientSecret: oidc-client-secret
+    dbEncryption:
+      existingSecret: homarr-db-encryption
+      key: db-encryption-key
+    dbCredentials:
+      existingSecret: homarr-db
+      dbUrlKey: db-url
+  persistence:
+    # データは PostgreSQL に置く。/appdata はキャッシュだけなので、ボリュームを持たない
+    homarrDatabase:
+      enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  rbac:
+    enabled: false
+  ingress:
+    enabled: false

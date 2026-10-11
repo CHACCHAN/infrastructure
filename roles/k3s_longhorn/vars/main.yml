@@ -1,0 +1,18 @@
+# Longhorn の Helm values の基本値。導出する値と秘密でない既定を持ち、インベントリでは longhorn_values で上書きする。
+---
+__longhorn_values:
+  persistence:
+    defaultClass: true
+    defaultClassReplicaCount: "{{ longhorn_replica_count }}"
+  csi:
+    attacherReplicaCount: "{{ longhorn_control_replicas }}"
+    provisionerReplicaCount: "{{ longhorn_control_replicas }}"
+    resizerReplicaCount: "{{ longhorn_control_replicas }}"
+    snapshotterReplicaCount: "{{ longhorn_control_replicas }}"
+  longhornGlobalManager:
+    replicas: "{{ longhorn_control_replicas }}"
+  longhornUI:
+    replicas: "{{ longhorn_control_replicas }}"
+  defaultSettings:
+    nodeDownPodDeletionPolicy: "{{ longhorn_node_down_pod_deletion_policy }}"
+    concurrentReplicaRebuildPerNodeLimit: "{{ longhorn_concurrent_rebuild_limit }}"

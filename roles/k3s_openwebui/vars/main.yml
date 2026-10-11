@@ -1,0 +1,94 @@
+# PostgreSQL の接続 URL(パスワードを含むため、Secret にだけ置く)。
+---
+__openwebui_db_url: >-
+  postgresql://{{ openwebui_db_user }}:{{ openwebui_db_password | urlencode | replace('/', '%2F') }}@{{ openwebui_db_host }}:5432/{{ openwebui_db_name }}
+__openwebui_values:
+  ollama:
+    enabled: false
+  pipelines:
+    enabled: false
+  tika:
+    enabled: false
+  websocket:
+    enabled: false
+  enableOpenaiApi: false
+  # DB に全データがあるため、ボリュームは持たない(アップロードしたファイルの実体は Pod とともに消える)
+  persistence:
+    enabled: false
+  strategy:
+    type: Recreate
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  extraEnvVars:
+    - name: TZ
+      value: Asia/Tokyo
+    # uid 1000 は passwd にないため、HOME を書ける場所に向ける
+    - name: HOME
+      value: /tmp
+    - name: WEBUI_URL
+      value: "https://{{ openwebui_host }}"
+    - name: WEBUI_SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: open-webui-app
+          key: webui-secret-key
+    - name: DATABASE_URL
+      valueFrom:
+        secretKeyRef:
+          name: open-webui-db
+          key: db-url
+    - name: VECTOR_DB
+      value: pgvector
+    - name: OAUTH_PROVIDER_NAME
+      value: Authentik
+    - name: OPENID_PROVIDER_URL
+      value: "https://{{ authentik_host }}/application/o/{{ openwebui_oidc_client_id }}/.well-known/openid-configuration"
+    - name: OAUTH_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: open-webui-oidc
+          key: oidc-client-id
+    - name: OAUTH_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: open-webui-oidc
+          key: oidc-client-secret
+    - name: OAUTH_SCOPES
+      value: openid email profile
+    - name: OPENID_REDIRECT_URI
+      value: "https://{{ openwebui_host }}/oauth/oidc/callback"
+    - name: ENABLE_OAUTH_SIGNUP
+      value: "true"
+    - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
+      value: "true"
+    # OAuth の設定(グループから権限を決める対応づけなど)を、管理画面から変えられるようにする。画面で保存した値は DB に残り、環境変数より優先される
+    - name: ENABLE_OAUTH_PERSISTENT_CONFIG
+      value: "true"
+    # パスワードでの新規登録は受け付けない(アカウントは SSO と緊急用の管理者だけ)
+    - name: ENABLE_SIGNUP
+      value: "false"
+    # 緊急用の管理者。ユーザーが1人もいないときだけ作られる(表示名は OpenWebUI の既定の Admin)
+    - name: WEBUI_ADMIN_EMAIL
+      value: "{{ openwebui_admin_email }}"
+    - name: WEBUI_ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: open-webui-admin
+          key: admin-password

@@ -1,0 +1,12 @@
+# MetalLB(L2)を Helm で入れ、Ingress の VIP を LoadBalancer に割り当て、内蔵の Traefik の配置を設定するロールの既定値。
+# Ingress の VIP は、インベントリの vlan と k3s_ingress_vip_id から導出する。
+---
+# チャートのバージョン
+metallb_chart_version: "0.16.1"
+metallb_chart_repo_url: https://metallb.github.io/metallb
+metallb_release_name: metallb
+metallb_namespace: metallb-system
+# 割り当てるアドレスのプール名
+metallb_pool_name: ingress
+# プールのアドレス
+metallb_pool_address: "172.20.{{ vlan }}.{{ k3s_ingress_vip_id }}/32"

@@ -1,0 +1,26 @@
+---
+- name: 宣言した DB にパスワードがあることを確認する
+  ansible.builtin.assert:
+    that:
+      - postgresql_passwords[item.name] is defined
+      - postgresql_passwords[item.name] | length > 0
+    fail_msg: "{{ item.name }} のパスワードが vault/postgresql.yml にありません"
+    quiet: true
+  loop: "{{ postgresql_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+
+- name: PostgreSQL を適用する
+  ansible.builtin.include_role:
+    name: k3s
+  vars:
+    helm_release_name: "{{ postgresql_release_name }}"
+    helm_chart: cluster
+    helm_chart_repo_url: "{{ postgresql_chart_repo_url }}"
+    helm_chart_version: "{{ postgresql_chart_version }}"
+    helm_namespace: "{{ postgresql_namespace }}"
+    helm_values: "{{ __postgresql_values | combine(postgresql_values, recursive=True) }}"
+    helm_secrets: "{{ __postgresql_secrets }}"
+    helm_network_policy: true
+    helm_network_policy_from: "{{ postgresql_client_namespaces }}"

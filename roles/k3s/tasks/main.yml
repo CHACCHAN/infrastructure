@@ -1,0 +1,100 @@
+---
+- name: Kubernetes API へ接続して適用する
+  block:
+    - name: 認証局の証明書の置き場を作る
+      ansible.builtin.tempfile:
+        state: file
+        path: /dev/shm
+        prefix: ansible-k3s-ca-
+      register: __helm_ca_file
+      changed_when: false
+      check_mode: false
+
+    - name: 認証局の証明書を書き出す
+      ansible.builtin.copy:
+        content: "{{ helm_ca_cert }}"
+        dest: "{{ __helm_ca_file.path }}"
+        mode: "0600"
+      changed_when: false
+      check_mode: false
+      no_log: true
+
+    - name: Helm のリリースと、続くマニフェストを適用する
+      module_defaults:
+        group/kubernetes.core.helm:
+          host: "{{ helm_api_host }}"
+          api_key: "{{ helm_api_token }}"
+          ca_cert: "{{ __helm_ca_file.path }}"
+          validate_certs: true
+        group/kubernetes.core.k8s:
+          host: "{{ helm_api_host }}"
+          api_key: "{{ helm_api_token }}"
+          ca_cert: "{{ __helm_ca_file.path }}"
+          validate_certs: true
+      block:
+        # リリースが参照する Secret を、Pod が起動する前に用意する。値はログに出さない。
+        - name: Secret を置く namespace を作る
+          kubernetes.core.k8s:
+            definition:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: "{{ helm_namespace }}"
+            state: present
+          when: helm_secrets | length > 0 and helm_create_namespace
+          register: __helm_namespace
+
+        - name: リリースの前に Secret を適用する
+          kubernetes.core.k8s:
+            definition: "{{ item }}"
+            state: present
+          loop: "{{ helm_secrets }}"
+          loop_control:
+            label: "{{ item.metadata.name }}"
+          no_log: true
+          # --check で namespace がまだ無いときは、Secret を検証できない
+          when: not (ansible_check_mode and __helm_namespace is changed)
+
+        - name: Helm のリリースを適用する
+          kubernetes.core.helm:
+            name: "{{ helm_release_name }}"
+            chart_ref: "{{ helm_chart }}"
+            chart_repo_url: "{{ helm_chart_repo_url | default(omit, true) }}"
+            chart_version: "{{ helm_chart_version }}"
+            release_namespace: "{{ helm_namespace }}"
+            create_namespace: "{{ helm_create_namespace }}"
+            values: "{{ helm_values }}"
+            wait: "{{ helm_wait }}"
+            timeout: "{{ helm_timeout }}"
+            release_state: present
+          register: __helm_release
+          no_log: "{{ helm_no_log }}"
+
+        # チャートが入る前の --check では CRD が無く、CRD を使うマニフェストは検証できない。
+        # チャートの webhook が Ready になる前は拒否されることがあるため、再試行する。
+        - name: リリースに続くマニフェストを適用する
+          kubernetes.core.k8s:
+            definition: "{{ item }}"
+            state: present
+          loop: "{{ helm_manifests + __helm_ingress_manifests }}"
+          loop_control:
+            label: "{{ item.kind }}/{{ item.metadata.name }}"
+          register: __helm_manifest
+          until: __helm_manifest is succeeded
+          retries: 6
+          delay: 10
+          when: not (ansible_check_mode and __helm_release is changed)
+
+        - name: Pod が受ける通信を絞る NetworkPolicy を適用する
+          kubernetes.core.k8s:
+            definition: "{{ __helm_network_policy_manifest }}"
+            state: "{{ 'present' if helm_network_policy | bool else 'absent' }}"
+          when: not (ansible_check_mode and __helm_release is changed)
+  always:
+    - name: 認証局の証明書を消す
+      ansible.builtin.file:
+        path: "{{ __helm_ca_file.path }}"
+        state: absent
+      changed_when: false
+      check_mode: false
+      when: __helm_ca_file is defined and __helm_ca_file.path is defined
