@@ -1,0 +1,3 @@
+# ラボのドメイン。Cloudflare の DNS で管理する(docs/design/network.md)。
+---
+lab_domain: cc-chacchan.com

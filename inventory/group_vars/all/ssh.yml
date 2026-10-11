@@ -1,0 +1,4 @@
+# VM の cloud-init に登録する SSH 公開鍵。対の秘密鍵は vault/ssh.yml。
+---
+pve_vm_ssh_pubkeys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGDaZ1a36tPsMBlGj5Uhf88lfgtLLEexaMAEm8NhbuQC lab-ansible

@@ -10,3 +10,5 @@ k3s:
       pve_vm_storage: ssd01
       pve_vm_cores: 4
       pve_vm_disk_size: 256
+      # qemu-guest-agent が入っている VM だけ有効にする(docs/design/pve.md)
+      pve_vm_agent: 1

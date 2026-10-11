@@ -9,7 +9,9 @@
 | `hosts/<VLAN番号>_<名前>.yml` | VLAN ごとに1ファイル。グループの `vlan` と、ホストの `id`・`node` などを書く |
 | `group_vars/all/network.yml` | `vlan` と `id` から、VMID・IP・ゲートウェイを導出する |
 | `group_vars/all/pve.yml` | Proxmox の API に共通する値 |
-| `group_vars/<グループ>.yml` | グループに共通する値(ロールの既定値との差分だけ) |
+| `group_vars/all/ssh.yml` | VM の cloud-init に登録する SSH 公開鍵 |
+| `group_vars/all/domain.yml` | ラボのドメイン(`lab_domain`) |
+| `group_vars/<グループ>.yml` | グループに共通する値(ロールの既定値との差分だけ)。複数のロールが使う VIP の ID(`k3s_api_vip_id`・`k3s_ingress_vip_id`)もここに置く |
 | `host_vars/` | 個体差が出たホストだけ |
 
 値の優先順位は [docs/conventions.md](../docs/conventions.md) の「変数の層」。

@@ -1,3 +1,26 @@
 # k3s ノードの VM に共通する値(ロールの既定値との差分)。
 ---
 pve_vm_memory: 12288
+# 予約済みの ID(docs/design/network.md)。VIP は 172.20.<vlan>.<ID>
+k3s_api_vip_id: 6
+k3s_ingress_vip_id: 5
+# ACMEのEmail
+cert_manager_acme_email: chacchan.info@gmail.com
+# 証明書の発行者
+cert_manager_issuer: letsencrypt-production
+# Debian の cloud イメージが作る、sudo できる既定のユーザー
+ansible_user: debian
+# アプリの公開ホスト名。各 k3s_<app> ロールと、Authentik の OIDC クライアントが同じ値を参照する
+authentik_host: "auth.{{ lab_domain }}"
+homarr_host: "homarr.{{ lab_domain }}"
+openwebui_host: "ai.{{ lab_domain }}"
+litellm_host: "litellm.{{ lab_domain }}"
+longhorn_host: "longhorn.{{ lab_domain }}"
+# クラスタ内から Traefik へ向ける公開ホスト名(Pod からの OIDC の通信などが、外の DNS に頼らないようにする)
+k3s_ingress_hosts:
+  - "{{ authentik_host }}"
+  - "{{ homarr_host }}"
+  - "{{ openwebui_host }}"
+  - "{{ litellm_host }}"
+# OpenWebUI の緊急用の管理者(ログイン名。SSO のユーザーのメールアドレスと重ねない。パスワードは vault/openwebui.yml)
+openwebui_admin_email: "admin@{{ lab_domain }}"
