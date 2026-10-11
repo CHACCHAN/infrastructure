@@ -27,8 +27,8 @@ Ansible 公式の推奨配置([Sample Ansible setup](https://docs.ansible.com/an
 
 | 対象 | 規則 | 例 |
 | --- | --- | --- |
-| ロール | `<ドメイン>` が基底、`<ドメイン>_<名前>` が実装。ドメインは `pve` / `vm` / `k8s` | `pve_vm`、`vm_k3s`、`k8s_cert_manager` |
-| ロールの変数 | ドメイン接頭辞を落とした名前で始める。例外: `pve_vm` は `vm` ドメインの `vm_*` と衝突するため `pve_vm_*` | `vm_k3s` のロール変数は `k3s_*` |
+| ロール | `<ドメイン>` が基底、`<ドメイン>_<名前>` が実装。ドメインは `pve` / `vm` / `k3s` | `pve_vm`、`vm_k3s`、`k3s_cert_manager` |
+| ロールの変数 | ドメイン接頭辞を落とした名前で始める。例外: `pve_vm` は `vm` ドメインの `vm_*` と衝突するため `pve_vm_*`。基底の `k3s` は `vm_k3s` の `k3s_*` と衝突するため `helm_*` | `vm_k3s` のロール変数は `k3s_*`、`k3s_metallb` は `metallb_*` |
 | インベントリのグループ | ロールまたはサービスの名前 | `k3s`、`core` |
 | ホスト名 | グループ名と別の名前にする(同名だと Ansible が警告する) | グループ `k3s` にホスト `k3s01` |
 | インベントリのファイル | `inventory/hosts/<VLAN番号>_<名前>.yml` | `21_k3s.yml` |
@@ -72,7 +72,7 @@ VLAN・ID・VMID・IP の規則は [design/network.md](design/network.md) に書
 - vault は、必要な playbook だけが `vars_files` で明示的に読み込む。`group_vars` には置かない(秘密を必要な playbook にだけ渡すため)。
 - SSH の秘密鍵も `vault/` に暗号化して置く(開発マシンの `~/.ssh` に依存しない)。
 - vault のパスワードは、開発マシン以外にも控えを持つ(パスワードマネージャなど)。失うと vault は復号できない。
-- Kubernetes への接続も kubeconfig を使わず、vault のトークンで行う([design/k8s.md](design/k8s.md))。
+- Kubernetes への接続も kubeconfig を使わず、vault のトークンで行う([design/k3s.md](design/k3s.md))。
 - 編集は `ansible-vault edit` で行う。
 - playbook がロールへ通常の変数として渡す。秘密情報を扱うタスクには `no_log` を付ける。
 - 平文のトークン・パスワード・秘密鍵・kubeconfig をコミットしない。
@@ -80,7 +80,7 @@ VLAN・ID・VMID・IP の規則は [design/network.md](design/network.md) に書
 ## バージョン管理
 
 - コレクションは `collections/requirements.yml` に範囲指定で固定する。
-- コンテナイメージ・Helm チャート・k3s などのバージョンは、ロールの `defaults/main.yml`(`<サービス>_version`)にだけ書く。テンプレートに直接書かない。
+- コンテナイメージ・Helm チャート・k3s などのバージョンは、ロールの `defaults/main.yml`(`<サービス>_version`。Helm チャートは `<サービス>_chart_version`)にだけ書く。テンプレートに直接書かない。
 - Python のツールは開発コンテナ(`.devcontainer/devcontainer.json`)で導入する。
 
 ## 注意点
