@@ -18,8 +18,7 @@
             "helm": "latest",
             "kubectl": "latest",
             "minikube": "none"
-        },
-        "ghcr.io/dhoeric/features/k9s:1": {}
+        }
     },
     "postCreateCommand": "ansible-galaxy collection install -r collections/requirements.yml && helm plugin install https://github.com/databus23/helm-diff --version v3.15.15 --verify=false",
     "workspaceFolder": "/${localWorkspaceFolderBasename}",

@@ -8,7 +8,7 @@ The rules and design decisions are written in Japanese under `docs/`, for humans
 @docs/design/network.md
 @docs/design/k3s.md
 
-Claude Code expands the `@path` lines above. If your agent does not expand them, open those files before starting work. Read [docs/design/hardware.md](docs/design/hardware.md) when a task depends on node capacity or placement, and [docs/design/pve.md](docs/design/pve.md) when working on the `pve*` roles, and [docs/design/k8s.md](docs/design/k8s.md) when working on the `k8s*` roles.
+Claude Code expands the `@path` lines above. If your agent does not expand them, open those files before starting work. Read [docs/design/hardware.md](docs/design/hardware.md) when a task depends on node capacity or placement, and [docs/design/pve.md](docs/design/pve.md) when working on the `pve*` roles.
 
 ## What this repository is
 
@@ -20,8 +20,8 @@ The environment is being redesigned for new hardware. **The tree is currently a 
 | --- | --- | --- | --- |
 | pve | `pve` `pve_vm` `pve_template` | `playbooks/pve/` | Proxmox VE (API and hosts) |
 | vm | `vm` `vm_k3s` `vm_<service>` | `playbooks/vm/` | Debian 13 VMs over SSH |
-| k8s | `k8s` `k8s_<app>` | `playbooks/k8s/` | k3s cluster via API token from vault (no kubeconfig) |
-| utils | none | `playbooks/utils/` | One-shot tools calling REST APIs |
+| k3s | `k3s` `k3s_<app>` | `playbooks/k3s/` | k3s cluster via API token from vault (no kubeconfig) |
+| utils | none | `playbooks/utils/` | One-shot tools (REST APIs, SSH) |
 
 - `inventory/hosts/` has one file per VLAN; `inventory/group_vars/all/` holds values shared by every host. `vault/` holds encrypted secrets.
 - `legacy/` is the previous configuration, kept as **read-only reference**: never edit it, never lint it, never run its playbooks. Port ideas, not values: its `172.16.x` addresses, node-encoded VMIDs, AWX/EE, Rancher, WG-Easy and Nextcloud are obsolete.
@@ -42,8 +42,8 @@ The environment is being redesigned for new hardware. **The tree is currently a 
 
 The dev container mounts `~/.ssh` and the vault password, so it can reach the real Proxmox nodes and every VM, and the k3s cluster through the token in the vault.
 
-- Anything that mutates infrastructure runs only when the user explicitly asks for that run in the current conversation, never "to investigate" or "to verify". That covers `playbooks/pve/*`, `playbooks/vm/*`, `playbooks/utils/*`, `playbooks/k8s/*` without `--check`, and write operations of `kubectl` / `helm`.
-- Always allowed (read-only): `ansible-lint`, `ansible-playbook --syntax-check`, `ansible-inventory --graph|--list`, `ansible-playbook playbooks/k8s/<name>.yml --check --diff`, and read-only `kubectl` (`get`, `describe`, `logs`).
+- Anything that mutates infrastructure runs only when the user explicitly asks for that run in the current conversation, never "to investigate" or "to verify". That covers `playbooks/pve/*`, `playbooks/vm/*`, `playbooks/utils/*`, `playbooks/k3s/*` without `--check`, and write operations of `kubectl` / `helm`.
+- Always allowed (read-only): `ansible-lint`, `ansible-playbook --syntax-check`, `ansible-inventory --graph|--list`, `ansible-playbook playbooks/k3s/<name>.yml --check --diff`, and read-only `kubectl` (`get`, `describe`, `logs`).
 - Destructive operations (deleting VMs, powering off, draining nodes) must require an explicit confirmation variable in the playbook. Never work around such a guard.
 - Changing a Proxmox host's NIC, VLAN or bridge settings can lock the node out. Do it only on explicit instruction and only after confirming console or out-of-band access.
 - Never print decrypted vault content into chat, logs or commits. Never commit plaintext tokens, passwords, private keys or kubeconfigs.

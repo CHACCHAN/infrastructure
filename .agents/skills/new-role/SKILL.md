@@ -1,6 +1,6 @@
 ---
 name: new-role
-description: Scaffold a new Ansible role that follows this repository's naming, layout and idempotency conventions. Use when adding a service VM role (vm_<service>), a Kubernetes app role (k8s_<app>) or a Proxmox role (pve_<name>).
+description: Scaffold a new Ansible role that follows this repository's naming, layout and idempotency conventions. Use when adding a service VM role (vm_<service>), a Kubernetes app role (k3s_<app>) or a Proxmox role (pve_<name>).
 ---
 
 # new-role
@@ -9,7 +9,7 @@ Read [docs/conventions.md](../../../docs/conventions.md) first (naming, variable
 
 ## Steps
 
-1. **Name.** `<domain>_<name>` with domain `pve`, `vm` or `k8s`. Variables drop the domain prefix: role `vm_k3s` uses `k3s_*`. If a role with a similar purpose exists, extend it instead.
+1. **Name.** `<domain>_<name>` with domain `pve`, `vm` or `k3s`. Variables drop the domain prefix: role `vm_k3s` uses `k3s_*`, `k3s_metallb` uses `metallb_*`. The base `k3s` role is the exception (`helm_*`), as `pve_vm` (`pve_vm_*`) is. If a role with a similar purpose exists, extend it instead.
 2. **Layout** under `roles/<role>/`:
    - `defaults/main.yml`: every default, the single source of defaults. Image, chart and software versions live here as `<name>_version`.
    - `tasks/main.yml`: only `import_tasks` of stage files, in order (`validate` → `install` → `configure` → `verify`). Drop stages that do not apply.
@@ -25,7 +25,7 @@ Read [docs/conventions.md](../../../docs/conventions.md) first (naming, variable
    - Do not overwrite configuration that the service itself owns.
    - Secrets arrive as variables from the playbook; tasks that touch them use `no_log: true`.
    - Do not hard-code IPs; derive them from inventory (`vlan` + `id`) or reference `hostvars`.
-4. **Wire it up.** Add the playbook under `playbooks/<domain>/` (keep it thin: hosts, vars, role). For a new Kubernetes app, follow the `k8s` role pattern if one exists; while it is still a placeholder, ask the owner.
+4. **Wire it up.** Add the playbook under `playbooks/<domain>/` (keep it thin: hosts, vars, role). For a new Kubernetes app, follow the `k3s` role pattern if one exists; while it is still a placeholder, ask the owner.
 5. **Docs.** If a decision changed or a new component appeared, update the matching file under `docs/` and add the role to the area table in `docs/README.md`.
 6. **Validate** with the `validate` skill. Do not run the new playbook against real infrastructure unless the user asked for that run.
 

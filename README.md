@@ -25,14 +25,14 @@
 ├── playbooks/               薄いオーケストレーション(ロジックはロールに置く)
 │   ├── pve/                 Proxmox(API): VMの作成・テンプレート
 │   ├── vm/                  VM(SSH): OS設定・サービス導入・k3s構築
-│   ├── k8s/                 クラスタ内アプリ(API トークン)
-│   └── utils/               REST APIを叩く単発ツール
-├── roles/                   ロール(ドメイン接頭辞: pve / vm / k8s)
+│   ├── k3s/                 クラスタ内アプリ(API トークン)
+│   └── utils/               単発ツール(REST API・SSH)
+├── roles/                   ロール(ドメイン接頭辞: pve / vm / k3s)
 ├── vault/                   暗号化した秘密情報(1ファイル1用途)
 └── docs/
     ├── README.md            案内(領域ごとの使い方と設計)
     ├── conventions.md       規約(命名・変数の層・冪等性・Vault・ドキュメント)
-    └── design/              設計(network / k3s / k8s / pve / hardware)
+    └── design/              設計(network / k3s / pve / hardware)
 ```
 
 ## ロールの階層
@@ -42,11 +42,11 @@
 | `pve` | Proxmoxホスト自体の設定(NIC/VLAN・クラスタ) |
 | `pve_vm` | VMの作成・更新 |
 | `pve_template` | OSテンプレートの作成 |
-| `vm` | 全VM共通のOS設定(Debian 13、ZRAM、SSH、FW) |
+| `vm` | 全VM共通のOS設定(Debian 13、SSH、FW) |
 | `vm_k3s` | k3sノードの構築 |
-| `k8s` | クラスタ内アプリを適用する共通処理(Helm) |
+| `k3s` | クラスタ内アプリを適用する共通処理(Helm) |
 
-サービスVMは `vm_<service>`、クラスタ内アプリは `k8s_<app>` を追加する。変数名は接頭辞の層を落とす(`vm_k3s` → `k3s_*`)。
+サービスVMは `vm_<service>`、クラスタ内アプリは `k3s_<app>` を追加する。変数名は接頭辞の層を落とす(`vm_k3s` → `k3s_*`、`k3s_metallb` → `metallb_*`)。基底の `k3s` ロールだけは `helm_*`。
 
 ## 変数の層
 

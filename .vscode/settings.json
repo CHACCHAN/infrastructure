@@ -17,7 +17,7 @@
     "vars": "constant",
     "pve": "server",
     "vm": "console",
-    "k8s": "kubernetes"
+    "k3s": "kubernetes"
   },
   "material-icon-theme.files.associations": {
     "ansible.cfg": "settings"

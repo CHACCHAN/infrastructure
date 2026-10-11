@@ -4,7 +4,7 @@ profile: production
 offline: true
 
 skip_list:
-  # 変数名は層(pve_/vm_/k8s_)を落としたサービス名で揃える(role vm_k3s -> k3s_*)。
+  # 変数名は層(pve_/vm_/k3s_)を落としたサービス名で揃える(role vm_k3s -> k3s_*)。
   - var-naming[no-role-prefix]
   # タスク名は日本語。文頭の製品名(cert-manager / k3s 等)は公式表記の小文字を使う。
   - name[casing]
