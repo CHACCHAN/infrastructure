@@ -1,8 +1,8 @@
-# VLAN20 172.20.20.0/24: Proxmox ノード
+# VLAN10 172.16.10.0/24: Proxmox ノード
 ---
 pve:
   vars:
-    vlan: 20
+    vlan: 10
   hosts:
     pve01:
       id: 1

@@ -8,7 +8,7 @@ The rules and design decisions are written in Japanese under `docs/`, for humans
 @docs/design/network.md
 @docs/design/k3s.md
 
-Claude Code expands the `@path` lines above. If your agent does not expand them, open those files before starting work. Read [docs/design/hardware.md](docs/design/hardware.md) when a task depends on node capacity or placement, and [docs/design/pve.md](docs/design/pve.md) when working on the `pve*` roles.
+Claude Code expands the `@path` lines above. If your agent does not expand them, open those files before starting work. Read [docs/design/hardware.md](docs/design/hardware.md) when a task depends on node capacity or placement, [docs/design/pve.md](docs/design/pve.md) when working on the `pve*` roles, and [docs/design/hermes.md](docs/design/hermes.md) when working on the Hermes Agent VMs.
 
 ## What this repository is
 
@@ -24,7 +24,7 @@ The environment is being redesigned for new hardware. **The tree is currently a 
 | utils | none | `playbooks/utils/` | One-shot tools (REST APIs, SSH) |
 
 - `inventory/hosts/` has one file per VLAN; `inventory/group_vars/all/` holds values shared by every host. `vault/` holds encrypted secrets.
-- `legacy/` is the previous configuration, kept as **read-only reference**: never edit it, never lint it, never run its playbooks. Port ideas, not values: its `172.16.x` addresses, node-encoded VMIDs, AWX/EE, Rancher, WG-Easy and Nextcloud are obsolete.
+- `legacy/` is the previous configuration, kept as **read-only reference**: never edit it, never lint it, never run its playbooks. The old environment has been removed; port ideas, not values: its addresses (the new plan reuses `172.16.0.0/16` with a different VLAN layout), node-encoded VMIDs, AWX/EE, Rancher, WG-Easy and Nextcloud are obsolete.
 - Language: documentation, comments, task names and commit messages are Japanese. Only this file, `.agents/` and `.claude/agents/` are English.
 
 ## Working agreements

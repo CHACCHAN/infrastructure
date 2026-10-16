@@ -13,7 +13,7 @@
   vars:
     # connection: local は kubernetes ライブラリを持たないシステムの Python を選ぶため、ansible 本体の Python に固定する。
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    homarr_admin_api_host: "https://172.20.{{ vlan }}.{{ k3s_api_vip_id }}:6443"
+    homarr_admin_api_host: "https://172.16.{{ vlan }}.{{ k3s_api_vip_id }}:6443"
     homarr_admin_namespace: homarr
     homarr_admin_pod_selector: app.kubernetes.io/name=homarr
     homarr_admin_username: admin

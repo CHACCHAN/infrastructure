@@ -1,0 +1,4 @@
+# 基幹システム系(PBS・TrueNAS)。VLAN は未決(docs/design/network.md)。決めたら <VLAN>_core.yml に改名し、vlan を宣言する
+---
+core:
+  hosts: {}

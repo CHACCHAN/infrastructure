@@ -2,7 +2,7 @@
 
 自宅インフラをAnsibleで宣言的に管理するリポジトリ。使い方は各ディレクトリの `README.md`、設計は [docs/](docs/README.md)。リポジトリ直下がAnsibleプロジェクトのルート(`ansible.cfg`)。
 
-旧構成は [legacy/](legacy/) に参照用として残している。新構成が揃うまで編集せず、lintの対象にもしない。
+旧構成は撤去済みで、コードだけを [legacy/](legacy/) に参照用として残している。編集せず、lintの対象にもしない。
 
 ## ディレクトリ構成
 
@@ -17,7 +17,7 @@
 ├── collections/
 │   └── requirements.yml     使用するコレクション(単一の真実)
 ├── inventory/               ホスト宣言(単一の真実)
-│   ├── hosts/               VLANごとに1ファイル(20_pve / 21_k3s / 22_private / 23_core / 24_hermes)
+│   ├── hosts/               VLANごとに1ファイル(10_pve / 11_private / 12_k3s。VLAN 未決の core・hermes は番号なし)
 │   ├── group_vars/
 │   │   ├── all/             全ホスト共通(network.yml=VLAN台帳、pve.yml=Proxmox API の共通値)
 │   │   └── <group>.yml      グループ(役割)ごとの差分
@@ -32,7 +32,7 @@
 └── docs/
     ├── README.md            案内(領域ごとの使い方と設計)
     ├── conventions.md       規約(命名・変数の層・冪等性・Vault・ドキュメント)
-    └── design/              設計(network / k3s / pve / hardware)
+    └── design/              設計(network / k3s / pve / hermes / hardware)
 ```
 
 ## ロールの階層
@@ -44,6 +44,8 @@
 | `pve_template` | OSテンプレートの作成 |
 | `vm` | 全VM共通のOS設定(Debian 13、SSH、FW) |
 | `vm_k3s` | k3sノードの構築 |
+| `vm_docker` | Dockerの導入 |
+| `vm_hermes` | 未設定のHermes Agentの導入 |
 | `k3s` | クラスタ内アプリを適用する共通処理(Helm) |
 
 サービスVMは `vm_<service>`、クラスタ内アプリは `k3s_<app>` を追加する。変数名は接頭辞の層を落とす(`vm_k3s` → `k3s_*`、`k3s_metallb` → `metallb_*`)。基底の `k3s` ロールだけは `helm_*`。

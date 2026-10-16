@@ -31,7 +31,7 @@ Ansible 公式の推奨配置([Sample Ansible setup](https://docs.ansible.com/an
 | ロールの変数 | ドメイン接頭辞を落とした名前で始める。例外: `pve_vm` は `vm` ドメインの `vm_*` と衝突するため `pve_vm_*`。基底の `k3s` は `vm_k3s` の `k3s_*` と衝突するため `helm_*` | `vm_k3s` のロール変数は `k3s_*`、`k3s_metallb` は `metallb_*` |
 | インベントリのグループ | ロールまたはサービスの名前 | `k3s`、`core` |
 | ホスト名 | グループ名と別の名前にする(同名だと Ansible が警告する) | グループ `k3s` にホスト `k3s01` |
-| インベントリのファイル | `inventory/hosts/<VLAN番号>_<名前>.yml` | `21_k3s.yml` |
+| インベントリのファイル | `inventory/hosts/<VLAN番号>_<名前>.yml` | `12_k3s.yml` |
 | Vault の変数 | `vault_<サービス>_<用途>` | `vault_cloudflare_api_token` |
 
 VLAN・ID・VMID・IP の規則は [design/network.md](design/network.md) に書く。

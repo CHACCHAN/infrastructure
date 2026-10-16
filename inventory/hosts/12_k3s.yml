@@ -1,8 +1,8 @@
-# VLAN21 172.20.21.0/24: Kubernetes(k3s)ノード
+# VLAN12 172.16.12.0/24: Kubernetes(k3s)ノード
 ---
 k3s:
   vars:
-    vlan: 21
+    vlan: 12
   hosts:
     k3s01:
       id: 1

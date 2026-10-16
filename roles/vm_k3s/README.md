@@ -6,7 +6,7 @@ k3s サーバーを、`vm` で整えた Debian 13 の VM に構築する。設�
 
 `playbooks/vm/k3s.yml` から使う([playbooks/vm/README.md](../../playbooks/vm/README.md))。
 
-- 対象ホストのグループに `vlan` が宣言されていること。Kubernetes API の VIP は、`172.20.<vlan>.<k3s_api_vip_id>` に導出される。
+- 対象ホストのグループに `vlan` が宣言されていること。Kubernetes API の VIP は、`172.16.<vlan>.<k3s_api_vip_id>` に導出される。
 - 変数の一覧は `ansible-doc -t role vm_k3s` と `defaults/main.yml`。バージョンは `k3s_version`・`k3s_kube_vip_version` にだけ書く。
 
 ## 構成されるもの

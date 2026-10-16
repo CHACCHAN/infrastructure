@@ -28,7 +28,7 @@ argument_specs:
           bridge:
             type: str
             required: true
-            description: "接続するブリッジ(例: vmbr021)"
+            description: "接続するブリッジ(例: vmbr012)"
           model:
             type: str
             description: "NIC のモデル。既定は virtio"

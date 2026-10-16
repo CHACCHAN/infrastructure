@@ -1,6 +1,0 @@
-# VLAN24 172.20.24.0/24: Hermes Agent(AI専用帯域)
----
-hermes:
-  vars:
-    vlan: 24
-  hosts: {}

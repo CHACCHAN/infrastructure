@@ -4,7 +4,7 @@
 
 | ノード | CPU | RAM | ストレージ | 想定の役割(案) |
 | --- | --- | --- | --- | --- |
-| pve01 | Core i7-6950X(10C/20T) | 32GB(完全移行後に64GB) | SYS 256GB(NVMe、OS専用)、ssd01 480GB(SATA)、ssd02 1TB(SATA)、ssd03 1TB(SATA、移行後) | 汎用 |
+| pve01 | Core i7-6950X(10C/20T) | 32GB(64GBに増設予定) | SYS 256GB(NVMe、OS専用)、ssd01 480GB(SATA)、ssd02 1TB(SATA)、ssd03 1TB(SATA、増設予定) | 汎用 |
 | pve02 | Core i7-3610QM(4C/8T) | 16GB | SYS 1TB(SATA SSD) | k3s |
 | pve03 | Core i7-3610QM(4C/8T) | 16GB | SYS 1TB(SATA SSD) | k3s |
 | pve04 | Ryzen 7 3700X(8C/16T) | 32GB | SYS 128GB(NVMe、OS専用)、ssd01 1TB(SATA) | Hermes Agent |
@@ -26,13 +26,13 @@ Proxmox ノードは4台。
 
 ## 物理マシン(Proxmox ではないもの)
 
-- PBS: 専用の物理マシン(VLAN23)。移行後に接続する。Core i3-3110M(2C/4T)、8GB、SYS 128GB(SATA、OS専用)、バックアップ専用の HDD 1TB(USB-SATA)。
-- TrueNAS: 専用の物理マシン(VLAN23)。移行後に接続する。
-- 接続方法は、移行が進んでから決める。スペックは未確認。
+- PBS: 専用の物理マシン(基幹システムの VLAN)。未接続。Core i3-3110M(2C/4T)、8GB、SYS 128GB(SATA、OS専用)、バックアップ専用の HDD 1TB(USB-SATA)。
+- TrueNAS: 専用の物理マシン(基幹システムの VLAN)。未接続。
+- 接続の時期と方法は未決。スペックは未確認。
 
 ## ルータ
 
-TP-Link ER605。VLAN間のルーティングとFWを担う([network.md](network.md))。
+OPNsense(機材は未確認)。VLAN間のルーティングとFWを担う。TP-Link ER605 は外す([network.md](network.md))。
 
 ## ストレージ方式
 

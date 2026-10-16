@@ -1,0 +1,4 @@
+# Hermes Agent(AI専用帯域)。VLAN は未決(docs/design/network.md)。決めたら <VLAN>_hermes.yml に改名し、vlan を宣言する
+---
+hermes:
+  hosts: {}

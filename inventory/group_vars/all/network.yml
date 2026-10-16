@@ -3,5 +3,5 @@
 ---
 network_prefix: 24
 vmid: "{{ vlan * 100 + id }}"
-ansible_host: "172.20.{{ vlan }}.{{ id }}"
-gateway: "172.20.{{ vlan }}.254"
+ansible_host: "172.16.{{ vlan }}.{{ id }}"
+gateway: "172.16.{{ vlan }}.254"

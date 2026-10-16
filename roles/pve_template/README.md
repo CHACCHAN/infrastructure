@@ -6,7 +6,7 @@ OS のテンプレート(第2層の器)を、Proxmox ノードごとに1つ作�
 
 `playbooks/pve/provision.yml` から使う([playbooks/pve/README.md](../../playbooks/pve/README.md))。作るのは、未作成の VM があり、テンプレートが無いノードだけ。
 
-- 必須の変数は `template_storage`(テンプレートのディスクを置くストレージ)。`inventory/hosts/20_pve.yml` のノードのホストに書く。
+- 必須の変数は `template_storage`(テンプレートのディスクを置くストレージ)。`inventory/hosts/10_pve.yml` のノードのホストに書く。
 - 変数の一覧は `ansible-doc -t role pve_template` と `defaults/main.yml`。
 - テンプレートの VMID は `9<template_index><ノード番号>`(pve01 は `90001`)、名前は `<template_name_prefix>-template-<ノード名>`。
 

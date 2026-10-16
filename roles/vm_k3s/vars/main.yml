@@ -1,5 +1,5 @@
 ---
-__k3s_api_vip: "172.20.{{ vlan }}.{{ k3s_api_vip_id }}"
+__k3s_api_vip: "172.16.{{ vlan }}.{{ k3s_api_vip_id }}"
 __k3s_release_url: "https://github.com/k3s-io/k3s/releases/download/{{ k3s_version | urlencode }}"
 __k3s_manifests_dir: /var/lib/rancher/k3s/server/manifests
 __k3s_kubelet_dropin_dir: /var/lib/rancher/k3s/agent/etc/kubelet.conf.d
