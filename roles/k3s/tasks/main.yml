@@ -6,6 +6,13 @@
     fail_msg: "helm_ingress.tunnel と helm_ingress.middlewares は、同時に指定できません"
     quiet: true
 
+# バージョンを書き忘れると、チャートの最新版が入り、再現できなくなる
+- name: チャートを入れるときは、バージョンを指定していることを確認する
+  ansible.builtin.assert:
+    that: helm_chart | length == 0 or helm_chart_version | length > 0
+    fail_msg: "helm_chart を指定したときは、helm_chart_version も指定してください"
+    quiet: true
+
 - name: Kubernetes API へ接続して適用する
   block:
     - name: 認証局の証明書の置き場を作る

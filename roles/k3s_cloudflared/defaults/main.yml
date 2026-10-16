@@ -18,5 +18,6 @@ cloudflared_egress_deny_networks:
   - 172.16.0.0/12
   - 192.168.0.0/16
   - 169.254.0.0/16
+  - 100.64.0.0/10
 # Helm values の上書き(基本値へ再帰的に合成する)
 cloudflared_values: {}
