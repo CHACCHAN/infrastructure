@@ -34,7 +34,11 @@ authentik_proxy_access_group: admins
 # 認証プロキシのミドルウェアの名前。Ingress からは <namespace>-<名前>@kubernetescrd で参照する
 authentik_forward_auth_middleware: forward-auth
 # IP ごとに、ログインの失敗が成功をこの回数だけ上回ると、その IP からのログインを拒否する。0 なら制限しない
-authentik_login_failure_limit: 5
+authentik_login_failure_limit: 10
+# ログインの失敗の制限を掛けない送信元(Pod のネットワーク。Cloudflare Tunnel を通るログインは、cloudflared の Pod の IP に見える)。
+# k3s の既定の cluster-cidr に合わせている。vm_k3s で cluster-cidr を変えるときは、ここも変える
+authentik_login_failure_exempt_networks:
+  - 10.42.0.0/16
 # 失敗と成功の記録を保つ秒数(最初の記録からこの時間が過ぎると、拒否が解ける)
 authentik_login_failure_expiry: 3600
 # MFA を登録していないユーザーに、ログインの途中で登録させる

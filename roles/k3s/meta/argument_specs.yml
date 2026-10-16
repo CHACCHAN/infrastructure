@@ -26,15 +26,13 @@ argument_specs:
         description: "Helm のリリース名"
       helm_chart:
         type: str
-        required: true
-        description: "チャートの名前(helm_chart_repo_url があるときはリポジトリ内の名前)"
+        description: "チャートの名前(helm_chart_repo_url があるときはリポジトリ内の名前)。空なら Helm のリリースを作らず、helm_manifests などのマニフェストだけを適用する"
       helm_chart_repo_url:
         type: str
         description: "チャートの配布元の URL。使わないときは空"
       helm_chart_version:
         type: str
-        required: true
-        description: "チャートのバージョン(各 k3s_<app> の defaults にだけ書く)"
+        description: "チャートのバージョン(各 k3s_<app> の defaults にだけ書く)。helm_chart があるときは必ず渡す"
       helm_namespace:
         type: str
         required: true
@@ -74,6 +72,13 @@ argument_specs:
             type: list
             elements: str
             description: "ルーターに掛ける Traefik のミドルウェア(<namespace>-<名前>@kubernetescrd)"
+          tunnel:
+            type: bool
+            description: "Traefik の Tunnel 専用の入口(Cloudflare Tunnel を通る外部からの通信)にも経路を作る"
+          tunnel_deny_paths:
+            type: list
+            elements: str
+            description: "Tunnel 専用の入口でだけ通さないパス(前方一致。大文字・小文字を区別しない)"
       helm_network_policy:
         type: bool
         description: "Pod が受ける通信を絞る NetworkPolicy を置く(同じ namespace、Traefik、helm_network_policy_from だけを通す)。false なら消す"

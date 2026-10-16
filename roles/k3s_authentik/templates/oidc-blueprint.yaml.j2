@@ -36,7 +36,7 @@ entries:
       provider: !KeyOf {{ client.slug }}-provider
 {% endfor %}
 {% if authentik_login_failure_limit | int > 0 %}
-  # ログインの失敗が重なった IP を、ログインのフローに入れない。このポリシーは評価が閾値以下のときに一致するため、否定して結びつける
+  # ログインの失敗が重なった IP を、ログインのフローに入れない。このポリシーは、評価が閾値以下のときに一致する
   - model: authentik_policies_reputation.reputationpolicy
     id: login-failure-policy
     identifiers:
@@ -45,16 +45,36 @@ entries:
       check_ip: true
       check_username: false
       threshold: {{ -(authentik_login_failure_limit | int) }}
+  # Cloudflare Tunnel を通るログインは、すべて cloudflared の Pod の IP に見える。この制限を掛けると、誰かの失敗で外部の全員が拒否されるため、外す(外部の試行回数は Cloudflare が絞る)
+  - model: authentik_policies_expression.expressionpolicy
+    id: login-failure-lan-policy
+    identifiers:
+      name: login-failure-limit-lan
+    attrs:
+      expression: |
+        for network in {{ authentik_login_failure_exempt_networks | to_json }}:
+            if ak_client_ip in ip_network(network):
+                return True
+        return not ak_call_policy("login-failure-limit").passing
   - model: authentik_policies.policybinding
     identifiers:
       order: 0
       # 結びつけ先は、フロー自身の ID ではなく、ポリシーの結びつけ先としての ID で探す
       target: !Find [authentik_policies.policybindingmodel, [flow__slug, default-authentication-flow]]
+      policy: !KeyOf login-failure-lan-policy
+  # 制限のポリシーは、上の式から呼ぶ。フローへ直接は結びつけない
+  - model: authentik_policies.policybinding
+    state: absent
+    identifiers:
+      order: 0
+      target: !Find [authentik_policies.policybindingmodel, [flow__slug, default-authentication-flow]]
       policy: !KeyOf login-failure-policy
-    attrs:
-      negate: true
 {% else %}
   # 制限しないときは、ポリシーを消す(フローへの結びつけも一緒に消える)
+  - model: authentik_policies_expression.expressionpolicy
+    state: absent
+    identifiers:
+      name: login-failure-limit-lan
   - model: authentik_policies_reputation.reputationpolicy
     state: absent
     identifiers:

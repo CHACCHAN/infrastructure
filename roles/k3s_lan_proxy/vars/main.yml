@@ -1,0 +1,36 @@
+# サービスごとのマニフェスト。宛先がクラスタの外にあるため、セレクタの無い Service と、宛先の IP を持つ EndpointSlice を組にする。
+---
+__lan_proxy_transport_name: "{{ __lan_proxy_service.name }}-insecure"
+__lan_proxy_skip_verify: "{{ __lan_proxy_service.insecure_skip_verify | default(false) | bool }}"
+__lan_proxy_annotations: >-
+  {{ {'traefik.ingress.kubernetes.io/service.serversscheme': __lan_proxy_service.scheme | default('http')}
+     | combine({'traefik.ingress.kubernetes.io/service.serverstransport':
+                lan_proxy_namespace ~ '-' ~ __lan_proxy_transport_name ~ '@kubernetescrd'}
+               if __lan_proxy_skip_verify else {}) }}
+__lan_proxy_manifests: >-
+  {{ ([{
+    'apiVersion': 'traefik.io/v1alpha1',
+    'kind': 'ServersTransport',
+    'metadata': {'name': __lan_proxy_transport_name, 'namespace': lan_proxy_namespace},
+    'spec': {'insecureSkipVerify': true}}] if __lan_proxy_skip_verify else [])
+   + [{
+    'apiVersion': 'v1',
+    'kind': 'Service',
+    'metadata': {
+      'name': __lan_proxy_service.name,
+      'namespace': lan_proxy_namespace,
+      'annotations': __lan_proxy_annotations},
+    'spec': {
+      'type': 'ClusterIP',
+      'ports': [{'name': 'main', 'protocol': 'TCP',
+                 'port': __lan_proxy_service.port | int, 'targetPort': __lan_proxy_service.port | int}]}},
+    {
+    'apiVersion': 'discovery.k8s.io/v1',
+    'kind': 'EndpointSlice',
+    'metadata': {
+      'name': __lan_proxy_service.name,
+      'namespace': lan_proxy_namespace,
+      'labels': {'kubernetes.io/service-name': __lan_proxy_service.name}},
+    'addressType': 'IPv4',
+    'ports': [{'name': 'main', 'protocol': 'TCP', 'port': __lan_proxy_service.port | int}],
+    'endpoints': [{'addresses': [__lan_proxy_service.address], 'conditions': {'ready': true}}]}] }}

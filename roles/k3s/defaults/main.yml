@@ -3,7 +3,11 @@
 # 接続のトークン(helm_api_token)と認証局の証明書(helm_ca_cert)は、vault/k3s.yml から playbook が渡す。
 ---
 # Kubernetes API の URL。VIP は、インベントリの vlan と k3s_api_vip_id から導出する
-helm_api_host: "https://172.20.{{ vlan }}.{{ k3s_api_vip_id }}:6443"
+helm_api_host: "https://172.16.{{ vlan }}.{{ k3s_api_vip_id }}:6443"
+# チャートの名前。空なら Helm のリリースを作らず、マニフェスト(helm_manifests・helm_ingress など)だけを適用する(チャートの無い、クラスタ外のサービスへの経路に使う)
+helm_chart: ""
+# チャートのバージョン
+helm_chart_version: ""
 # チャートの配布元の URL。OCI や登録済みのリポジトリを使うときは空にする
 helm_chart_repo_url: ""
 # リリースの namespace が無ければ作る
@@ -17,6 +21,7 @@ helm_manifests: []
 # Helm の実行結果(values を含む)をログに出さない。values に秘密値を渡すアプリで true にする
 helm_no_log: false
 # 公開する Ingress(host、service_port、省略可の service_name と middlewares)。空なら作らない。TLS は Traefik の既定の証明書を使う
+# tunnel を true にすると、Traefik の Tunnel 専用の入口(外部からの通信)にも経路を作る。tunnel_deny_paths は、その入口でだけ通さないパス。tunnel を false にすると、経路を消す
 helm_ingress: {}
 # namespace の Pod が受ける通信を絞る NetworkPolicy を置く。通すのは、同じ namespace、Traefik(helm_ingress があるとき)、helm_network_policy_from の namespace だけ。false なら置かず、置いてあれば消す
 helm_network_policy: false

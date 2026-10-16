@@ -13,14 +13,18 @@ k3s のクラスタへ、Helm のリリースを適用する共通処理。kubec
 
 ## 処理の流れ
 
-認証局の証明書を書き出す → `helm_secrets` を適用する(あれば namespace を先に作る)→ Helm のリリースを適用する(`helm_wait` で Ready を待つ)→ `helm_manifests` と `helm_ingress` の Ingress を適用する → NetworkPolicy を適用する(`helm_network_policy` が false なら消す)→ 証明書を消す。
+認証局の証明書を書き出す → `helm_secrets` を適用する(あれば namespace を先に作る)→ Helm のリリースを適用する(`helm_wait` で Ready を待つ)→ `helm_manifests` と `helm_ingress` の Ingress を適用する → Tunnel 専用の入口の経路を適用する(`helm_ingress.tunnel` が false なら消す)→ NetworkPolicy を適用する(`helm_network_policy` が false なら消す)→ 証明書を消す。
 
 `--check --diff` のときは helm-diff プラグインで差分を見る。リリースが新規または更新になる場合は、CRD などが揃っていないことがあるため、`helm_manifests`・Ingress・NetworkPolicy の確認を飛ばす。マニフェストが webhook に拒否されることがあるため、数回再試行する。
+
+`helm_chart` を空にすると、Helm のリリースを作らず、namespace・`helm_manifests`・Ingress だけを適用する(チャートの無いもの。[k3s_lan_proxy](../k3s_lan_proxy/README.md) が使う)。
 
 values に秘密値を渡すアプリは、`helm_no_log: true` にする。
 
 ## 通信の制限
 
 `helm_network_policy: true` にすると、namespace の Pod が受ける通信を、同じ namespace、Traefik(`helm_ingress` があるとき)、`helm_network_policy_from` の namespace だけに絞る。外向きの通信は絞らない。ノード自身からの通信(kubelet のヘルスチェック)は、NetworkPolicy の対象にならない。
+
+`helm_ingress.tunnel: true` にすると、Traefik の Tunnel 専用の入口(`tunnel`。[k3s_metallb](../k3s_metallb/README.md) が作る)にも経路(`IngressRoute`)を作り、Cloudflare Tunnel を通る外部からの通信を受ける。`helm_ingress.tunnel_deny_paths` のパスは、この入口でだけ 404 にする(緊急用のパスワードのログインなど)。`tunnel` を false に戻すと、経路を消す。この経路にはミドルウェアが掛からないため、`middlewares` とは同時に指定できない。
 
 `helm_ingress.middlewares` で、Ingress に Traefik のミドルウェアを掛ける(Authentik の認証プロキシは `authentik-forward-auth@kubernetescrd`)。

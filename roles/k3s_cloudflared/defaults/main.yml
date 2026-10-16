@@ -1,0 +1,22 @@
+# cloudflared(Cloudflare Tunnel のコネクタ)を Helm で入れるロールの既定値。
+# Tunnel のトークン(cloudflared_tunnel_token)は、既定値を持たない。
+---
+# チャートのバージョン
+cloudflared_chart_version: "0.1.2"
+cloudflared_chart_repo_url: https://cloudflare.github.io/helm-charts
+# cloudflared のバージョン(イメージのタグ)
+cloudflared_version: "2026.10.0"
+cloudflared_release_name: cloudflared
+cloudflared_namespace: cloudflared
+# コネクタの Pod の数
+cloudflared_replicas: 2
+# Traefik の Tunnel 専用の入口のポート(Pod 側)。k3s_metallb の metallb_traefik_tunnel_port と同じ値にする
+cloudflared_traefik_port: 8444
+# 外向きの通信で通さない宛先(プライベート IP)。経路表の向け先に、LAN の機器やクラスタ内の別のサービスを指定されても届かないようにする
+cloudflared_egress_deny_networks:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+  - 169.254.0.0/16
+# Helm values の上書き(基本値へ再帰的に合成する)
+cloudflared_values: {}

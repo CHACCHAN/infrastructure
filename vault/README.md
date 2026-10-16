@@ -8,7 +8,8 @@ Ansible Vault で暗号化した秘密情報。規則は [docs/conventions.md](.
 | --- | --- | --- |
 | `proxmox.yml` | `vault_proxmox_token_id`(`user@realm!name` の形)、`vault_proxmox_token_secret` | `playbooks/pve/provision.yml` |
 | `k3s.yml` | `vault_k3s_api_token`(ServiceAccount のトークン)、`vault_k3s_ca_cert`(API の認証局の証明書) | `playbooks/k3s/`(作成は `playbooks/utils/k3s_token.yml`)、`playbooks/utils/homarr_admin.yml` |
-| `cloudflare.yml` | `vault_cloudflare_api_token`(対象ゾーンの DNS 編集だけを許可した API トークン)、`vault_cloudflare_zone_id`(ゾーンの ID。どの playbook も使っていない) | `playbooks/k3s/cert_manager.yml` |
+| `cloudflare.yml` | `vault_cloudflare_api_token`(対象ゾーンの DNS の編集とゾーンの読み取りだけを許可した API トークン) | `playbooks/k3s/cert_manager.yml` |
+| `cloudflared.yml` | `vault_cloudflared_tunnel_token`(Cloudflare の画面で作った Tunnel のトークン) | `playbooks/k3s/cloudflared.yml` |
 | `postgresql.yml` | `vault_postgresql_passwords`(DB 名をキーにしたロールのパスワードの辞書) | `playbooks/k3s/postgresql.yml`、DB を使うアプリの playbook(`authentik.yml`・`homarr.yml`・`openwebui.yml`・`litellm.yml`) |
 | `authentik.yml` | `vault_authentik_secret_key`、`vault_authentik_bootstrap_password`(緊急用の `akadmin`)、`vault_authentik_bootstrap_token`、`vault_authentik_google_client_id`・`vault_authentik_google_client_secret`(Google でのログインに使う OAuth クライアントの client_id と client_secret) | `playbooks/k3s/authentik.yml` |
 | `homarr.yml` | `vault_homarr_oidc_client_secret`、`vault_homarr_db_encryption_key`、`vault_homarr_admin_password`(緊急用の `admin`) | `playbooks/k3s/homarr.yml`、`authentik.yml`、`playbooks/utils/homarr_admin.yml` |

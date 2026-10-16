@@ -1,0 +1,41 @@
+---
+argument_specs:
+  main:
+    short_description: cloudflared(Cloudflare Tunnel のコネクタ)を Helm で入れる
+    description:
+      - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
+      - Tunnel と経路表は Cloudflare の画面で作り、Tunnel のトークンを vault/cloudflared.yml から渡す。
+    options:
+      cloudflared_chart_version:
+        type: str
+        description: "チャートのバージョン"
+      cloudflared_chart_repo_url:
+        type: str
+        description: "チャートの配布元の URL"
+      cloudflared_version:
+        type: str
+        description: "cloudflared のバージョン(イメージのタグ)"
+      cloudflared_release_name:
+        type: str
+        description: "Helm のリリース名"
+      cloudflared_namespace:
+        type: str
+        description: "リリースの namespace"
+      cloudflared_replicas:
+        type: int
+        description: "コネクタの Pod の数"
+      cloudflared_tunnel_token:
+        type: str
+        required: true
+        no_log: true
+        description: "Tunnel のトークン(vault/cloudflared.yml)"
+      cloudflared_traefik_port:
+        type: int
+        description: "Traefik の Tunnel 専用の入口のポート(Pod 側)"
+      cloudflared_egress_deny_networks:
+        type: list
+        elements: str
+        description: "外向きの通信で通さない宛先(プライベート IP)"
+      cloudflared_values:
+        type: dict
+        description: "cloudflared の Helm values の上書き(基本値へ再帰的に合成する。例: resources)"

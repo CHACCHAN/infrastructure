@@ -19,6 +19,7 @@ Authentik(IdP)を Helm で入れ、アプリの OIDC クライアントと認証
 - MFA を登録していないユーザーには、ログインの途中で登録させる(`authentik_mfa_required`)。
 - 自前のログインを持たない画面(`authentik_proxy_apps`。既定は Longhorn の管理 UI)を、認証プロキシ(forward auth)で守る。Blueprint がプロキシプロバイダーとアプリケーションを作り、Authentik 内蔵のアウトポストに受け持たせる。Traefik のミドルウェア(`authentik_forward_auth_middleware`)を `authentik` namespace に置き、守る画面の Ingress は `<namespace>-<名前>@kubernetescrd`(既定は `authentik-forward-auth@kubernetescrd`)で参照する。守る画面を使えるのは、グループ `authentik_proxy_access_group`(既定は `admins`)のメンバーだけ(グループが無い間は、誰も使えない)。内蔵のアウトポストが受け持つプロバイダーは、Blueprint の内容に置き換わる(画面で足したものは、次の適用で外れる)。
 - Pod が受ける通信を、同じ namespace と Traefik に絞る(NetworkPolicy)。
+- 外部(Cloudflare Tunnel)に公開するのは、インベントリの `cloudflared_hosts` に `authentik_host` があるとき。外からのログインは、cloudflared の Pod の IP に見えるため、ログインの失敗の制限を掛けない(`authentik_login_failure_exempt_networks`。Cloudflare 側で絞る。[k3s_cloudflared](../k3s_cloudflared/README.md))。緊急用の `akadmin` も、外からログインできる。
 - Google でログインできるようにする(`authentik_google_client_id` が空でないとき)。入れるのは、Authentik に作ってあるユーザーと、メールアドレスが一致する Google アカウントだけ。一致するユーザーがいないアカウントは拒否し、ユーザーを自動では作らない。Google でのログインでは、Authentik の MFA を求めない(Google の2段階認証に任せる)。
 - Google の OAuth クライアント(ウェブアプリケーション)には、承認済みのリダイレクト URI として `https://<authentik_host>/source/oauth/callback/google/` を登録する。
 

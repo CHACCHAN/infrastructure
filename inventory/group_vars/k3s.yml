@@ -1,7 +1,7 @@
 # k3s ノードの VM に共通する値(ロールの既定値との差分)。
 ---
 pve_vm_memory: 12288
-# 予約済みの ID(docs/design/network.md)。VIP は 172.20.<vlan>.<ID>
+# 予約済みの ID(docs/design/network.md)。VIP は 172.16.<vlan>.<ID>
 k3s_api_vip_id: 6
 k3s_ingress_vip_id: 5
 # ACMEのEmail
@@ -22,5 +22,8 @@ k3s_ingress_hosts:
   - "{{ homarr_host }}"
   - "{{ openwebui_host }}"
   - "{{ litellm_host }}"
+# Cloudflare Tunnel で外部に公開するホスト名。ここに無いアプリは、LAN と VPN からだけ使う。
+# Tunnel を Cloudflare の画面で作るまでは空にする(作ったら authentik_host・homarr_host・openwebui_host を載せる)
+cloudflared_hosts: []
 # OpenWebUI の緊急用の管理者(ログイン名。SSO のユーザーのメールアドレスと重ねない。パスワードは vault/openwebui.yml)
 openwebui_admin_email: "admin@{{ lab_domain }}"

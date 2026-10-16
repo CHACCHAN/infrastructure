@@ -1,0 +1,47 @@
+# cloudflared の Helm values の基本値。経路表は Cloudflare 側にあり、ここには持たない。
+---
+__cloudflared_values:
+  cloudflare:
+    tunnel_token: "{{ cloudflared_tunnel_token }}"
+  image:
+    tag: "{{ cloudflared_version }}"
+  replicaCount: "{{ cloudflared_replicas }}"
+# 外向きの通信を絞る NetworkPolicy。通すのは、クラスタ内の DNS、Traefik の Tunnel 専用の入口、インターネット(Cloudflare への接続)だけ。
+# 経路表が Cloudflare 側にあるため、向け先に何を指定されても、Tunnel 専用の入口にしか届かないようにする
+__cloudflared_egress_policy:
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: "{{ cloudflared_release_name }}-egress"
+    namespace: "{{ cloudflared_namespace }}"
+  spec:
+    podSelector: {}
+    policyTypes:
+      - Egress
+    egress:
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: kube-system
+            podSelector:
+              matchLabels:
+                k8s-app: kube-dns
+        ports:
+          - protocol: UDP
+            port: 53
+          - protocol: TCP
+            port: 53
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: kube-system
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: traefik
+        ports:
+          - protocol: TCP
+            port: "{{ cloudflared_traefik_port | int }}"
+      - to:
+          - ipBlock:
+              cidr: 0.0.0.0/0
+              except: "{{ cloudflared_egress_deny_networks }}"

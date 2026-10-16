@@ -6,3 +6,22 @@ __metallb_traefik_values:
   service:
     spec:
       externalTrafficPolicy: Local
+    # Tunnel 専用の入口だけを持つ、クラスタ内の Service(traefik-tunnel)
+    additionalServices:
+      tunnel:
+        type: ClusterIP
+  ports:
+    # 入口を指定しない経路は、LAN 用の入口にだけ載せる(Tunnel 専用の入口に、意図しない経路を載せない)
+    websecure:
+      asDefault: true
+    # cloudflared だけがつなぐ入口。LoadBalancer の Service(Ingress の VIP)には出さない
+    tunnel:
+      port: "{{ metallb_traefik_tunnel_port }}"
+      exposedPort: 443
+      protocol: TCP
+      expose:
+        default: false
+        tunnel: true
+      http:
+        tls:
+          enabled: true

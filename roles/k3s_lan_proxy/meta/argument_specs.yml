@@ -1,0 +1,42 @@
+---
+argument_specs:
+  main:
+    short_description: クラスタの外にある LAN 内のサービスを、Traefik でリバースプロキシする
+    description:
+      - サービスごとに、セレクタの無い Service・EndpointSlice・Ingress を置く。チャートが無いため、Helm のリリースは作らない。
+      - 接続と適用は k3s ロール(helm_*)に任せる。
+    options:
+      lan_proxy_namespace:
+        type: str
+        description: "リソースを置く namespace"
+      lan_proxy_pve_port:
+        type: int
+        description: "Proxmox の管理 UI のポート"
+      lan_proxy_services:
+        type: list
+        elements: dict
+        description: "プロキシするサービス。既定は、インベントリの pve グループの全ノードの管理 UI"
+        options:
+          name:
+            type: str
+            required: true
+            description: "リソースの名前"
+          host:
+            type: str
+            required: true
+            description: "公開ホスト名"
+          address:
+            type: str
+            required: true
+            description: "宛先の IP"
+          port:
+            type: int
+            required: true
+            description: "宛先のポート"
+          scheme:
+            type: str
+            choices: [http, https]
+            description: "宛先のプロトコル(既定は http)"
+          insecure_skip_verify:
+            type: bool
+            description: "宛先の証明書を検証しない(自己署名のとき)"

@@ -1,0 +1,15 @@
+---
+- name: LAN 内のサービスへの経路を適用する
+  ansible.builtin.include_role:
+    name: k3s
+  vars:
+    helm_release_name: "{{ __lan_proxy_service.name }}"
+    helm_namespace: "{{ lan_proxy_namespace }}"
+    helm_manifests: "{{ __lan_proxy_manifests }}"
+    helm_ingress:
+      host: "{{ __lan_proxy_service.host }}"
+      service_port: "{{ __lan_proxy_service.port }}"
+  loop: "{{ lan_proxy_services }}"
+  loop_control:
+    loop_var: __lan_proxy_service
+    label: "{{ __lan_proxy_service.name }}"

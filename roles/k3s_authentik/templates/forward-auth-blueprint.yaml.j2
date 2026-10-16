@@ -35,13 +35,14 @@ entries:
       target: !KeyOf {{ app.slug }}-application
       policy: !KeyOf access-policy
 {% endfor %}
-  # 認証プロキシの問い合わせに答える、Authentik 内蔵のアウトポスト。受け持つプロバイダーは、ここに書いたものに置き換わる
+  # 認証プロキシの問い合わせに答える、Authentik 内蔵のアウトポスト。受け持つプロバイダーと設定は、ここに書いたものに置き換わる
   - model: authentik_outposts.outpost
     identifiers:
       managed: goauthentik.io/outposts/embedded
     attrs:
       name: authentik Embedded Outpost
       type: proxy
+      config: {{ __authentik_embedded_outpost_config | to_json }}
       providers:
 {% for app in authentik_proxy_apps %}
         - !KeyOf {{ app.slug }}-provider

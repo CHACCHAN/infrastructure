@@ -47,6 +47,7 @@
       host: "{{ authentik_host }}"
       service_name: "{{ authentik_release_name }}-server"
       service_port: 80
+      tunnel: "{{ authentik_host in cloudflared_hosts | default([]) }}"
     helm_network_policy: true
     helm_manifests:
       # 認証プロキシ。Traefik が、リクエストを通す前に Authentik の埋め込みアウトポストへ問い合わせる

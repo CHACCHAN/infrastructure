@@ -8,7 +8,7 @@ cert-manager を Helm で入れ、Let's Encrypt(Cloudflare の DNS-01)でワイ�
 
 前提:
 
-- `vault/cloudflare.yml` に `vault_cloudflare_api_token`(対象ゾーンの DNS 編集だけを許可したトークン)を置く。
+- `vault/cloudflare.yml` に `vault_cloudflare_api_token`(対象ゾーンの DNS の編集とゾーンの読み取りだけを許可したトークン)を置く。
 - インベントリで `cert_manager_acme_email`(ACME の連絡先)を宣言する。
 - ドメインは `lab_domain`(`inventory/group_vars/all/domain.yml`)。
 

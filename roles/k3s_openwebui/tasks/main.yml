@@ -44,4 +44,10 @@
       host: "{{ openwebui_host }}"
       service_name: open-webui
       service_port: 80
+      tunnel: "{{ openwebui_host in cloudflared_hosts | default([]) }}"
+      # 緊急用のパスワードのログインは、外からは通さない
+      tunnel_deny_paths:
+        - /api/v1/auths/signin
+        - /api/v1/auths/ldap
+        - /api/v1/auths/signup
     helm_network_policy: true

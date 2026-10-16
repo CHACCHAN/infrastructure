@@ -1,0 +1,20 @@
+# クラスタの外にある LAN 内のサービス(Proxmox の管理 UI など)を、Traefik でリバースプロキシするロールの既定値。
+---
+lan_proxy_namespace: lan-proxy
+# Proxmox の管理 UI のポート
+lan_proxy_pve_port: 8006
+# プロキシするサービスのリスト。既定は、インベントリの pve グループの全ノードの管理 UI(https://<ホスト名>.<lab_domain>)。
+# name: リソースの名前、host: 公開ホスト名、address: 宛先の IP、port: 宛先のポート、
+# scheme: 宛先のプロトコル(http / https)、insecure_skip_verify: 宛先の証明書を検証しない(自己署名のとき)
+lan_proxy_services: >-
+  {%- set out = [] -%}
+  {%- for node in groups['pve'] | default([]) -%}
+  {%- set _ = out.append({
+    'name': node,
+    'host': node ~ '.' ~ lab_domain,
+    'address': hostvars[node]['ansible_host'],
+    'port': lan_proxy_pve_port,
+    'scheme': 'https',
+    'insecure_skip_verify': true}) -%}
+  {%- endfor -%}
+  {{ out }}

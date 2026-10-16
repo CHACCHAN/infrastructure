@@ -26,7 +26,7 @@ argument_specs:
         type: str
         required: true
         no_log: true
-        description: "Cloudflare の API トークン(対象ゾーンの DNS 編集のみ。vault/cloudflare.yml の vault_cloudflare_api_token)"
+        description: "Cloudflare の API トークン(対象ゾーンの DNS の編集とゾーンの読み取りのみ。vault/cloudflare.yml の vault_cloudflare_api_token)"
       cert_manager_dns_resolvers:
         type: list
         elements: str

@@ -95,6 +95,10 @@ argument_specs:
       authentik_login_failure_limit:
         type: int
         description: "IP ごとに、ログインの失敗が成功をこの回数だけ上回ると、その IP からのログインを拒否する。0 なら制限しない"
+      authentik_login_failure_exempt_networks:
+        type: list
+        elements: str
+        description: "ログインの失敗の制限を掛けない送信元(CIDR。Pod のネットワーク)"
       authentik_login_failure_expiry:
         type: int
         description: "失敗と成功の記録を保つ秒数"

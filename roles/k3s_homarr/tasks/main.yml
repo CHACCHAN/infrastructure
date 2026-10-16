@@ -35,4 +35,9 @@
     helm_ingress:
       host: "{{ homarr_host }}"
       service_port: 7575
+      tunnel: "{{ homarr_host in cloudflared_hosts | default([]) }}"
+      # 緊急用のパスワードのログインは、外からは通さない
+      tunnel_deny_paths:
+        - /api/auth/callback/credentials
+        - /api/auth/callback/ldap
     helm_network_policy: true

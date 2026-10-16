@@ -8,7 +8,7 @@ k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconf
 
 | playbook | 内容 | 実行例 |
 | --- | --- | --- |
-| `metallb.yml` | MetalLB(L2)を入れ、Ingress の VIP を LoadBalancer に割り当てる。内蔵の Traefik の配置も設定する(変えると Traefik が入れ替わり、Ingress が一時的に途切れる) | `ansible-playbook playbooks/k3s/metallb.yml [--check --diff] 2>&1 \| cat` |
+| `metallb.yml` | MetalLB(L2)を入れ、Ingress の VIP を LoadBalancer に割り当てる。内蔵の Traefik の配置と、Cloudflare Tunnel 専用の入口も設定する(変えると Traefik が入れ替わり、Ingress が一時的に途切れる) | `ansible-playbook playbooks/k3s/metallb.yml [--check --diff] 2>&1 \| cat` |
 | `cert_manager.yml` | cert-manager を入れ、Let's Encrypt(Cloudflare の DNS-01)のワイルドカード証明書を Traefik の既定の証明書にする | `ansible-playbook playbooks/k3s/cert_manager.yml [--check --diff] 2>&1 \| cat` |
 | `longhorn.yml` | Longhorn を入れ、既定の StorageClass にする。管理 UI を、Authentik の認証プロキシを通して公開する | `ansible-playbook playbooks/k3s/longhorn.yml [--check --diff] 2>&1 \| cat` |
 | `postgresql.yml` | CloudNativePG のオペレーターと、PostgreSQL(アプリごとの DB・ロール)を入れる | `ansible-playbook playbooks/k3s/postgresql.yml [--check --diff] 2>&1 \| cat` |
@@ -16,17 +16,19 @@ k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconf
 | `homarr.yml` | Homarr を入れる | `ansible-playbook playbooks/k3s/homarr.yml [--check --diff] 2>&1 \| cat` |
 | `openwebui.yml` | OpenWebUI を入れる | `ansible-playbook playbooks/k3s/openwebui.yml [--check --diff] 2>&1 \| cat` |
 | `litellm.yml` | LiteLLM Proxy を入れる | `ansible-playbook playbooks/k3s/litellm.yml [--check --diff] 2>&1 \| cat` |
+| `lan_proxy.yml` | クラスタの外にある LAN 内のサービス(Proxmox の管理 UI)を、Traefik でリバースプロキシする | `ansible-playbook playbooks/k3s/lan_proxy.yml [--check --diff] 2>&1 \| cat` |
+| `cloudflared.yml` | cloudflared(Cloudflare Tunnel のコネクタ)を入れる | `ansible-playbook playbooks/k3s/cloudflared.yml [--check --diff] 2>&1 \| cat` |
 
 ## 実行の順序
 
-`metallb.yml` → `cert_manager.yml` → `longhorn.yml` → `postgresql.yml` → `authentik.yml` の順に実行する。そのあとの `homarr.yml`・`openwebui.yml`・`litellm.yml` は、順不同。OIDC の client_secret は vault で決まっているため、アプリを `authentik.yml` より先に入れてもよい(ログインできるのは Authentik の起動後)。Longhorn の管理 UI は、`authentik.yml` を実行するまで開けない(認証プロキシのミドルウェアが無いため)。Longhorn は、ノード側の前提(`vm_k3s` の `storage`)が先に要るので、`playbooks/vm/k3s.yml` を流してから実行する。
+`metallb.yml` → `cert_manager.yml` → `longhorn.yml` → `postgresql.yml` → `authentik.yml` の順に実行する。そのあとの `homarr.yml`・`openwebui.yml`・`litellm.yml` は、順不同。OIDC の client_secret は vault で決まっているため、アプリを `authentik.yml` より先に入れてもよい(ログインできるのは Authentik の起動後)。`cloudflared.yml` は、Tunnel を Cloudflare の画面で作ってから実行する([roles/k3s_cloudflared](../../roles/k3s_cloudflared/README.md))。公開するホスト名(`cloudflared_hosts`)を変えたときは、そのアプリの playbook を実行し、Cloudflare の画面の経路も合わせる。`lan_proxy.yml` は、`metallb.yml` と `cert_manager.yml` のあとなら、いつ実行してもよい。Longhorn の管理 UI は、`authentik.yml` を実行するまで開けない(認証プロキシのミドルウェアが無いため)。Longhorn は、ノード側の前提(`vm_k3s` の `storage`)が先に要るので、`playbooks/vm/k3s.yml` を流してから実行する。
 
 ## 前提
 
 - k3s が動いている([playbooks/vm](../vm/README.md))。
 - `vault/k3s.yml` にトークンと認証局の証明書がある。無ければ、先に [playbooks/utils](../utils/README.md) の `k3s_token.yml` を実行する。
 - アプリごとの前提は、各ロールの README に書く。
-- 開発マシンから API の VIP(`172.20.<vlan>.<k3s_api_vip_id>`、6443)に届く。
+- 開発マシンから API の VIP(`172.16.<vlan>.<k3s_api_vip_id>`、6443)に届く。
 
 ## アプリを足す
 

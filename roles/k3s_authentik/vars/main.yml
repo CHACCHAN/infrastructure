@@ -42,3 +42,28 @@ __authentik_values:
       data:
         oidc-clients.yaml: "{{ __authentik_blueprint }}"
         forward-auth.yaml: "{{ __authentik_forward_auth_blueprint }}"
+# 内蔵アウトポストの設定。Blueprint は config を丸ごと置き換えるため、Authentik の既定値をすべて書き、authentik_host(認証プロキシがブラウザを Authentik へ送るときの URL)だけを足す
+__authentik_embedded_outpost_config:
+  log_level: info
+  docker_labels: null
+  authentik_host: "https://{{ authentik_host }}/"
+  docker_network: null
+  container_image: null
+  docker_map_ports: true
+  refresh_interval: minutes=5
+  kubernetes_replicas: 1
+  kubernetes_namespace: "{{ authentik_namespace }}"
+  authentik_host_browser: ""
+  object_naming_template: ak-outpost-%(name)s
+  authentik_host_insecure: false
+  kubernetes_json_patches: null
+  kubernetes_service_type: ClusterIP
+  kubernetes_ingress_path_type: null
+  kubernetes_image_pull_secrets: []
+  kubernetes_ingress_class_name: null
+  kubernetes_disable_x509_strict: false
+  kubernetes_disabled_components: []
+  kubernetes_ingress_annotations: {}
+  kubernetes_ingress_secret_name: authentik-outpost-tls
+  kubernetes_httproute_annotations: {}
+  kubernetes_httproute_parent_refs: []

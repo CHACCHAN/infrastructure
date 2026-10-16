@@ -8,5 +8,7 @@ metallb_release_name: metallb
 metallb_namespace: metallb-system
 # 割り当てるアドレスのプール名
 metallb_pool_name: ingress
+# Traefik の Tunnel 専用の入口(名前は tunnel)が、Pod の中で待ち受けるポート
+metallb_traefik_tunnel_port: 8444
 # プールのアドレス
-metallb_pool_address: "172.20.{{ vlan }}.{{ k3s_ingress_vip_id }}/32"
+metallb_pool_address: "172.16.{{ vlan }}.{{ k3s_ingress_vip_id }}/32"

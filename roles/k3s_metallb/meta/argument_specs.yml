@@ -20,6 +20,9 @@ argument_specs:
       metallb_pool_name:
         type: str
         description: "アドレスのプール名"
+      metallb_traefik_tunnel_port:
+        type: int
+        description: "Traefik の Tunnel 専用の入口が、Pod の中で待ち受けるポート"
       metallb_pool_address:
         type: str
         description: "プールのアドレス(CIDR)"

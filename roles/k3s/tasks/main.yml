@@ -1,4 +1,11 @@
 ---
+# Tunnel 専用の入口の経路にはミドルウェアが掛からないため、認証プロキシで守る画面を外部に出さない
+- name: 外部に公開する経路に、ミドルウェアを指定していないことを確認する
+  ansible.builtin.assert:
+    that: not (helm_ingress.tunnel | default(false) | bool and helm_ingress.middlewares | default([]) | length > 0)
+    fail_msg: "helm_ingress.tunnel と helm_ingress.middlewares は、同時に指定できません"
+    quiet: true
+
 - name: Kubernetes API へ接続して適用する
   block:
     - name: 認証局の証明書の置き場を作る
@@ -33,7 +40,8 @@
           validate_certs: true
       block:
         # リリースが参照する Secret を、Pod が起動する前に用意する。値はログに出さない。
-        - name: Secret を置く namespace を作る
+        # チャートを使わないとき(helm_chart が空)は、Helm が namespace を作らないため、ここで作る。
+        - name: Secret とマニフェストを置く namespace を作る
           kubernetes.core.k8s:
             definition:
               apiVersion: v1
@@ -41,7 +49,7 @@
               metadata:
                 name: "{{ helm_namespace }}"
             state: present
-          when: helm_secrets | length > 0 and helm_create_namespace
+          when: (helm_secrets | length > 0 or helm_chart | length == 0) and helm_create_namespace
           register: __helm_namespace
 
         - name: リリースの前に Secret を適用する
@@ -69,8 +77,9 @@
             release_state: present
           register: __helm_release
           no_log: "{{ helm_no_log }}"
+          when: helm_chart | length > 0
 
-        # チャートが入る前の --check では CRD が無く、CRD を使うマニフェストは検証できない。
+        # チャートが入る前の --check では CRD が無く、CRD を使うマニフェストは検証できない。namespace がまだ無いときも同じ。
         # チャートの webhook が Ready になる前は拒否されることがあるため、再試行する。
         - name: リリースに続くマニフェストを適用する
           kubernetes.core.k8s:
@@ -83,13 +92,21 @@
           until: __helm_manifest is succeeded
           retries: 6
           delay: 10
-          when: not (ansible_check_mode and __helm_release is changed)
+          when: not (ansible_check_mode and (__helm_release is changed or __helm_namespace is changed))
+
+        - name: Tunnel 専用の入口の経路を適用する
+          kubernetes.core.k8s:
+            definition: "{{ __helm_tunnel_manifest }}"
+            state: "{{ 'present' if helm_ingress.tunnel | default(false) | bool else 'absent' }}"
+          when:
+            - helm_ingress | length > 0
+            - not (ansible_check_mode and (__helm_release is changed or __helm_namespace is changed))
 
         - name: Pod が受ける通信を絞る NetworkPolicy を適用する
           kubernetes.core.k8s:
             definition: "{{ __helm_network_policy_manifest }}"
             state: "{{ 'present' if helm_network_policy | bool else 'absent' }}"
-          when: not (ansible_check_mode and __helm_release is changed)
+          when: not (ansible_check_mode and (__helm_release is changed or __helm_namespace is changed))
   always:
     - name: 認証局の証明書を消す
       ansible.builtin.file:
