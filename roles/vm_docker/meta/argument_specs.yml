@@ -1,0 +1,11 @@
+---
+argument_specs:
+  main:
+    short_description: Docker を入れる
+    description:
+      - Debian のパッケージで Docker と `docker compose` を入れ、デーモンを起動する。
+    options:
+      docker_packages:
+        type: list
+        elements: str
+        description: "入れるパッケージ"

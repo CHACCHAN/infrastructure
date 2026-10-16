@@ -1,0 +1,36 @@
+---
+- name: Hermes が導入済みかどうかを調べる
+  ansible.builtin.stat:
+    path: "{{ __hermes_install_marker }}"
+  register: __hermes_marker
+
+# 導入済みなら何もしない。版を上げるのも、設定するのも Hermes の側で行う。
+# check モードでは、ユーザーがまだ無いと実行できない。
+- name: Hermes Agent を公式のインストーラで入れる
+  when:
+    - not __hermes_marker.stat.exists
+    - not (ansible_check_mode and __hermes_user is changed)
+  block:
+    - name: インストーラを取得する
+      ansible.builtin.get_url:
+        url: "{{ hermes_installer_url }}"
+        dest: "{{ __hermes_installer_path }}"
+        force: true
+        owner: root
+        group: root
+        mode: "0755"
+
+    # 対話の設定(モデル・チャネル・常駐)は行わない。
+    - name: インストーラを Hermes のユーザーで実行する
+      ansible.builtin.command:
+        argv: "{{ ['bash', __hermes_installer_path] + __hermes_installer_args }}"
+        chdir: "{{ hermes_user_home }}"
+        creates: "{{ __hermes_install_marker }}"
+      become: true
+      become_user: "{{ hermes_user }}"
+      timeout: "{{ hermes_install_timeout }}"
+  always:
+    - name: インストーラを消す
+      ansible.builtin.file:
+        path: "{{ __hermes_installer_path }}"
+        state: absent

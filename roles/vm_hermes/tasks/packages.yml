@@ -1,0 +1,7 @@
+---
+- name: インストーラが前提にするパッケージを入れる
+  ansible.builtin.apt:
+    name: "{{ hermes_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600

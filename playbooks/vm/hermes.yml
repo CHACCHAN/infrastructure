@@ -1,0 +1,40 @@
+# Hermes Agent の VM の中を設定する(OS の共通設定、Docker、未設定の Hermes Agent)。
+# 先に playbooks/pve/provision.yml で VM を作っておく。
+# 実行例: ansible-playbook playbooks/vm/hermes.yml [-l <ホスト名>] 2>&1 | cat
+---
+- name: Hermes Agent の VM を設定する
+  hosts: hermes
+  gather_facts: false
+  become: true
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/ssh.yml"
+  tasks:
+    - name: VM の設定を、SSH 秘密鍵を使って行う
+      block:
+        - name: SSH 秘密鍵を用意する
+          ansible.builtin.include_role:
+            name: vm
+            tasks_from: ssh_key_open
+
+        - name: VM に入れるようになるまで待つ
+          ansible.builtin.wait_for_connection:
+            timeout: 600
+
+        - name: OS の共通設定をする
+          ansible.builtin.include_role:
+            name: vm
+
+        - name: Docker を入れる
+          ansible.builtin.include_role:
+            name: vm_docker
+
+        - name: 未設定の Hermes Agent を入れる
+          ansible.builtin.include_role:
+            name: vm_hermes
+          vars:
+            hermes_ssh_pubkeys: "{{ pve_vm_ssh_pubkeys }}"
+      always:
+        - name: SSH 秘密鍵を消す
+          ansible.builtin.include_role:
+            name: vm
+            tasks_from: ssh_key_close

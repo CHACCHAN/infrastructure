@@ -1,0 +1,30 @@
+# 未設定の Hermes Agent を入れるロールの既定値。
+# Hermes の版は宣言しない。導入した時点の最新が入り、そのあとは Hermes が自分で更新する(docs/design/hermes.md)。
+---
+# Hermes を動かすユーザー。sudo は持たせない
+hermes_user: hermes
+# 上のユーザーを入れる追加のグループ。docker は、Hermes が Docker を使うため(その VM の root と同じことができる)
+hermes_groups:
+  - docker
+# 上のユーザーのホームディレクトリ。Hermes の本体と状態は、すべてこの中に入る
+hermes_user_home: "/home/{{ hermes_user }}"
+# 上のユーザーで SSH できる公開鍵のリスト(Hermes の初期設定で入るため)。空なら登録しない
+hermes_ssh_pubkeys: []
+# インストーラが前提にするパッケージ。libatomic1 は Hermes の Node.js が使う(無いと、インストーラが sudo で入れようとする)。
+# acl は、Ansible が sudo を持たないユーザーに切り替えてタスクを実行するのに使う
+hermes_packages:
+  - acl
+  - git
+  - tar
+  - xz-utils
+  - libatomic1
+# 公式のインストーラ
+hermes_installer_url: https://hermes-agent.nousresearch.com/install.sh
+# ブラウザの自動操作(Chromium)を入れない。入れるときは、Hermes のユーザーで `hermes pm install agent-browser` を実行する
+hermes_skip_browser: true
+# Computer Use のドライバを入れない。入れるときは、Hermes のユーザーで `hermes pm install cua-driver` を実行する
+hermes_skip_computer_use: true
+# インストーラの完了を待つ時間(秒)
+hermes_install_timeout: 3600
+# Hermes がコマンドの実行環境に使うコンテナのコマンド。Hermes のユーザーで動くことを確認する。空なら確認しない
+hermes_container_binary: docker

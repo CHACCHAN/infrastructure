@@ -1,0 +1,41 @@
+---
+argument_specs:
+  main:
+    short_description: 未設定の Hermes Agent を入れる
+    description:
+      - sudo を持たないユーザーを作り、公式のインストーラで Hermes Agent を、そのユーザーのホームに入れる。
+      - 導入は、まだ入っていないときだけ行う。Hermes の版と設定は管理しない。
+    options:
+      hermes_user:
+        type: str
+        description: "Hermes を動かすユーザー(sudo は持たせない)"
+      hermes_groups:
+        type: list
+        elements: str
+        description: "上のユーザーを入れる追加のグループ"
+      hermes_user_home:
+        type: str
+        description: "上のユーザーのホームディレクトリ"
+      hermes_ssh_pubkeys:
+        type: list
+        elements: str
+        description: "上のユーザーで SSH できる公開鍵のリスト"
+      hermes_packages:
+        type: list
+        elements: str
+        description: "インストーラが前提にするパッケージ"
+      hermes_installer_url:
+        type: str
+        description: "公式のインストーラの URL"
+      hermes_skip_browser:
+        type: bool
+        description: "ブラウザの自動操作(Chromium)を入れない"
+      hermes_skip_computer_use:
+        type: bool
+        description: "Computer Use のドライバを入れない"
+      hermes_install_timeout:
+        type: int
+        description: "インストーラの完了を待つ時間(秒)"
+      hermes_container_binary:
+        type: str
+        description: "Hermes のユーザーで動くことを確認する、コンテナのコマンド。空なら確認しない"

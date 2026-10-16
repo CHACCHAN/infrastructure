@@ -1,0 +1,8 @@
+---
+- name: Docker のデーモンに届くことを確認する
+  ansible.builtin.command: docker info
+  changed_when: false
+
+- name: "`docker compose` が動くことを確認する"
+  ansible.builtin.command: docker compose version
+  changed_when: false

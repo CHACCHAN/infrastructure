@@ -1,0 +1,11 @@
+---
+# インストーラが置く、本体・完了の印・コマンド
+__hermes_install_dir: "{{ hermes_user_home }}/.hermes/hermes-agent"
+__hermes_install_marker: "{{ __hermes_install_dir }}/.hermes-bootstrap-complete"
+__hermes_launcher: "{{ hermes_user_home }}/.local/bin/hermes"
+# インストーラの一時的な置き場。Hermes のユーザーが書き換えられない場所にする
+__hermes_installer_path: /usr/local/src/hermes-install.sh
+__hermes_installer_args: >-
+  {{ ['--non-interactive']
+     + (['--skip-browser'] if hermes_skip_browser else [])
+     + (['--skip-computer-use'] if hermes_skip_computer_use else []) }}

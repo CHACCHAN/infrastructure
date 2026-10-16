@@ -1,0 +1,41 @@
+---
+- name: VM にあるグループを調べる
+  ansible.builtin.getent:
+    database: group
+
+# check モードでは、まだ無いグループ(入れる前の docker など)を除く。
+- name: Hermes を動かすユーザーを作る
+  ansible.builtin.user:
+    name: "{{ hermes_user }}"
+    home: "{{ hermes_user_home }}"
+    shell: /bin/bash
+    create_home: true
+    groups: >-
+      {{ hermes_groups | select('in', ansible_facts['getent_group']) | list
+         if ansible_check_mode else hermes_groups }}
+    append: true
+    state: present
+  register: __hermes_user
+
+# ホームの中は Hermes のユーザーが自由に書き換えられるため、root では書き込まない。
+# check モードでは、ユーザーがまだ無いと登録できない。
+- name: Hermes のユーザーで SSH できる公開鍵を登録する
+  ansible.posix.authorized_key:
+    user: "{{ hermes_user }}"
+    key: "{{ item }}"
+    state: present
+  become: true
+  become_user: "{{ hermes_user }}"
+  loop: "{{ hermes_ssh_pubkeys }}"
+  loop_control:
+    label: "{{ item.split()[-1] }}"
+  when: not (ansible_check_mode and __hermes_user is changed)
+
+# ログアウトしたあとも、ユーザー単位の systemd(Hermes が自分で作る常駐サービス)を動かし続ける。
+- name: ユーザーの常駐(linger)を有効にする
+  ansible.builtin.command:
+    argv:
+      - loginctl
+      - enable-linger
+      - "{{ hermes_user }}"
+    creates: "/var/lib/systemd/linger/{{ hermes_user }}"

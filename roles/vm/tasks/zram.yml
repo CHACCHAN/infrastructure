@@ -1,0 +1,48 @@
+---
+- name: zram-tools を入れる
+  ansible.builtin.apt:
+    name: zram-tools
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  register: __vm_zram_package
+
+# check モードでは、zram-tools がまだ無いと設定できない。
+- name: ZRAM の swap を設定して確認する
+  when: not (ansible_check_mode and __vm_zram_package is changed)
+  block:
+    - name: ZRAM の swap の大きさと圧縮アルゴリズムを設定する
+      ansible.builtin.lineinfile:
+        path: /etc/default/zramswap
+        regexp: "^#?\\s*{{ item.key }}="
+        line: "{{ item.key }}={{ item.value }}"
+      loop:
+        - key: PERCENT
+          value: "{{ vm_zram_percent }}"
+        - key: ALGO
+          value: "{{ vm_zram_algorithm }}"
+      loop_control:
+        label: "{{ item.key }}"
+      notify: zramswap を再起動する
+
+    - name: zramswap を有効にして起動する
+      ansible.builtin.systemd_service:
+        name: zramswap.service
+        enabled: true
+        state: started
+
+    - name: 設定の変更を、確認の前に反映する
+      ansible.builtin.meta: flush_handlers
+
+    - name: 有効な swap を調べる
+      ansible.builtin.command: swapon --show=NAME --noheadings
+      register: __vm_swap
+      changed_when: false
+
+    - name: ZRAM の swap が有効になっていることを確認する
+      ansible.builtin.assert:
+        that:
+          - __vm_swap.stdout is search('/dev/zram')
+        fail_msg: ZRAM の swap が有効になっていない。カーネルに zram モジュールがあるか確認する(modinfo zram)
+        quiet: true
+      when: not ansible_check_mode

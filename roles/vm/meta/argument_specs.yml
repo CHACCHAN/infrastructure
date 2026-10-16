@@ -3,8 +3,19 @@ argument_specs:
   main:
     short_description: VM の OS(Debian 13)の共通設定
     description:
-      - cloud-init の完了を待ち、qemu-guest-agent を入れ、fstrim の定期実行を有効にする。
+      - cloud-init の完了を待ち、共通のパッケージと qemu-guest-agent を入れ、fstrim の定期実行を有効にする。
+      - vm_zram_percent が 1 以上なら、ZRAM の swap を設定する。
     options:
       vm_cloud_init_timeout:
         type: int
         description: "cloud-init の完了を待つ時間(秒)"
+      vm_packages:
+        type: list
+        elements: str
+        description: "すべての VM に入れるパッケージ"
+      vm_zram_percent:
+        type: int
+        description: "ZRAM の swap の大きさ(メモリに対する割合。%)。0 は ZRAM を使わない"
+      vm_zram_algorithm:
+        type: str
+        description: "ZRAM の圧縮アルゴリズム"

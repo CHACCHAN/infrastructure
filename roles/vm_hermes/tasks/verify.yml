@@ -1,0 +1,26 @@
+---
+- name: Hermes が使える状態になっていることを、実機で確認する
+  when: not ansible_check_mode
+  block:
+    # 導入済みの Hermes は Hermes のものなので、この実行で入れたときだけ確かめる。
+    - name: 入れた hermes コマンドが動くことを確認する
+      ansible.builtin.command:
+        argv:
+          - "{{ __hermes_launcher }}"
+          - --version
+        chdir: "{{ hermes_user_home }}"
+      become: true
+      become_user: "{{ hermes_user }}"
+      changed_when: false
+      when: not __hermes_marker.stat.exists
+
+    - name: Hermes のユーザーでコンテナのコマンドが動くことを確認する
+      ansible.builtin.command:
+        argv:
+          - "{{ hermes_container_binary }}"
+          - info
+        chdir: "{{ hermes_user_home }}"
+      become: true
+      become_user: "{{ hermes_user }}"
+      changed_when: false
+      when: hermes_container_binary | length > 0

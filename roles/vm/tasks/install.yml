@@ -1,4 +1,11 @@
 ---
+- name: 共通のパッケージを入れる
+  ansible.builtin.apt:
+    name: "{{ vm_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
 # 起動と有効化は、仮想マシン側のデバイスが付いたときに udev が行う。デバイスが付く前は起動できないため、サービスは操作しない。
 # 入れ終えたら、インベントリで pve_vm_agent を有効にする。
 - name: qemu-guest-agent を入れる

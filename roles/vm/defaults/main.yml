@@ -2,3 +2,11 @@
 ---
 # cloud-init の完了を待つ時間(秒)
 vm_cloud_init_timeout: 600
+# すべての VM に入れるパッケージ
+vm_packages:
+  - ca-certificates
+  - curl
+# ZRAM の swap の大きさ(メモリに対する割合。%)。0 は ZRAM を使わない(入れてある ZRAM は消さない)
+vm_zram_percent: 0
+# ZRAM の圧縮アルゴリズム
+vm_zram_algorithm: zstd

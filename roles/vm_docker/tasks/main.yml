@@ -1,0 +1,6 @@
+---
+- name: Docker を入れる
+  ansible.builtin.import_tasks: install.yml
+
+- name: Docker が使えることを確認する
+  ansible.builtin.import_tasks: verify.yml

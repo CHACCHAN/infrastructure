@@ -13,7 +13,12 @@ VM の OS(Debian 13)の共通設定(第3層の土台)。サービスごとの設
 ## 処理の流れ
 
 1. `ready.yml`: cloud-init の完了を待つ。
-2. `install.yml`: qemu-guest-agent を入れ、`fstrim.timer` を有効にする。
+2. `install.yml`: 共通のパッケージ(`vm_packages`)と qemu-guest-agent を入れ、`fstrim.timer` を有効にする。
+3. `zram.yml`: `vm_zram_percent` が 1 以上のとき、ZRAM の swap(zram-tools)を設定し、swap が有効になったことを確かめる。
+
+## ZRAM
+
+既定では使わない(`vm_zram_percent: 0`)。使うグループだけ、`inventory/group_vars/<グループ>.yml` で割合を宣言する。k3s ノードでは使わない([docs/design/k3s.md](../../docs/design/k3s.md))。`0` に戻しても、設定済みの ZRAM は消さない。割合を変えると zramswap を再起動し、使用中の swap をいったんメモリへ戻す(メモリが逼迫している VM では、負荷の低いときに行う)。
 
 ## qemu-guest-agent を有効にする手順
 

@@ -1,0 +1,6 @@
+# Hermes Agent の VM に共通する値(ロールの既定値との差分)。
+---
+# Debian の cloud イメージが作る、sudo できる既定のユーザー
+ansible_user: debian
+# ZRAM の swap を使う(メモリに対する割合。%)
+vm_zram_percent: 50

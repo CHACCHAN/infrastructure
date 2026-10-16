@@ -1,0 +1,12 @@
+---
+- name: 前提のパッケージを入れる
+  ansible.builtin.import_tasks: packages.yml
+
+- name: Hermes を動かすユーザーを用意する
+  ansible.builtin.import_tasks: user.yml
+
+- name: Hermes Agent を入れる
+  ansible.builtin.import_tasks: install.yml
+
+- name: Hermes が使える状態になっていることを確認する
+  ansible.builtin.import_tasks: verify.yml
