@@ -23,7 +23,9 @@ k3s_ingress_hosts:
   - "{{ openwebui_host }}"
   - "{{ litellm_host }}"
 # Cloudflare Tunnel で外部に公開するホスト名。ここに無いアプリは、LAN と VPN からだけ使う。
-# Tunnel を Cloudflare の画面で作るまでは空にする(作ったら authentik_host・homarr_host・openwebui_host を載せる)
-cloudflared_hosts: []
+cloudflared_hosts:
+  - "{{ authentik_host }}"
+  - "{{ homarr_host }}"
+  - "{{ openwebui_host }}"
 # OpenWebUI の緊急用の管理者(ログイン名。SSO のユーザーのメールアドレスと重ねない。パスワードは vault/openwebui.yml)
 openwebui_admin_email: "admin@{{ lab_domain }}"
