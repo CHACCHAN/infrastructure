@@ -28,7 +28,7 @@ argument_specs:
           bridge:
             type: str
             required: true
-            description: "接続するブリッジ(例: vmbr012)"
+            description: "接続するブリッジ(例: vmbr012)。既定は、配置先のノードの lan_nic と vlan から導出する"
           model:
             type: str
             description: "NIC のモデル。既定は virtio"
@@ -101,7 +101,7 @@ argument_specs:
         description: "ソケットあたりのコア数"
       pve_vm_cpu:
         type: str
-        description: "CPU の種類。AVX2 のないノートでも同じ設定で動く x86-64-v2-AES"
+        description: "CPU の種類。全ノードが対応する AVX2 までの命令セット(x86-64-v3)"
       pve_vm_cpulimit:
         type: int
         description: "CPU 使用率の上限(コア数換算)。0 は無制限"

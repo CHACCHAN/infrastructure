@@ -14,7 +14,7 @@ pve_vm_node: "{{ node }}"
 # pve_vm_ssh_pubkeys:
 # NIC のリスト。net の代わりの形。並び順が net0、net1 … になる。宣言したキー以外の NIC のオプションと MAC は、現在値を保つ
 pve_vm_nets:
-  - bridge: "vmbr0{{ vlan }}"
+  - bridge: "vmbr{{ hostvars[pve_vm_node].lan_nic }}{{ vlan }}"
 # 起動中の VM で、NIC の接続に関わる設定(ブリッジ・VLAN タグ・モデル・MAC・キュー数・MTU・ファイアウォール・リンク切断)の変更を許可する。通信が切れるおそれがあるため、既定は拒否
 pve_vm_allow_nic_change: false
 # 起動ディスク(scsi0)のサイズ(GiB)。拡張だけを行い、縮小しない
@@ -47,8 +47,8 @@ pve_vm_ciupgrade: null
 pve_vm_ciuser: null
 # ソケットあたりのコア数
 pve_vm_cores: 2
-# CPU の種類。AVX2 のないノートでも同じ設定で動く x86-64-v2-AES
-pve_vm_cpu: "x86-64-v2-AES"
+# CPU の種類。全ノードが対応する AVX2 までの命令セット
+pve_vm_cpu: "x86-64-v3"
 # CPU 使用率の上限(コア数換算)。0 は無制限
 pve_vm_cpulimit: null
 # CPU の重み。0 で公平スケジューラを外す

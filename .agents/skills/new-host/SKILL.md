@@ -21,7 +21,8 @@ The rules and the VLAN table are in [docs/design/network.md](../../../docs/desig
 3. **Compute** VMID and IP with the formulas above. Confirm that neither is used anywhere else in the inventory (`grep` the VMID and the IP, then check `ansible-inventory --list`).
 4. **Place the host** in `inventory/hosts/<NN>_<vlan-name>.yml`, under the group named after its role or service. The host name differs from the group name (`k3s01` in group `k3s`).
    - Declare `id`, plus `node` for VMs (physical machines have no node); the group declares `vlan`. VMID, IP, gateway and VLAN tag are derived in `inventory/group_vars/all/`. If that derivation does not exist yet, ask the owner before adding the host. Never hand-write derived values.
-   - `node` is the Proxmox node (pveNN). Placement of k3s nodes is undecided (docs/design/k3s.md): ask the owner.
+   - `node` is the Proxmox node (pveNN). k3s placement is decided in docs/design/k3s.md (ノード); follow it.
+   - A Proxmox node (group `pve`) also declares `lan_nic`, the physical NIC number on the LAN side (bridges are `vmbr<lan_nic><VLAN>`, docs/design/pve.md), and `template_storage` once its storage layout is decided. Ask the owner for both; do not guess.
 5. **Per-host overrides** (CPU, memory, disk) go next to the host only when they differ from the role defaults.
 6. **Validate** with the `validate` skill: `ansible-inventory --graph` must print no warnings.
 

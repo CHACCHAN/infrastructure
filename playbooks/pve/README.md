@@ -23,7 +23,8 @@ OS のテンプレートは、`provision.yml` が必要なときに作り、残�
 ## 前提
 
 - `vault/proxmox.yml` に API トークンがある([vault/README.md](../../vault/README.md))。トークンには、操作に必要な権限が要る。
-- VM を置くノードのホスト(グループ `pve`)に `template_storage` が宣言されている([roles/pve_template](../../roles/pve_template/README.md))。
+- VM を置くノードのホスト(グループ `pve`)に、`template_storage`([roles/pve_template](../../roles/pve_template/README.md))と `lan_nic`(LAN 側の物理 NIC の番号)が宣言されている。
+- VM のブリッジ(`vmbr<lan_nic><VLAN>`)が、置くノードにある。無いと、VM の起動で失敗する([docs/design/pve.md](../../docs/design/pve.md))。
 - 対象の VM に `pve_vm_storage` と `pve_vm_ssh_pubkeys` が宣言されている([roles/pve_vm](../../roles/pve_vm/README.md))。
 
 ## まだ無いもの
