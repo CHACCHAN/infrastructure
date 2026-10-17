@@ -9,7 +9,7 @@ Hermes Agent の VM(`vm_hermes`)の設計。ネットワークは [network.md](n
 - 組織ごとに VM を1つ割り当てる。インスタンス1つを1つの会社に見立て、全体をグループ会社に見立てる。インスタンス同士で監視や問い合わせをさせる。
 - 組織同士の関係(やり取りの方式、互いをどこまで信用するか、相互の監視)は、Hermes が自分で設計する。Ansible と、このリポジトリの設計では決めない。
 - Hermes の VM には、専用の VLAN(番号は未決。[network.md](network.md))を与える。ほかの VLAN との分離は、VM の外(OPNsense。[network.md](network.md))で行う。同じ VLAN の中の Hermes 同士の通信は、インフラの側では絞らない。
-- ノードは pve04([hardware.md](hardware.md) の配置案)。
+- ノードは pve02。k3s02 と同居する([hardware.md](hardware.md))。
 
 ### Ansible が再現する範囲
 
@@ -64,8 +64,8 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 
 ## 未決
 
-- 組織の数と名前、VM のサイズ(pve04 のメモリは 32GB。Hermes は、導入した直後でディスクを約 2.5GB 使う。`pve_vm` の既定のディスクは 20GiB)。
-- Hermes の VLAN の番号。pve04 のインベントリへの追加と、その VLAN のブリッジ・ストレージ([pve.md](pve.md))。
+- 組織の数と名前、VM のサイズ(pve02 のメモリは 32GB で、そのうち12GB を k3s02 に使う。Hermes は、導入した直後でディスクを約 2.5GB 使う。`pve_vm` の既定のディスクは 20GiB)。
+- Hermes の VLAN の番号。pve02 のインベントリへの追加と、その VLAN のブリッジ・ストレージ([pve.md](pve.md))。
 - インフラ(このリポジトリ、Proxmox、k3s)を操作させる組織を作るか。
 - VM が動いていることの監視(Hermes 同士の監視とは別に、インフラの側で持つか)。
 - LLM の接続先(LiteLLM の `hermes_llm`。[k3s.md](k3s.md))と、組織ごとに仮想キーと予算を分けるか。VM に置いた鍵は、その組織が自由に使えるものとして扱うことになる(共通の鍵を置くと、全組織に同じ鍵を渡すことになる)。

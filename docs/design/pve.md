@@ -12,14 +12,13 @@
 
 ### ネットワーク
 
-- NIC の割り当て・VLAN サブインターフェース・VLAN ごとの `vmbr`・USB LAN の扱い・corosync の2リンクは [network.md](network.md) に従う。
+- NIC の割り当て・VLAN サブインターフェース・VLAN ごとの `vmbr`・corosync の2リンクは [network.md](network.md) に従う。
 - HA は使わない。
 
 ### ストレージ
 
 - LVM-thin を使う。シンプールの使用率を監視する([hardware.md](hardware.md))。
-- SYS 以外の SSD(pve01 の ssd01〜03、pve04 の ssd01)は、すべてVM用のストレージにする。
-- pve02・pve03 は、SYS の1本の local-lvm に、Proxmox の OS と VM(k3s)を載せる。
+- SYS 以外の SSD(各ノードの ssd01〜)は、すべてVM用のストレージにする。
 - pve01 は、SSD ごとに別のストレージ(`ssd01`、`ssd02`)にする。k3s01 の仮想ディスクは `ssd01`、開発VM は `ssd02` に置く。
 
 ### VM の層
@@ -66,7 +65,7 @@ VM は層に分けて作る。Ansible が持つのは、器(テンプレート)�
   - 現在値との比較は、項目の型で決める(`roles/pve_vm/vars/main.yml`)。NIC・起動ディスクの拡張・cloud-init の公開鍵と IP・電源は専用のタスク。
   - `pve_vm_` で始まる未知の変数と、対応しない項目(ストレージを確保するデバイスなど)は、エラーにする。
   - 項目を増やすと、API トークンに必要な権限(`VM.Config.CPU`・`Memory`・`Network`・`Disk`・`Options` など)も増える。
-- VM の既定値は、CPU を `x86-64-v2-AES`(AVX2 のない pve02・pve03 でも同じ設定で動かすため)、マシン型 `q35`、BIOS `seabios`、メモリのバルーニングなし、ノード起動時に自動起動にする。VGA は、テンプレートの設定(シリアルコンソール)を引き継ぐ。ISO から入れるVM は、個別に上書きする。
+- VM の既定値は、CPU を `x86-64-v2-AES`(AVX2 のない pve03・pve04 でも同じ設定で動かすため)、マシン型 `q35`、BIOS `seabios`、メモリのバルーニングなし、ノード起動時に自動起動にする。VGA は、テンプレートの設定(シリアルコンソール)を引き継ぐ。ISO から入れるVM は、個別に上書きする。
 - ロールの分担:
   - `pve`: ホスト自体(リポジトリ、ネットワーク、ストレージ、クラスタ)。SSH で設定する。
   - `pve_vm`: VM の作成・更新・削除。API で操作する。
@@ -79,7 +78,7 @@ VM は層に分けて作る。Ansible が持つのは、器(テンプレート)�
 
 ## 未決
 
-- pve04 のストレージの構成と、`ssd03` が増えたあとの pve01 での置き場所。
+- pve02 のストレージの構成と、pve01 の `ssd03` に置くもの。
 - Proxmox の APT リポジトリ(no-subscription を使うか)。
 - API トークンの権限の範囲(権限の分離、ロールの割り当て)。
 - VM に渡す DNS サーバー([network.md](network.md) の名前解決の設計に依存する)。

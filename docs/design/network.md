@@ -38,7 +38,7 @@ IP   = 172.16.<VLAN>.<ID>
 
 ### 物理構成
 
-- Proxmox ノードは、各ノードに 1GbE のNICが2つある(ノードの詳細は [hardware.md](hardware.md))。
+- Proxmox ノードは、各ノードに 1GbE のNICがある。NIC1(LAN)・NIC2(クラスタ)は役割の名前で、物理のインターフェース(`nic0` など)との対応はノードごとに違う([hardware.md](hardware.md))。
 - 構成: `WAN → OPNsense → SWHUB → Proxmox ノード(NIC1)`、`SWHUB2 → Proxmox ノード(NIC2)`。SWHUB は 802.1Q のタグVLANに対応している。SWHUB2 は NIC2 側の機器(Proxmox ノード。PBS、TrueNAS は接続したとき)だけをつなぎ、OPNsense や SWHUB にはつながない。
 - NIC1: SWHUB(VLAN対応)につなぐ。Linux の VLAN サブインターフェースでVLANを分け、VLANごとに `vmbr` を作ってVMへ渡す。
 - NIC2: VLAN非対応の SWHUB2 へつなぐ。PBS と TrueNAS も、接続するときは同じスイッチにつなぐ。クラスタ・バックアップ・ストレージの通信用で、ゲートウェイはなく、ルーティングしない。SWHUB2 はVLAN非対応なので、NIC2側のVLAN分離は各ホストの設定によるもので、スイッチは強制しない。
@@ -54,10 +54,6 @@ IP   = 172.16.<VLAN>.<ID>
 - Proxmox の HA は使わない。k3s が自力で冗長化するため。corosync が落ちても、動作中のVMは止まらない。
 - corosync は2リンクにする。第1リンクを NIC2、第2リンクを NIC1(VLAN10)にして、どちらかが落ちても knet が切り替える。
 - NIC2 には、接続するときに PBS・TrueNAS もつなぐ。そのときは、バックアップの転送に帯域の上限(`bwlimit`)を設け、corosync のレイテンシを守る。
-
-### ノートPC(pve02・pve03)のNIC
-
-- NIC1 は内蔵LAN、NIC2 は USB LAN にする。USB LAN は、人が触れて抜けない場所に設置する。
 
 ### 移行
 
@@ -86,6 +82,5 @@ IP   = 172.16.<VLAN>.<ID>
 - VLAN間のFWポリシー(特にHermes帯域の隔離、ラボから自宅LANへの通信の遮断)。OPNsense のルールで行う。
 - OPNsense と SWHUB のトランクが1本なので、VLAN間の通信はこの1本を通る。帯域が足りなければ、リンクアグリゲーションか L3 スイッチを検討する。
 - 自宅LANからラボへの到達性。管理UIとTraefik(`172.16.12.5`)を自宅のPCから使うかどうかで決まる。
-- Proxmox クラスタの定数(4台は偶数のため)。PBS の接続後に、PBS 機へ QDevice を置く案がある。
 - 追加のVLAN(DMZ、テンプレート/一時用)。
 - 名前解決の細部(LAN内クライアントの問い合わせ先、ノード同士の名前解決)。Cloudflare Tunnel を入れたあと、LAN から公開アプリへ直接届かせるか(OPNsense でのスプリット DNS)。

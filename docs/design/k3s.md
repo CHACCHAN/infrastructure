@@ -4,7 +4,7 @@
 
 ### ノード
 
-- 3台とも k3s のサーバーで、ワークロードも動かす。名前は `k3s01`〜`k3s03`、VMID は `1201`〜`1203`、IP は `172.16.12.1`〜`.3`(VLAN12)。
+- 3台とも k3s のサーバーで、ワークロードも動かす。k3s01 は pve01、k3s02 は pve02、k3s03 は pve03 に置く。etcd の台数を奇数に保つため、サーバーは3台にする。名前は `k3s01`〜`k3s03`、VMID は `1201`〜`1203`、IP は `172.16.12.1`〜`.3`(VLAN12)。
 - k3s01 の仮想CPUは4コア、起動ディスクは256GiB(pve01 の `ssd01` に置く)。
 - OS は Debian 13 minimal。RAM は12GBで固定し、Proxmox のメモリバルーニングは切る。
 - swap は使わない(ZRAM も使わない)。Pod の cgroup は `NoSwap` で swap を使えず、ZRAM が効くのは k3s 本体と OS のデーモンだけで、守りたい Pod に効かないため。メモリの逼迫は、`requests`・`limits` の設計とノードのメモリ量で防ぐ。
@@ -24,7 +24,6 @@
 ### ストレージとバックアップ
 
 - Longhorn を使う。通常のPVCは複製数2にする。
-- k3s02・k3s03(pve02・pve03 上)は、仮想ディスクを1本だけ持つ。Longhorn のデータは、OS と同じディスクに置く([hardware.md](hardware.md))。
 - k3s ノードは、VMとしてのバックアップを取らない。コード(Ansible・Helm・マニフェスト)から再構築する。
 - Longhorn のバックアップ先(NFSのNAS)は未構築。**現時点では、k3s上の永続データにバックアップがない。**
 
@@ -51,10 +50,6 @@
 - k3s 標準の local-storage(local-path)を無効にし、Longhorn を既定の StorageClass にする。ノード内だけに残る PVC が意図せず作られ、別ノードで復帰できなくなるのを防ぐ。
 - k3s は stable チャンネルの 1.36 系(`k3s_version`)を使う。リリースからバイナリを取得してチェックサムを検証し、systemd のユニットは Ansible が置く(インストールスクリプトは使わない)。Longhorn が要求する Kubernetes 1.34 以上を満たす。
 - API の VIP を持つ kube-vip は、DaemonSet で動かす(ARP、リーダー選出)。マニフェストは k3s の自動適用ディレクトリ(`/var/lib/rancher/k3s/server/manifests/`)に置く。インターフェースはノードの既定経路のものを使う。
-
-## 推奨(未確定)
-
-- 3台を、別々の Proxmox ノードに置く。
 
 ## 決定済み: ノードのネットワーク経路(案A)
 
@@ -87,13 +82,12 @@ kubectl・Ansible
 | 分離 | k3s の VM は NIC2 に触れない(NIC2 はホスト専用) | k3s の VM が NIC2 側のL2に載る。スイッチがVLAN非対応なので、分離はホストの設定だけ |
 | Longhorn のバックアップ(→TrueNAS) | VLAN12 → ルータ → 基幹システムの VLAN | NIC2 経由で直接 |
 
-案Aは、複雑さと分離の面で有利。pve02・pve03 の NIC2 は USB LAN で、etcd や Longhorn の通信を載せると、リンクが落ちたときにノードがクラスタから外れる。帯域の不足は、実際に計測してから案Bまたは Longhorn の専用ストレージネットワークで補う。
+案Aは、複雑さと分離の面で有利。帯域の不足は、実際に計測してから案Bまたは Longhorn の専用ストレージネットワークで補う。
 
 ### 確認が要る事項
 
 - ルータ(OPNsense)が、VIP の切り替え時のGratuitous ARP を受け付け、ARPテーブルを更新するか。実機でフェイルオーバーを試す。
 - VLAN をまたぐ通信(Ingress、Traefik から LAN内サービスへのプロキシ、Longhorn のバックアップ)は、ルータを通る。OPNsense のルーティング性能とフィルタ設定が、その実効帯域の上限になる。同じ VLAN12 の中のノード間通信(etcd・flannel・Longhorn の複製)は、SWHUB が中継し、ルータを通らない。
-- USB LAN のチップ型番([hardware.md](hardware.md))。
 - Longhorn のリビルド中の Ingress への影響(同時リビルド数を制限する)。
 - ノード停止時に、Longhorn のボリュームを持つ Pod が別ノードで復帰するか、復帰までの時間。Longhorn のノード停止時の Pod 削除ポリシーを設定したうえで、k3s の VM を止めて計測する。
 
@@ -146,7 +140,7 @@ kubectl・Ansible
   - 使えるのは、グループ `admins` のメンバーだけ。これだけは、Authentik の画面ではなく Blueprint で宣言する(`authentik_proxy_access_group`)。守る画面は自分で権限を分けられず、入れた全員がすべての操作をできるため、結びつけを忘れても開かないようにする。グループ自体と所属は、Authentik の画面で作る。
 - アプリの Pod が受ける通信は、NetworkPolicy で絞る。通すのは、同じ namespace、Traefik、名前を挙げた namespace だけ(PostgreSQL は、オペレーターと DB を使うアプリ。LiteLLM は OpenWebUI)。対象は `authentik`・`homarr`・`open-webui`・`litellm`・`postgresql`・`cloudflared` の namespace と、Longhorn の管理 UI の Pod(Longhorn 本体の API は、Longhorn のチャートが置く NetworkPolicy が、Longhorn の Pod だけに絞っている)。外向きの通信は絞らない(LLM の API、Google、Let's Encrypt などへ出るため)。クラスタの基盤(`kube-system`、MetalLB、cert-manager、CloudNativePG のオペレーター、Longhorn の本体)には掛けない。
 - 外部への公開は Cloudflare Tunnel で行う。公開するのは Authentik・Homarr・OpenWebUI。LiteLLM(プロバイダーの認証情報を持ち、API が課金につながる)と Longhorn の管理 UI は公開せず、LAN と VPN から使う。
-  - Tunnel を Cloudflare の画面で作るまで、公開するホスト名(`cloudflared_hosts`)は空にし、アプリは LAN と VPN からだけ使う。
+  - 公開するホスト名は、インベントリ(`inventory/group_vars/k3s.yml`)の `cloudflared_hosts` に宣言する。ここに無いアプリは、LAN と VPN からだけ使う。
   - `cloudflared` を k3s で動かし、Traefik の Tunnel 専用の入口(クラスタ内だけで開く)につなぐ。公開するアプリだけを、この入口に載せる。LAN 用の入口(`172.16.12.5`)とは別にし、外から届く経路を入口で絞れるようにする。
   - Tunnel・経路表(ホスト名から向け先への対応)・DNS は、Cloudflare の画面で管理する(状態)。Ansible が持つのは、`cloudflared` のコネクタ(トークンは `vault/cloudflared.yml`)と、Traefik の Tunnel 専用の入口に載せるアプリ(`cloudflared_hosts`)。
   - 経路表の向け先は、すべてのホスト名で Traefik の Tunnel 専用の入口(`https://traefik-tunnel.kube-system.svc.cluster.local:443`)にする。外部に出るアプリは `cloudflared_hosts` で決まり、画面にホスト名を足しただけでは届かない。
@@ -172,7 +166,6 @@ kubectl・Ansible
 
 ## 未決
 
-- k3s01 の仮想ディスク(k3s02・k3s03 と同じく1本にするか、Longhorn 用に別のディスクを足すか)。
-- k3s02・k3s03 の仮想CPUのコア数と仮想ディスクのサイズ(pve02・pve03 は 4C/8T で、OS と Longhorn が同居する 1TB の SSD)。
-- 3台の k3s を置く Proxmox ノード([hardware.md](hardware.md) の配置案を参照)。
+- k3s ノードの仮想ディスク(1本にするか、Longhorn 用に別のディスクを足すか)と、pve02・pve03 で置くストレージ([hardware.md](hardware.md))。
+- k3s02・k3s03 の仮想CPUのコア数と仮想ディスクのサイズ(pve02 は 32GB を Hermes と分け合う。pve03 は 4C/8T・32GB)。
 - Longhorn の容量の最終値。
