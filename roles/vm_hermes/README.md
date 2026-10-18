@@ -13,7 +13,7 @@ ssh hermes@<VM の IP>
 hermes setup
 ```
 
-`hermes` で入れるのは、`hermes_ssh_pubkeys`(playbook は `pve_vm_ssh_pubkeys` を渡す)に載せた公開鍵。ラボの鍵の秘密鍵は vault にしか無いため、手元から入るには、自分の公開鍵を `inventory/group_vars/all/ssh.yml` の `pve_vm_ssh_pubkeys` に足しておく。
+`hermes` で入れるのは、`hermes_ssh_pubkeys`(`inventory/group_vars/hermes.yml`)に載せた公開鍵だけ。sudo を持つ `debian` の鍵(`pve_vm_ssh_pubkeys`)とは別のリストにし、`hermes` に入れる人やエージェントが `debian` に入れないようにする。
 
 ## 構成されるもの
 

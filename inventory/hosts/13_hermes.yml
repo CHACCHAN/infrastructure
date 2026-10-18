@@ -36,7 +36,3 @@ hermes:
       pve_vm_cores: 8
       pve_vm_memory: 6144
       pve_vm_disk_size: 128
-      # リストは置き換わるため、ロールの既定(docker)も書く
-      hermes_groups:
-        - docker
-        - kvm

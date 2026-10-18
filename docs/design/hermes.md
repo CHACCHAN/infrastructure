@@ -18,9 +18,9 @@ Hermes Agent の VM(`vm_hermes`)の設計。ネットワークは [network.md](n
 - 役割ごとに決める。値はインベントリ(`inventory/group_vars/hermes.yml` が既定、`inventory/hosts/13_hermes.yml` が差分)。
   - 既定は、ブラウザ(Chromium)を使う組織(本社・ライン子会社・ディスコード子会社・秘書会社)に合わせる。
   - 受付は、依頼を通すだけなので小さくする。
-  - 社内サービス会社は、Android エミュレータを動かすため大きくする。`hermes` を `kvm` グループに入れ、VM の中の KVM を使わせる。
+  - 社内サービス会社は、Android エミュレータを動かすため大きくする。
 - メモリの合計は、pve02 で k3s02 と Proxmox 本体が使う残り(約17GiB)から、本体の分を残した約15GiB に収める。VM ごとの QEMU の分も要るため、すべてが動いたときの残りは1〜2GiB で、pve02 のメモリの使用量を見る。足りない分は ZRAM で補い、実際に使ってから見直す。Hermes の設計のプロジェクトから、足りないと伝えられたときも見直す。
-- CPU の種類は `host`。VM の中で KVM(Android エミュレータなど)を使うため。CPU の違うノードへは移せないが、Hermes の VM は pve02 に置くと決めていて、VLAN13 のブリッジも pve02 にしかないため、移さない。
+- CPU の種類は `host`。VM の中で KVM(Android エミュレータなど)を使うため。`hermes` を `kvm` グループに入れる(`hermes_groups`)。CPU の違うノードへは移せないが、Hermes の VM は pve02 に置くと決めていて、VLAN13 のブリッジも pve02 にしかないため、移さない。
 - ディスクは pve02 の `ssd03` に置く。
 
 ### Ansible が再現する範囲
@@ -43,7 +43,10 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 ### ユーザーと権限
 
 - Hermes は、専用のユーザー(`hermes`)で動かす。このユーザーには sudo を渡さない(誤って OS の側を書き換えるのを防ぐため)。
-- Ansible は、cloud イメージが作る `debian`(sudo できる)で接続する。
+- Ansible は、cloud イメージが作る `debian`(sudo できる)で接続する。`debian` に入れる鍵は、ラボの鍵(`pve_vm_ssh_pubkeys`。秘密鍵は vault にだけある)だけにする。
+- `hermes` に入れる鍵は、別のリスト(`hermes_ssh_pubkeys`)にする。Hermes の設計のエージェントは、このユーザーで入って Hermes を設定する。`debian` と同じリストにすると、`hermes` に入れる者が `debian`(sudo)にも入れてしまうため。Ansible は `debian` から sudo で `hermes` に切り替えるので、`hermes` にラボの鍵は要らない。
+  - 鍵は、Hermes の設計のエージェント専用の鍵ペアにする(手元の鍵と分け、取り消しやすくする)。
+  - 登録は `hermes` 自身の権限で行う。Hermes は、自分で鍵を足せる。消した鍵は、次に playbook を流すと戻る。
 - `hermes` のユーザー単位の systemd は、ログアウトしたあとも動かし続ける(linger)。常駐のサービスは Hermes が自分で作り、sudo なしで再起動できる。
 
 ### コンテナ
@@ -65,7 +68,6 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 
 実装の既定値にしているが、オーナーが決めたものではない。
 
-- `hermes` に、`pve_vm_ssh_pubkeys` の公開鍵を登録する(Hermes の初期設定を、このユーザーのログインで行うため)。登録は `hermes` 自身の権限で行う。Hermes は、自分で鍵を足せる。消した鍵は、次に playbook を流すと戻る。
 - ZRAM の swap の大きさは、メモリの 50%、圧縮は zstd。
 
 ## 確認が要る事項
