@@ -74,7 +74,7 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 
 - Debian のパッケージの Docker(26 系)で、Hermes の隔離環境が動くか。動かなければ、Docker の公式のリポジトリから入れる。
 - cloud イメージのカーネルで ZRAM が動くか。`vm` ロールが、swap が有効になったことを確かめる。
-- pve02 で入れ子の仮想化が有効か(`/sys/module/kvm_amd/parameters/nested` が `1`)と、hermes06 の中に `/dev/kvm` があるか(cloud イメージのカーネルが KVM のモジュールを持つか)。無いと、Android エミュレータが遅いか動かない。カーネルに無ければ、hermes06 には通常のカーネル(`linux-image-amd64`)を入れる。
+- VM の中に `/dev/kvm` があるか(cloud イメージのカーネルが KVM のモジュールを持つか。pve02 の入れ子の仮想化は有効)。無いと、Android エミュレータが遅いか動かない。カーネルに無ければ、通常のカーネル(`linux-image-amd64`)を入れる。
 - 決めたメモリで足りるか。導入して使ったあとの使用量を見る。
 - Hermes が OS のパッケージを要求したとき(新しい版が要求する場合や、ブラウザが使う共有ライブラリを含む)。再現できるよう、`hermes_packages` に足して playbook を流す(Hermes が Docker を通して自分で入れたものは、Ansible からは再現されない)。
 

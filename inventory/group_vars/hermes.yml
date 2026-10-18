@@ -10,6 +10,9 @@ pve_vm_cores: 4
 pve_vm_memory: 2048
 pve_vm_disk_size: 64
 pve_vm_storage: ssd03
+# hermes に SSH で入れる公開鍵。Hermes の設計のエージェント専用の鍵。debian(sudo)には登録しない(docs/design/hermes.md)
+hermes_ssh_pubkeys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIImF+7Qwm0K0WgAydANQU3GRLfFiNhFaHHHLQi0dBa0c hermes-design
 # docker は Hermes の隔離環境、kvm は VM の中の KVM(/dev/kvm)を使うため
 hermes_groups:
   - docker
