@@ -22,6 +22,8 @@
   delegate_to: localhost
   become: false
   run_once: true
+  # 開発マシンの /dev/shm だけを触るため、チェックモードでも行う(接続に鍵が要る)
+  check_mode: false
 
 - name: SSH 秘密鍵の置き場を作る
   ansible.builtin.tempfile:
@@ -31,6 +33,8 @@
   delegate_to: localhost
   become: false
   run_once: true
+  # 開発マシンの /dev/shm だけを触るため、チェックモードでも行う(接続に鍵が要る)
+  check_mode: false
   register: __vm_ssh_key_file
 
 - name: SSH 秘密鍵を書き出す
@@ -41,6 +45,8 @@
   delegate_to: localhost
   become: false
   run_once: true
+  # 開発マシンの /dev/shm だけを触るため、チェックモードでも行う(接続に鍵が要る)
+  check_mode: false
   no_log: true
 
 - name: 接続に使う秘密鍵を指定する

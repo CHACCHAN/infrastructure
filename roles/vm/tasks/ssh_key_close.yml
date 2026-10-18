@@ -7,4 +7,6 @@
   delegate_to: localhost
   become: false
   run_once: true
+  # ssh_key_open.yml がチェックモードでも鍵を置くため、消すのも同じにする
+  check_mode: false
   when: __vm_ssh_key_file is defined and __vm_ssh_key_file.path is defined

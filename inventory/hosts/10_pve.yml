@@ -3,12 +3,12 @@
 pve:
   vars:
     vlan: 10
+    template_storage: ssd01
   # lan_nic: LAN 側(NIC1)の物理 NIC の番号。VM のブリッジ名 vmbr<lan_nic><VLAN> に使う(docs/design/pve.md)
   hosts:
     pve01:
       id: 1
       lan_nic: 0
-      template_storage: ssd01
     pve02:
       id: 2
       lan_nic: 1

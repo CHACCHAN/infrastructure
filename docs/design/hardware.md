@@ -30,7 +30,7 @@ OPNsense(機材は未確認)。VLAN間のルーティングとFWを担う。TP-L
 
 ## ストレージ方式
 
-Proxmox のストレージは LVM-thin(一般的な標準構成)。SYS 以外の SSD(ssd01〜)は、すべてVM用のストレージにする。ZFS を使わないので、ARC がRAMを使わない。
+SYS 以外の SSD(ssd01〜)は、すべてVM用のストレージにし、通常の LVM(thick)にする。SYS の `local-lvm` は LVM-thin([pve.md](pve.md))。ZFS を使わないので、ARC がRAMを使わない。
 
 ### 未確認の事項
 
@@ -49,4 +49,4 @@ Proxmox のストレージは LVM-thin(一般的な標準構成)。SYS 以外の
 | pve02 | k3s02、Hermes Agent | 32GB のうち12GB を k3s02 に使い、残りを Hermes に回す |
 | pve03 | k3s03 | 32GB のうち12GB を k3s03 に使う |
 - 3台のk3sは同じ性能ではない。重いワークロード(PostgreSQL・Open WebUI など)は、`nodeAffinity` で k3s01・k3s02 に寄せる。k3s03 は etcd の定数、Longhorn の複製、軽いワークロードを受け持つ。
-- LVM-thin のシンプールは、満杯になるとVMのディスクが壊れる。Longhorn のディスクを含めて、プールの使用率を監視する。
+- `ssd01` に置く k3s の VM のディスク(256GiB)には、Longhorn のデータも入る。VM の中のディスクの使用率を監視する。

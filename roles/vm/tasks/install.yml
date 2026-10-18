@@ -15,7 +15,7 @@
     update_cache: true
     cache_valid_time: 3600
 
-# 削除したディスク領域をシンプールへ返し、使用率を実態に近づける(docs/design/pve.md)。
+# 削除したディスク領域を SSD へ知らせる(TRIM。docs/design/pve.md)。
 - name: fstrim の定期実行を有効にする
   ansible.builtin.systemd_service:
     name: fstrim.timer

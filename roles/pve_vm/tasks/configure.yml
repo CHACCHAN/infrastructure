@@ -57,3 +57,12 @@
     # proxmox_kvm は NIC の更新を既定で無視するため、差分を確かめたあとだけ許可する。
     update_unsafe: true
   when: __pve_vm_nics.changes | length > 0
+
+# proxmox_kvm は check モードに対応せず、上の更新は check モードで飛ばされる。差分を、変更として表示する。
+- name: check モードで、更新する設定を知らせる
+  ansible.builtin.debug:
+    msg:
+      devices: "{{ __pve_vm_changes }}"
+      nics: "{{ __pve_vm_nics.changes }}"
+  changed_when: true
+  when: ansible_check_mode and (__pve_vm_changes | length > 0 or __pve_vm_nics.changes | length > 0)

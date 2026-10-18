@@ -22,9 +22,9 @@
 
 ### ストレージ
 
-- LVM-thin を使う。シンプールの使用率を監視する([hardware.md](hardware.md))。
+- VM 用の SSD(`ssd01`〜)は、通常の LVM(thick)にする。VM のディスクは作成時に容量をすべて確保するため、領域が足りなくなって VM のディスクが壊れることはない。`local-lvm` は、Proxmox の標準の LVM-thin のまま使う([hardware.md](hardware.md))。
 - SYS 以外の SSD(各ノードの ssd01〜)は、すべてVM用のストレージにする。
-- pve01 は、SSD ごとに別のストレージ(`ssd01`、`ssd02`)にする。k3s01 の仮想ディスクは `ssd01`、開発VM は `ssd02` に置く。
+- SSD ごとに別のストレージ(`ssd01`〜)にする。k3s の VM と、そのノードのテンプレートは `ssd01` に置く。開発VM は pve01 の `ssd02` に置く。
 
 ### VM の層
 
@@ -77,12 +77,12 @@ VM は層に分けて作る。Ansible が持つのは、器(テンプレート)�
   - `pve_vm`: VM の作成・更新・削除。API で操作する。
   - `pve_template`: OS テンプレートの作成。
 - ネットワークの変更は、1ノードずつ、コンソールで入れる状態を確認してから適用する。適用前に `--check --diff` で差分を見る。
-- VMのディスクは `discard` を有効にし、VM内で `fstrim` を定期実行する。削除した領域をシンプールへ返し、使用率が実態から離れないようにするため。
+- VMのディスクは `discard` を有効にし、VM内で `fstrim` を定期実行する。削除した領域を SSD へ知らせ(TRIM)、`local-lvm`(LVM-thin)に置いた VM では、使用率が実態から離れないようにするため。
 - API の証明書の検証は、変数(`pve_validate_certs`)で切り替える。既定は有効にする。このクラスタは自己署名のため、`inventory/group_vars/all/pve.yml` で無効にし、証明書を整えたら外す。
 
 ## 未決
 
-- pve02 のストレージの構成と、pve01 の `ssd03` に置くもの。
+- k3s・テンプレート(`ssd01`)と開発VM(pve01 の `ssd02`)以外の SSD に置くもの(pve01 の `ssd03`、pve02 の `ssd02`・`ssd03`、pve03 の `ssd02`)。
 - Proxmox の APT リポジトリ(no-subscription を使うか)。
 - API トークンの権限の範囲(権限の分離、ロールの割り当て)。
 - VM に渡す DNS サーバー([network.md](network.md) の名前解決の設計に依存する)。
