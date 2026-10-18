@@ -8,6 +8,8 @@ hermes:
       id: 1
       node: pve02
       pve_vm_description: 受付
+      # qemu-guest-agent が入っている VM だけ有効にする(docs/design/pve.md)
+      pve_vm_agent: 1
       # 依頼を通すだけで、ブラウザを使わない(メモリは、導入に要る既定のまま)
       pve_vm_cores: 2
       pve_vm_disk_size: 32
@@ -15,22 +17,27 @@ hermes:
       id: 2
       node: pve02
       pve_vm_description: 本社
+      pve_vm_agent: 1
     hermes03:
       id: 3
       node: pve02
       pve_vm_description: ライン子会社
+      pve_vm_agent: 1
     hermes04:
       id: 4
       node: pve02
       pve_vm_description: ディスコード子会社
+      pve_vm_agent: 1
     hermes05:
       id: 5
       node: pve02
       pve_vm_description: 秘書会社
+      pve_vm_agent: 1
     hermes06:
       id: 6
       node: pve02
       pve_vm_description: 社内サービス会社
+      pve_vm_agent: 1
       # Android エミュレータを動かす(VM の中の KVM を使う)
       pve_vm_cores: 8
       pve_vm_memory: 6144
