@@ -10,6 +10,18 @@ Hermes Agent の VM(`vm_hermes`)の設計。ネットワークは [network.md](n
 - 組織同士の関係(やり取りの方式、互いをどこまで信用するか、相互の監視)は、Hermes が自分で設計する。Ansible と、このリポジトリの設計では決めない。
 - Hermes の VM には、専用の VLAN13(`172.16.13.0/24`。[network.md](network.md))を与える。pve02 のブリッジは `vmbr113`(`nic1` の VLAN13。ホストは、この VLAN に IP を持たない)。ほかの VLAN との分離は、VM の外(OPNsense。[network.md](network.md))で行う。同じ VLAN の中の Hermes 同士の通信は、インフラの側では絞らない。
 - ノードは pve02。k3s02 と同居する([hardware.md](hardware.md))。
+- 組織は6つ: 受付・本社・ライン子会社・ディスコード子会社・秘書会社・社内サービス会社。組織の設計(役割や関係)は、Hermes の設計のプロジェクトが持つ。
+- ホスト名は番号で `hermes01`〜`hermes06`(VLAN13 の ID 1〜6)。組織の名前は、VM の説明欄(`pve_vm_description`)に書く。組織の改名や再編で、VM の名前を変えないため。
+
+### VM のサイズ
+
+- 役割ごとに決める。値はインベントリ(`inventory/group_vars/hermes.yml` が既定、`inventory/hosts/13_hermes.yml` が差分)。
+  - 既定は、ブラウザ(Chromium)を使う組織(本社・ライン子会社・ディスコード子会社・秘書会社)に合わせる。
+  - 受付は、依頼を通すだけなので小さくし、ブラウザも入れない。
+  - 社内サービス会社は、Android エミュレータを動かすため大きくする。`hermes` を `kvm` グループに入れ、VM の中の KVM を使わせる。
+- メモリの合計は、pve02 で k3s02 と Proxmox 本体が使う残り(約17GiB)から、本体の分を残した約15GiB に収める。VM ごとの QEMU の分も要るため、すべてが動いたときの残りは1〜2GiB で、pve02 のメモリの使用量を見る。足りない分は ZRAM で補い、実際に使ってから見直す。Hermes の設計のプロジェクトから、足りないと伝えられたときも見直す。
+- CPU の種類は `host`。VM の中で KVM(Android エミュレータなど)を使うため。CPU の違うノードへは移せないが、Hermes の VM は pve02 に置くと決めていて、VLAN13 のブリッジも pve02 にしかないため、移さない。
+- ディスクは pve02 の `ssd03` に置く。
 
 ### Ansible が再現する範囲
 
@@ -54,18 +66,19 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 
 - `hermes` に、`pve_vm_ssh_pubkeys` の公開鍵を登録する(Hermes の初期設定を、このユーザーのログインで行うため)。登録は `hermes` 自身の権限で行う。Hermes は、自分で鍵を足せる。消した鍵は、次に playbook を流すと戻る。
 - ZRAM の swap の大きさは、メモリの 50%、圧縮は zstd。
-- ブラウザの自動操作(Chromium)と Computer Use は入れない(画面を持たない VM のため。`hermes_skip_browser`・`hermes_skip_computer_use`)。
+- Computer Use は入れない(画面を持たない VM のため。`hermes_skip_computer_use`)。
 
 ## 確認が要る事項
 
 - Debian のパッケージの Docker(26 系)で、Hermes の隔離環境が動くか。動かなければ、Docker の公式のリポジトリから入れる。
 - cloud イメージのカーネルで ZRAM が動くか。`vm` ロールが、swap が有効になったことを確かめる。
+- pve02 で入れ子の仮想化が有効か(`/sys/module/kvm_amd/parameters/nested` が `1`)と、hermes06 の中に `/dev/kvm` があるか(cloud イメージのカーネルが KVM のモジュールを持つか)。無いと、Android エミュレータが遅いか動かない。カーネルに無ければ、hermes06 には通常のカーネル(`linux-image-amd64`)を入れる。
+- sudo を持たない `hermes` のまま、インストーラがブラウザ(Chromium)を入れられるか。OS のパッケージ(Chromium が使う共有ライブラリ)が要るときは、`hermes_packages` に足す。初めは1台で試す([playbooks/vm/README.md](../../playbooks/vm/README.md))。
+- 決めたメモリで足りるか。導入して使ったあとの使用量を見る。
 - Hermes が OS のパッケージを要求したとき(新しい版が要求する場合を含む)。再現できるよう、`hermes_packages` に足して playbook を流す(Hermes が Docker を通して自分で入れたものは、Ansible からは再現されない)。
 
 ## 未決
 
-- 組織の数と名前、VM のサイズ(pve02 のメモリは 32GB で、そのうち12GB を k3s02 に使う。Hermes は、導入した直後でディスクを約 2.5GB 使う。`pve_vm` の既定のディスクは 20GiB)。
-- VM を置く pve02 のストレージ([pve.md](pve.md))。
 - インフラ(このリポジトリ、Proxmox、k3s)を操作させる組織を作るか。
 - VM が動いていることの監視(Hermes 同士の監視とは別に、インフラの側で持つか)。
 - LLM の接続先(LiteLLM の `hermes_llm`。[k3s.md](k3s.md))と、組織ごとに仮想キーと予算を分けるか。VM に置いた鍵は、その組織が自由に使えるものとして扱うことになる(共通の鍵を置くと、全組織に同じ鍵を渡すことになる)。

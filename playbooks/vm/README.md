@@ -33,5 +33,5 @@ ansible-playbook --syntax-check playbooks/vm/hermes.yml
 ## 注意
 
 - `playbooks/vm/` の playbook を同時に複数実行しない(実行の初めに、ほかの実行の秘密鍵まで消すため)。
-- `hermes.yml` の対象は、グループ `hermes` のホスト(`inventory/hosts/13_hermes.yml`)。ホストを足すまでは、何もしない。
+- `hermes.yml` の対象は、グループ `hermes` のホスト(`inventory/hosts/13_hermes.yml`)。初めて流すときは、ブラウザを入れるホスト1台(`-l hermes02`)で試してから、残りを流す(sudo を持たない Hermes のユーザーで、インストーラがブラウザを入れられるか確かめるため。[docs/design/hermes.md](../../docs/design/hermes.md) の確認が要る事項)。
 - `k3s.yml` は、1台ずつ(グループの先頭から)実行する。先に `playbooks/utils/k3s_cluster_token.yml` で、クラスタのトークンを `vault/k3s.yml` に入れておく([vm_k3s](../../roles/vm_k3s/README.md))。

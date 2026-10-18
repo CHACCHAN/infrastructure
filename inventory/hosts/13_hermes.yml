@@ -1,6 +1,43 @@
-# VLAN13 172.16.13.0/24: Hermes Agent(AI専用)。組織の数と VM のサイズは未決(docs/design/hermes.md)
+# VLAN13 172.16.13.0/24: Hermes Agent(AI専用)。1組織に VM を1つ(docs/design/hermes.md)
 ---
 hermes:
   vars:
     vlan: 13
-  hosts: {}
+  hosts:
+    hermes01:
+      id: 1
+      node: pve02
+      pve_vm_description: 受付
+      # 依頼を通すだけで、ブラウザを使わない
+      pve_vm_cores: 2
+      pve_vm_memory: 1024
+      pve_vm_disk_size: 32
+      hermes_skip_browser: true
+    hermes02:
+      id: 2
+      node: pve02
+      pve_vm_description: 本社
+    hermes03:
+      id: 3
+      node: pve02
+      pve_vm_description: ライン子会社
+    hermes04:
+      id: 4
+      node: pve02
+      pve_vm_description: ディスコード子会社
+    hermes05:
+      id: 5
+      node: pve02
+      pve_vm_description: 秘書会社
+    hermes06:
+      id: 6
+      node: pve02
+      pve_vm_description: 社内サービス会社
+      # Android エミュレータを動かす(VM の中の KVM を使う)
+      pve_vm_cores: 8
+      pve_vm_memory: 6144
+      pve_vm_disk_size: 128
+      # リストは置き換わるため、ロールの既定(docker)も書く
+      hermes_groups:
+        - docker
+        - kvm

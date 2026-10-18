@@ -17,7 +17,7 @@
 ├── collections/
 │   └── requirements.yml     使用するコレクション(単一の真実)
 ├── inventory/               ホスト宣言(単一の真実)
-│   ├── hosts/               VLANごとに1ファイル(10_pve / 11_private / 12_k3s。VLAN 未決の core・hermes は番号なし)
+│   ├── hosts/               VLANごとに1ファイル(10_pve / 11_private / 12_k3s / 13_hermes。VLAN 未決の core は番号なし)
 │   ├── group_vars/
 │   │   ├── all/             全ホスト共通(network.yml=VLAN台帳、pve.yml=Proxmox API の共通値)
 │   │   └── <group>.yml      グループ(役割)ごとの差分

@@ -1,6 +1,14 @@
-# Hermes Agent の VM に共通する値(ロールの既定値との差分)。
+# Hermes Agent の VM に共通する値(ロールの既定値との差分)。既定はブラウザ(Chromium)を使う組織に合わせる(docs/design/hermes.md)
 ---
 # Debian の cloud イメージが作る、sudo できる既定のユーザー
 ansible_user: debian
 # ZRAM の swap を使う(メモリに対する割合。%)
 vm_zram_percent: 50
+# VM の中で KVM を使う(入れ子の仮想化)ため、ホストの CPU をそのまま渡す。ほかの CPU のノードへは移せない
+pve_vm_cpu: host
+pve_vm_cores: 4
+pve_vm_memory: 2048
+pve_vm_disk_size: 64
+pve_vm_storage: ssd03
+# ブラウザの自動操作(Chromium)を入れる
+hermes_skip_browser: false
