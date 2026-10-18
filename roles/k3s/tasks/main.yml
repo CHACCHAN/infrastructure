@@ -46,6 +46,24 @@
           ca_cert: "{{ __helm_ca_file.path }}"
           validate_certs: true
       block:
+        - name: ノードを読む
+          kubernetes.core.k8s_info:
+            kind: Node
+          register: __helm_nodes
+          when: helm_min_ready_nodes | int > 0
+
+        - name: Ready のノードが足りていることを確認する
+          ansible.builtin.assert:
+            that: __helm_ready_nodes | int >= helm_min_ready_nodes | int
+            fail_msg: "Ready のノードが {{ __helm_ready_nodes }} 台で、{{ helm_min_ready_nodes }} 台に足りません。ノードをクラスタに参加させてから適用してください"
+            quiet: true
+          vars:
+            __helm_ready_nodes: >-
+              {{ __helm_nodes.resources | map(attribute='status.conditions')
+                 | map('selectattr', 'type', 'equalto', 'Ready') | map('selectattr', 'status', 'equalto', 'True')
+                 | map('list') | select | list | length }}
+          when: helm_min_ready_nodes | int > 0
+
         # リリースが参照する Secret を、Pod が起動する前に用意する。値はログに出さない。
         # チャートを使わないとき(helm_chart が空)は、Helm が namespace を作らないため、ここで作る。
         - name: Secret とマニフェストを置く namespace を作る

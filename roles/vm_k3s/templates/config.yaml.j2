@@ -1,5 +1,10 @@
 # Ansible(roles/vm_k3s)が生成。手動編集は次回実行で上書きされる。
+{% if __k3s_is_init %}
 cluster-init: true
+{% else %}
+server: https://{{ __k3s_api_vip }}:6443
+{% endif %}
+token-file: {{ __k3s_token_file }}
 node-name: {{ inventory_hostname }}
 node-ip: {{ ansible_host }}
 tls-san:

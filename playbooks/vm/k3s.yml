@@ -4,10 +4,15 @@
 ---
 - name: k3s ノードの OS と k3s を設定する
   hosts: k3s
+  # 先頭のホストから1台ずつ行う(参加の順序を守り、再起動が重なって etcd の過半数を失わないため)
+  serial: 1
   gather_facts: false
   become: true
   vars_files:
     - "{{ playbook_dir }}/../../vault/ssh.yml"
+    - "{{ playbook_dir }}/../../vault/k3s.yml"
+  vars:
+    k3s_cluster_token: "{{ vault_k3s_cluster_token | default('') }}"
   tasks:
     - name: VM の設定を、SSH 秘密鍵を使って行う
       block:

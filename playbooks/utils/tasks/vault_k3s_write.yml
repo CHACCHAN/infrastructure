@@ -1,0 +1,59 @@
+# vault/k3s.yml に値を書き足して(同じ名前は置き換えて)、暗号化して保存する。既存の値(vault_k3s_*)は保つ。
+# 入力: k3s_vault_file(保存先)、k3s_vault_values(書き足す値の辞書)、__k3s_vault_loaded(呼び出す側が既存のファイルを読んだ include_vars の結果)。
+---
+- name: vault/k3s.yml へ書き足す
+  block:
+    - name: 平文の置き場を作る
+      ansible.builtin.tempfile:
+        state: file
+        path: /dev/shm
+        prefix: ansible-vault-k3s-
+      delegate_to: localhost
+      become: false
+      register: __k3s_vault_plain
+
+    - name: 平文を書き出す
+      vars:
+        # ファイルから読んだ値だけを保つ(インベントリや -e の値を vault へ混ぜない)
+        __k3s_vault_all: "{{ __k3s_vault_loaded.ansible_facts | default({}) | combine(k3s_vault_values) }}"
+      ansible.builtin.copy:
+        content: "---\n{{ __k3s_vault_all | to_nice_yaml }}"
+        dest: "{{ __k3s_vault_plain.path }}"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+      no_log: true
+
+    # その場で暗号化してから移すため、保存先に平文が置かれることはない。
+    - name: 暗号化する
+      ansible.builtin.command:
+        cmd: ansible-vault encrypt {{ __k3s_vault_plain.path }}
+      delegate_to: localhost
+      become: false
+      changed_when: true
+      no_log: true
+
+    # copy は vault で暗号化されたファイルを復号して置くため、使わない。
+    - name: vault/k3s.yml を置き換える
+      ansible.builtin.command:
+        cmd: mv {{ __k3s_vault_plain.path }} {{ k3s_vault_file }}
+      delegate_to: localhost
+      become: false
+      changed_when: true
+
+    - name: 保存したファイルが暗号化されていることを確認する
+      ansible.builtin.command:
+        cmd: head -c 14 {{ k3s_vault_file }}
+      delegate_to: localhost
+      become: false
+      register: __k3s_vault_head
+      changed_when: false
+      failed_when: __k3s_vault_head.stdout != '$ANSIBLE_VAULT'
+  always:
+    - name: 平文の置き場を消す
+      ansible.builtin.file:
+        path: "{{ __k3s_vault_plain.path }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when: __k3s_vault_plain is defined and __k3s_vault_plain.path is defined

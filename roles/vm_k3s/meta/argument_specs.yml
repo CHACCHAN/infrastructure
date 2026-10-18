@@ -3,7 +3,7 @@ argument_specs:
   main:
     short_description: k3s サーバーを構築する
     description:
-      - 組み込み etcd つきの k3s サーバーと、Kubernetes API の VIP(kube-vip)を構築する。
+      - 組み込み etcd つきの k3s サーバーと、Kubernetes API の VIP(kube-vip)を構築する。グループの先頭のホストがクラスタを作り、ほかは API の VIP へ参加する。
       - vlan(グループ変数)から API の VIP を導出する。
     options:
       k3s_version:
@@ -12,6 +12,10 @@ argument_specs:
       k3s_kube_vip_version:
         type: str
         description: "kube-vip のバージョン(イメージのタグ)"
+      k3s_cluster_token:
+        type: str
+        required: true
+        description: "クラスタのトークン(K10<認証局のハッシュ>::server:<秘密>。新しく作るときは秘密だけ。playbook が vault/k3s.yml から渡す)"
       k3s_api_vip_id:
         type: int
         required: true

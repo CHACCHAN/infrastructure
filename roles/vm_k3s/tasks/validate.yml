@@ -3,7 +3,77 @@
   ansible.builtin.assert:
     that:
       - vlan is defined
-      - groups['k3s'] | length == 1
       - ansible_facts['architecture'] == 'x86_64'
-    fail_msg: "グループ変数 vlan が必要です。アーキテクチャは x86_64 だけ、k3s のノードは1台だけに対応します(ノードの追加は未実装)。"
+      - k3s_cluster_token | length > 0
+      - __k3s_is_init | bool or k3s_cluster_token is search('^K10[0-9a-f]+::server:.+')
+    fail_msg: >-
+      グループ変数 vlan と、クラスタのトークン(vault/k3s.yml の vault_k3s_cluster_token)が必要です。アーキテクチャは x86_64 だけに対応します。
+      参加するホストには、認証局のハッシュを含むトークン(K10…::server:…)が要ります。先頭のホストを構築したあとに playbooks/utils/k3s_cluster_token.yml を実行してください。
     quiet: true
+
+# 先頭のホストを作り直したとき、動いているクラスタとは別のクラスタを作らないようにする。
+- name: 先頭のホストに、クラスタのデータがあるか確認する
+  ansible.builtin.stat:
+    path: "{{ __k3s_data_dir }}"
+  register: __k3s_data
+  when: __k3s_is_init | bool
+
+- name: 先頭のホストにデータが無いとき、API の VIP が応答しないか確認する
+  ansible.builtin.wait_for:
+    host: "{{ __k3s_api_vip }}"
+    port: 6443
+    timeout: 5
+  register: __k3s_existing_cluster
+  # 応答が無い(タイムアウト)ことを確かめたいので、失敗にしない。応答があれば state が started になる
+  failed_when: false
+  when: __k3s_is_init | bool and not __k3s_data.stat.exists
+
+- name: 動いているクラスタがあるのに、新しいクラスタを作らないことを確認する
+  ansible.builtin.assert:
+    that: __k3s_existing_cluster.state | default("") != "started"
+    fail_msg: >-
+      {{ inventory_hostname }} にクラスタのデータが無いのに、API の VIP({{ __k3s_api_vip }})が応答しています。
+      新しいクラスタを作ると、動いているクラスタと分かれます。動いているクラスタへ参加させてください(roles/vm_k3s/README.md)。
+    quiet: true
+  when: __k3s_is_init | bool and not __k3s_data.stat.exists
+
+# 動いているクラスタのデータは、クラスタのトークンで暗号化されている。違う値で起動すると k3s が起動しない。
+- name: 先頭のホストの、動いているクラスタのトークンを読む
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/token
+  register: __k3s_server_token
+  when: __k3s_is_init | bool and __k3s_data.stat.exists
+  no_log: true
+
+- name: vault のトークンが、動いているクラスタのトークンと一致することを確認する
+  ansible.builtin.assert:
+    that: >-
+      __k3s_server_token.content | b64decode | trim | regex_replace('^.*::server:', '') == __k3s_token_value
+    fail_msg: >-
+      vault/k3s.yml の vault_k3s_cluster_token が、{{ inventory_hostname }} で動いているクラスタのトークンと違います。
+      playbooks/utils/k3s_cluster_token.yml で vault の値を合わせてください。
+    quiet: true
+  when: __k3s_is_init | bool and __k3s_data.stat.exists
+  no_log: true
+
+# 参加先の認証局がトークンのハッシュと違うと、k3s は参加を待ち続け、起動の待ちが終わらない。
+- name: 参加先の認証局の証明書を取得する
+  ansible.builtin.uri:
+    url: "https://{{ __k3s_api_vip }}:6443/cacerts"
+    # 取得した証明書を、トークンのハッシュで検証する
+    validate_certs: false
+    return_content: true
+  register: __k3s_cacerts
+  # 読み取りだけなので、チェックモードでも取得する
+  check_mode: false
+  when: not __k3s_is_init | bool
+
+- name: 参加先の認証局が、トークンのハッシュと一致することを確認する
+  ansible.builtin.assert:
+    that: __k3s_cacerts.content | hash('sha256') == __k3s_token_ca_hash
+    fail_msg: >-
+      API の VIP({{ __k3s_api_vip }})の認証局が、vault/k3s.yml の vault_k3s_cluster_token のハッシュと違います。
+      クラスタを作り直したときは、playbooks/utils/k3s_cluster_token.yml で vault の値を更新してください。
+    quiet: true
+  when: not __k3s_is_init | bool
+  no_log: true

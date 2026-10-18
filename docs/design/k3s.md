@@ -5,7 +5,7 @@
 ### ノード
 
 - 3台とも k3s のサーバーで、ワークロードも動かす。k3s01 は pve01、k3s02 は pve02、k3s03 は pve03 に置く。etcd の台数を奇数に保つため、サーバーは3台にする。名前は `k3s01`〜`k3s03`、VMID は `1201`〜`1203`、IP は `172.16.12.1`〜`.3`(VLAN12)。
-- k3s01 の仮想CPUは4コア、起動ディスクは256GiB(pve01 の `ssd01` に置く)。
+- 3台とも、仮想CPUは4コア、仮想ディスクは256GiBの1本で、置いたノードの `ssd01` に置く。Longhorn のデータも、このディスクに置く。
 - OS は Debian 13 minimal。RAM は12GBで固定し、Proxmox のメモリバルーニングは切る。
 - swap は使わない(ZRAM も使わない)。Pod の cgroup は `NoSwap` で swap を使えず、ZRAM が効くのは k3s 本体と OS のデーモンだけで、守りたい Pod に効かないため。メモリの逼迫は、`requests`・`limits` の設計とノードのメモリ量で防ぐ。
 
@@ -46,7 +46,12 @@
 - k3s01 を先に単独で構築する([network.md](network.md) の移行)ため、最初から次のようにする。
   - 組み込み etcd を有効にして(`cluster-init`)、k3s02・k3s03 を後から参加させられるようにする。
   - API の証明書に `172.16.12.6` を含め(`tls-san`)、接続先は最初から API の VIP にする。
-  - Longhorn の複製数は、ノードが1台の間は1にし、2台目が参加したら2に上げる。
+  - Longhorn の複製数は、ノードが1台の間は1、2台以上なら2にする(インベントリの `k3s` グループのホスト数から導出する)。
+- サーバーの参加: グループ `k3s` の先頭のホスト(k3s01)がクラスタを作り(`cluster-init`)、ほかのホストは API の VIP(`https://172.16.12.6:6443`)へ参加する。
+  - クラスタのトークン(サーバーの参加に使う共有の秘密)は、ansible-vault(`vault/k3s.yml` の `vault_k3s_cluster_token`)に置き、全サーバーが同じ値を使う(`token-file`)。作り直しても同じトークンで再現できる。単発の playbook(`playbooks/utils/k3s_cluster_token.yml`)が、動いているクラスタのトークンを写す(クラスタが無ければ、秘密だけを新しく作る)。
+  - 参加するホストは、トークンに含まれる認証局のハッシュで、参加先が本物のクラスタかを確かめる(VLAN12 で API の VIP を名乗られても、トークンを渡さない)。クラスタを作るホストは、秘密の部分だけを使う(認証局が作り直されても使えるため)。
+  - 先頭のホストを作り直したとき、動いているクラスタとは別のクラスタを作らない(データが無く、API の VIP が応答していれば止める)。
+  - k3s の設定の変更は、1台ずつ反映する(再起動が重なって etcd の過半数を失わないため)。
 - k3s 標準の local-storage(local-path)を無効にし、Longhorn を既定の StorageClass にする。ノード内だけに残る PVC が意図せず作られ、別ノードで復帰できなくなるのを防ぐ。
 - k3s は stable チャンネルの 1.36 系(`k3s_version`)を使う。リリースからバイナリを取得してチェックサムを検証し、systemd のユニットは Ansible が置く(インストールスクリプトは使わない)。Longhorn が要求する Kubernetes 1.34 以上を満たす。
 - API の VIP を持つ kube-vip は、DaemonSet で動かす(ARP、リーダー選出)。マニフェストは k3s の自動適用ディレクトリ(`/var/lib/rancher/k3s/server/manifests/`)に置く。インターフェースはノードの既定経路のものを使う。
@@ -124,7 +129,7 @@ kubectl・Ansible
   - 先に staging の発行者で動作を確認し、本番の発行者に切り替える(`cert_manager_issuer`)。
   - 自己チェックの DNS は、公開リゾルバ(`1.1.1.1`・`1.0.0.1`)を直接指す。ノードに渡す DNS サーバーが未決で、プライベートIPを返す応答の扱いも未決のため。
   - Cloudflare の API トークンは、対象ゾーンの DNS の編集とゾーンの読み取り(cert-manager がゾーンの ID を引くため)だけを許可する。`vault/cloudflare.yml` に置く。ACME の連絡先メールアドレスはインベントリに宣言する(`cert_manager_acme_email`)。
-- Longhorn: 複製数は、ノードが1台の間は1(CSI・マネージャーの Pod も1)。ノード停止時の Pod 削除ポリシーと、同時リビルド数の制限(1)を設定する。管理 UI は認証を持たないため、Authentik の認証プロキシを通して公開する(`longhorn`)。
+- Longhorn: 複製数は、ノードが1台の間は1、2台以上なら2(CSI・マネージャーの Pod の数は、ノードの数)。ノード停止時の Pod 削除ポリシーと、同時リビルド数の制限(1)を設定する。管理 UI は認証を持たないため、Authentik の認証プロキシを通して公開する(`longhorn`)。
 - PostgreSQL: メジャーバージョン17、pgvector を含む CloudNativePG の `standard` イメージ。1インスタンス。アプリごとに DB とロールを宣言で作り、パスワードは `vault/postgresql.yml` に置く。スーパーユーザーのアクセスは無効にする。
 - 公開ホスト名は `<名前>.<lab_domain>` で、インベントリ(`inventory/group_vars/k3s.yml`)に宣言する(`auth`・`homarr`・`ai`・`litellm`・`longhorn`)。TLS は Traefik で終端し、Ingress は Traefik の既定の証明書を使う。
 - アプリの秘密情報は `vault/<アプリ名>.yml` に置く(DB のパスワードは `vault/postgresql.yml`)。
@@ -166,6 +171,4 @@ kubectl・Ansible
 
 ## 未決
 
-- k3s ノードの仮想ディスク(1本にするか、Longhorn 用に別のディスクを足すか)と、pve02・pve03 で置くストレージ([hardware.md](hardware.md))。
-- k3s02・k3s03 の仮想CPUのコア数と仮想ディスクのサイズ(pve02 は 32GB を Hermes と分け合う。pve03 は 4C/8T・32GB)。
 - Longhorn の容量の最終値。

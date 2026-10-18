@@ -9,15 +9,23 @@
 | playbook | 内容 | 実行例 |
 | --- | --- | --- |
 | `k3s_token.yml` | k3s に ServiceAccount(`cluster-admin`)と長期トークンを作り、トークンと認証局の証明書を `vault/k3s.yml` に暗号化して保存する | `ansible-playbook playbooks/utils/k3s_token.yml 2>&1 \| cat` |
+| `k3s_cluster_token.yml` | k3s のクラスタのトークン(サーバーの参加に使う)を `vault/k3s.yml` に保存する。クラスタが動いていれば先頭のホストのトークンを写し、無ければ新しく作る | `ansible-playbook playbooks/utils/k3s_cluster_token.yml 2>&1 \| cat` |
 | `homarr_admin.yml` | Homarr の緊急用の管理者(`admin`)を、無ければ作り、パスワードを `vault/homarr.yml` の値に設定する | `ansible-playbook playbooks/utils/homarr_admin.yml 2>&1 \| cat` |
 | `k3s_app_remove.yml` | クラスタからアプリを取り除く(Helm のリリースと namespace を消す) | `ansible-playbook playbooks/utils/k3s_app_remove.yml -e k3s_app_remove_namespace=<名前> -e k3s_app_remove_confirm=<名前> 2>&1 \| cat` |
 
 ## k3s_token.yml
 
-- 初回の1回だけ行う。`vault/k3s.yml` があれば何もしない。作り直すときは、そのファイルを消してから実行する(クラスタ側の Secret はそのまま使う)。
+- 初回の1回だけ行う。`vault/k3s.yml` に `vault_k3s_api_token` があれば何もしない。作り直すときは、その値を消してから実行する(クラスタ側の Secret はそのまま使う)。ファイルのほかの値は保つ。
 - k3s01 に SSH し、ノード上の管理用 kubeconfig(`k3s kubectl`)を使う。SSH の鍵は [playbooks/vm](../vm/README.md) と同じ。
 - 平文のトークンは、`/dev/shm` に一時的に置き、暗号化したあとに消す。
 - 作ったトークンは [k3s](../../roles/k3s/README.md) ロールが使う。
+
+## k3s_cluster_token.yml
+
+- k3s01 に SSH し、`/var/lib/rancher/k3s/server/token` を読む。クラスタが動いていれば、そのトークン(`K10<認証局のハッシュ>::server:<秘密>`)を `vault_k3s_cluster_token` に保存する。同じ値なら何もしない。既存の値(`vault_k3s_*`)は保つ。
+- クラスタがまだ無く、vault にも無ければ、秘密だけを新しく作る。クラスタを一から作るときは、これを実行し、`playbooks/vm/k3s.yml -l k3s01` で先頭のホストを構築してから、もう一度実行する(参加するホストが、認証局のハッシュで参加先を確かめられるようにするため)。
+- 平文は `/dev/shm` に一時的に置き、暗号化したあとに消す。
+- トークンは [vm_k3s](../../roles/vm_k3s/README.md) が使う。
 
 ## homarr_admin.yml
 

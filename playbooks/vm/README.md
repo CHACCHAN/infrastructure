@@ -34,4 +34,4 @@ ansible-playbook --syntax-check playbooks/vm/hermes.yml
 
 - `playbooks/vm/` の playbook を同時に複数実行しない(実行の初めに、ほかの実行の秘密鍵まで消すため)。
 - `hermes.yml` の対象は、グループ `hermes` のホスト(`inventory/hosts/hermes.yml`)。ホストを足すまでは、何もしない。
-- `vm_k3s` は、k3s のノードが1台のときだけ動く。ノードの追加(参加の手順、クラスタのトークンの置き場)は、設計してから実装する。
+- `k3s.yml` は、1台ずつ(グループの先頭から)実行する。先に `playbooks/utils/k3s_cluster_token.yml` で、クラスタのトークンを `vault/k3s.yml` に入れておく([vm_k3s](../../roles/vm_k3s/README.md))。

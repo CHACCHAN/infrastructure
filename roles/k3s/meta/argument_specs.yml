@@ -89,6 +89,9 @@ argument_specs:
       helm_network_policy_pod_labels:
         type: dict
         description: "絞る対象の Pod のラベル。空なら namespace のすべての Pod"
+      helm_min_ready_nodes:
+        type: int
+        description: "適用の前に、Ready のノードがこの数以上あることを確かめる。0 なら確かめない"
       helm_wait:
         type: bool
         description: "リソースが Ready になるまで待つ"

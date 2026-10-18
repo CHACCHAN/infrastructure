@@ -15,6 +15,8 @@
     helm_chart_version: "{{ longhorn_chart_version }}"
     helm_namespace: "{{ longhorn_namespace }}"
     helm_timeout: "{{ longhorn_timeout }}"
+    # 複製数と Pod の数はインベントリのホスト数から決まるため、全ホストが参加してから適用する
+    helm_min_ready_nodes: "{{ groups['k3s'] | length }}"
     helm_values: "{{ __longhorn_values | combine(longhorn_values, recursive=True) }}"
     helm_ingress:
       host: "{{ longhorn_host }}"

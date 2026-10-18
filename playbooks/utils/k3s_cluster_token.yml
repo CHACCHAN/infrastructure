@@ -1,0 +1,71 @@
+# k3s のクラスタのトークン(サーバーの参加に使う共有の秘密)を、vault/k3s.yml の vault_k3s_cluster_token に保存する。
+# 先頭のホストでクラスタが動いていれば、そのトークン(K10<認証局のハッシュ>::server:<秘密>)を写す。
+# まだ無く、vault にも無ければ、秘密だけを新しく作る(先頭のホストを構築したあとに、もう一度実行してハッシュつきにする)。
+# 実行例: ansible-playbook playbooks/utils/k3s_cluster_token.yml 2>&1 | cat
+---
+- name: k3s のクラスタのトークンを vault に保存する
+  hosts: "k3s[0]"
+  gather_facts: false
+  become: true
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/ssh.yml"
+  vars:
+    k3s_vault_file: "{{ playbook_dir }}/../../vault/k3s.yml"
+    k3s_cluster_token_server_file: /var/lib/rancher/k3s/server/token
+  tasks:
+    - name: vault/k3s.yml があるか確認する
+      ansible.builtin.stat:
+        path: "{{ k3s_vault_file }}"
+      delegate_to: localhost
+      become: false
+      register: __k3s_vault_stat
+
+    - name: vault/k3s.yml の既存の値を読む
+      ansible.builtin.include_vars:
+        file: "{{ k3s_vault_file }}"
+      register: __k3s_vault_loaded
+      when: __k3s_vault_stat.stat.exists
+      no_log: true
+
+    - name: トークンを用意して保存する
+      block:
+        - name: SSH 秘密鍵を用意する
+          ansible.builtin.include_role:
+            name: vm
+            tasks_from: ssh_key_open
+
+        - name: 先頭のホストへ SSH で入れるまで待つ
+          ansible.builtin.wait_for_connection:
+            timeout: 300
+
+        - name: 先頭のホストに、動いているクラスタのトークンがあるか確認する
+          ansible.builtin.stat:
+            path: "{{ k3s_cluster_token_server_file }}"
+          register: __k3s_cluster_token_stat
+
+        - name: 動いているクラスタのトークンを読む
+          ansible.builtin.slurp:
+            src: "{{ k3s_cluster_token_server_file }}"
+          register: __k3s_cluster_token_slurp
+          when: __k3s_cluster_token_stat.stat.exists
+          no_log: true
+
+        # 動いているクラスタのトークンがあれば、それが正しい値。無ければ、vault の値を保つか、新しく作る。
+        - name: 保存するトークンを決める
+          ansible.builtin.set_fact:
+            __k3s_cluster_token: >-
+              {{ (__k3s_cluster_token_slurp.content | b64decode | trim) if __k3s_cluster_token_stat.stat.exists
+                 else vault_k3s_cluster_token | default(lookup('ansible.builtin.password', '/dev/null', chars=['ascii_letters', 'digits'], length=48), true) }}
+          no_log: true
+
+        - name: vault/k3s.yml へ書き足す
+          ansible.builtin.include_tasks: tasks/vault_k3s_write.yml
+          vars:
+            k3s_vault_values:
+              vault_k3s_cluster_token: "{{ __k3s_cluster_token }}"
+          when: __k3s_cluster_token != vault_k3s_cluster_token | default('')
+      always:
+        - name: SSH 秘密鍵を消す
+          ansible.builtin.include_role:
+            name: vm
+            tasks_from: ssh_key_close

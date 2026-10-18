@@ -29,6 +29,8 @@ helm_network_policy: false
 helm_network_policy_from: []
 # 絞る対象の Pod のラベル。空なら namespace のすべての Pod
 helm_network_policy_pod_labels: {}
+# 適用の前に、Ready のノードがこの数以上あることを確かめる。0 なら確かめない
+helm_min_ready_nodes: 0
 # リソースが Ready になるまで待つ
 helm_wait: true
 # Ready を待つ時間(Go の期間の形)

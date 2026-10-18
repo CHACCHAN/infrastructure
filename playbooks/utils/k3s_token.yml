@@ -1,5 +1,6 @@
 # k3s の ServiceAccount と長期トークンを作り、API のトークンと認証局の証明書を vault/k3s.yml に保存する。
-# 初回の1回だけ行う。vault/k3s.yml があれば何もしない(作り直すときは、そのファイルを消してから実行する)。
+# 初回の1回だけ行う。vault/k3s.yml に vault_k3s_api_token があれば何もしない(作り直すときは、その値を消してから実行する)。
+# vault/k3s.yml の、ほかの値(クラスタのトークンなど)は保つ。
 # 実行例: ansible-playbook playbooks/utils/k3s_token.yml 2>&1 | cat
 ---
 - name: k3s の ServiceAccount のトークンを vault に保存する
@@ -9,19 +10,26 @@
   vars_files:
     - "{{ playbook_dir }}/../../vault/ssh.yml"
   vars:
-    k3s_token_vault_file: "{{ playbook_dir }}/../../vault/k3s.yml"
+    k3s_vault_file: "{{ playbook_dir }}/../../vault/k3s.yml"
     k3s_token_account: ansible
     k3s_token_namespace: kube-system
   tasks:
-    - name: 保存先が既にあるか確認する
+    - name: vault/k3s.yml があるか確認する
       ansible.builtin.stat:
-        path: "{{ k3s_token_vault_file }}"
+        path: "{{ k3s_vault_file }}"
       delegate_to: localhost
       become: false
       register: __k3s_token_vault
 
+    - name: vault/k3s.yml の既存の値を読む
+      ansible.builtin.include_vars:
+        file: "{{ k3s_vault_file }}"
+      register: __k3s_vault_loaded
+      when: __k3s_token_vault.stat.exists
+      no_log: true
+
     - name: トークンを作って保存する
-      when: not __k3s_token_vault.stat.exists
+      when: vault_k3s_api_token is not defined
       block:
         - name: SSH 秘密鍵を用意する
           ansible.builtin.include_role:
@@ -81,44 +89,13 @@
           changed_when: false
           no_log: true
 
-        - name: 暗号化する前の置き場を作る
-          ansible.builtin.tempfile:
-            state: file
-            path: /dev/shm
-            prefix: ansible-k3s-token-
-          delegate_to: localhost
-          become: false
-          register: __k3s_token_plain
-
-        - name: 暗号化する前の内容を書き出す
+        - name: vault/k3s.yml へ書き足す
+          ansible.builtin.include_tasks: tasks/vault_k3s_write.yml
           vars:
-            __k3s_token_plain_vars:
+            k3s_vault_values:
               vault_k3s_api_token: "{{ __k3s_token_b64.stdout | b64decode }}"
               vault_k3s_ca_cert: "{{ __k3s_ca_b64.stdout | b64decode }}"
-          ansible.builtin.copy:
-            content: "---\n{{ __k3s_token_plain_vars | to_nice_yaml }}"
-            dest: "{{ __k3s_token_plain.path }}"
-            mode: "0600"
-          delegate_to: localhost
-          become: false
-          no_log: true
-
-        - name: vault/k3s.yml へ暗号化して保存する
-          ansible.builtin.command:
-            cmd: ansible-vault encrypt --output {{ k3s_token_vault_file }} {{ __k3s_token_plain.path }}
-            creates: "{{ k3s_token_vault_file }}"
-          delegate_to: localhost
-          become: false
-          no_log: true
       always:
-        - name: 暗号化する前の内容を消す
-          ansible.builtin.file:
-            path: "{{ __k3s_token_plain.path }}"
-            state: absent
-          delegate_to: localhost
-          become: false
-          when: __k3s_token_plain is defined and __k3s_token_plain.path is defined
-
         - name: SSH 秘密鍵を消す
           ansible.builtin.include_role:
             name: vm

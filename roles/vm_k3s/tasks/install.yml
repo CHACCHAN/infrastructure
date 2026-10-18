@@ -29,6 +29,16 @@
   loop:
     - /etc/rancher/k3s
 
+- name: クラスタのトークンを置く
+  ansible.builtin.copy:
+    content: "{{ __k3s_token_value }}\n"
+    dest: "{{ __k3s_token_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: k3s を再起動する
+
 - name: k3s の設定を置く
   ansible.builtin.template:
     src: config.yaml.j2
