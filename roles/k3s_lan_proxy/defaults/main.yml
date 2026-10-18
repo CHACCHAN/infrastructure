@@ -18,3 +18,5 @@ lan_proxy_services: >-
     'insecure_skip_verify': true}) -%}
   {%- endfor -%}
   {{ out }}
+# 上に加えてプロキシするサービス(Proxmox 以外)。項目は lan_proxy_services と同じ
+lan_proxy_extra_services: []

@@ -1,4 +1,4 @@
-# クラスタの外にある LAN 内のサービス(Proxmox の管理 UI)を、Traefik でリバースプロキシする。
+# クラスタの外にある LAN 内のサービス(Proxmox の管理 UI など)を、Traefik でリバースプロキシする。
 # 実行例: ansible-playbook playbooks/k3s/lan_proxy.yml [--check --diff] 2>&1 | cat
 ---
 - name: LAN 内のサービスへの経路を適用する

@@ -40,3 +40,31 @@ argument_specs:
           insecure_skip_verify:
             type: bool
             description: "宛先の証明書を検証しない(自己署名のとき)"
+      lan_proxy_extra_services:
+        type: list
+        elements: dict
+        description: "lan_proxy_services に加えてプロキシするサービス(Proxmox 以外)。項目は lan_proxy_services と同じ"
+        options:
+          name:
+            type: str
+            required: true
+            description: "リソースの名前"
+          host:
+            type: str
+            required: true
+            description: "公開ホスト名"
+          address:
+            type: str
+            required: true
+            description: "宛先の IP"
+          port:
+            type: int
+            required: true
+            description: "宛先のポート"
+          scheme:
+            type: str
+            choices: [http, https]
+            description: "宛先のプロトコル(既定は http)"
+          insecure_skip_verify:
+            type: bool
+            description: "宛先の証明書を検証しない(自己署名のとき)"

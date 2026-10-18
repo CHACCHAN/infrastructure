@@ -9,7 +9,7 @@
     helm_ingress:
       host: "{{ __lan_proxy_service.host }}"
       service_port: "{{ __lan_proxy_service.port }}"
-  loop: "{{ lan_proxy_services }}"
+  loop: "{{ lan_proxy_services + lan_proxy_extra_services }}"
   loop_control:
     loop_var: __lan_proxy_service
     label: "{{ __lan_proxy_service.name }}"

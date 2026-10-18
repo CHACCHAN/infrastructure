@@ -20,6 +20,7 @@ homarr_host: "homarr.{{ lab_domain }}"
 openwebui_host: "ai.{{ lab_domain }}"
 litellm_host: "litellm.{{ lab_domain }}"
 longhorn_host: "longhorn.{{ lab_domain }}"
+hermes_host: "hermes.{{ lab_domain }}"
 # クラスタ内から Traefik へ向ける公開ホスト名(Pod からの OIDC の通信などが、外の DNS に頼らないようにする)
 k3s_ingress_hosts:
   - "{{ authentik_host }}"
@@ -65,3 +66,11 @@ authentik_values:
           - key: kubernetes.io/hostname
             operator: In
             values: "{{ heavy_workload_nodes }}"
+# Traefik でリバースプロキシする、クラスタの外の画面(Proxmox の管理 UI は k3s_lan_proxy が pve グループから導出する)
+lan_proxy_extra_services:
+  # Hermes Agent の受付(hermes01)の管理画面。ログインは Hermes 側の OIDC(Authentik のクライアント hermes)
+  - name: hermes
+    host: "{{ hermes_host }}"
+    address: "{{ hostvars['hermes01'].ansible_host }}"
+    port: 9119
+    scheme: http

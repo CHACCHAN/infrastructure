@@ -23,6 +23,10 @@ entries:
         - matching_mode: strict
           url: {{ uri }}
 {% endfor %}
+{% if client.redirect_uri_regex | default('') | length > 0 %}
+        - matching_mode: regex
+          url: {{ client.redirect_uri_regex | to_json }}
+{% endif %}
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
         - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]

@@ -16,7 +16,7 @@ k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconf
 | `homarr.yml` | Homarr を入れる | `ansible-playbook playbooks/k3s/homarr.yml [--check --diff] 2>&1 \| cat` |
 | `openwebui.yml` | OpenWebUI を入れる | `ansible-playbook playbooks/k3s/openwebui.yml [--check --diff] 2>&1 \| cat` |
 | `litellm.yml` | LiteLLM Proxy を入れる | `ansible-playbook playbooks/k3s/litellm.yml [--check --diff] 2>&1 \| cat` |
-| `lan_proxy.yml` | クラスタの外にある LAN 内のサービス(Proxmox の管理 UI)を、Traefik でリバースプロキシする | `ansible-playbook playbooks/k3s/lan_proxy.yml [--check --diff] 2>&1 \| cat` |
+| `lan_proxy.yml` | クラスタの外にある LAN 内のサービス(Proxmox の管理 UI など)を、Traefik でリバースプロキシする | `ansible-playbook playbooks/k3s/lan_proxy.yml [--check --diff] 2>&1 \| cat` |
 | `cloudflared.yml` | cloudflared(Cloudflare Tunnel のコネクタ)を入れる | `ansible-playbook playbooks/k3s/cloudflared.yml [--check --diff] 2>&1 \| cat` |
 
 ## 実行の順序

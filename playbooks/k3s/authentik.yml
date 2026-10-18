@@ -20,6 +20,7 @@
       homarr: "{{ vault_homarr_oidc_client_secret }}"
       openwebui: "{{ vault_openwebui_oidc_client_secret }}"
       litellm: "{{ vault_litellm_oidc_client_secret }}"
+      hermes: "{{ vault_hermes_oidc_client_secret }}"
   vars_files:
     - "{{ playbook_dir }}/../../vault/k3s.yml"
     - "{{ playbook_dir }}/../../vault/postgresql.yml"
@@ -27,5 +28,6 @@
     - "{{ playbook_dir }}/../../vault/homarr.yml"
     - "{{ playbook_dir }}/../../vault/openwebui.yml"
     - "{{ playbook_dir }}/../../vault/litellm.yml"
+    - "{{ playbook_dir }}/../../vault/hermes.yml"
   roles:
     - k3s_authentik

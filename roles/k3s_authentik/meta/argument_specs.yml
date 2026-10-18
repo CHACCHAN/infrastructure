@@ -54,7 +54,7 @@ argument_specs:
       authentik_oidc_clients:
         type: list
         elements: dict
-        description: "OIDC クライアント(name、slug、redirect_uris)"
+        description: "OIDC クライアント(name、slug、redirect_uris、redirect_uri_regex)"
         options:
           name:
             type: str
@@ -69,6 +69,9 @@ argument_specs:
             elements: str
             required: true
             description: "リダイレクト URI(完全一致)"
+          redirect_uri_regex:
+            type: str
+            description: "リダイレクト URI の正規表現。アプリのコールバックのパスが決まっていないときに、ホストの中に限って許可する"
       authentik_proxy_apps:
         type: list
         elements: dict

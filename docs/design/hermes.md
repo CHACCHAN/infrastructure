@@ -38,6 +38,10 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 - Hermes の版は固定しない。導入した時点の最新が入り、そのあとは Hermes が自分で更新する。Ansible は、版を引き戻さない。[conventions.md](../conventions.md) の「バージョン管理」の例外。インストーラも版を固定できないため、チェックサムは照合せず、HTTPS で取得したものをそのまま実行する。
 - 導入済みの Hermes が動くかどうかは、Ansible では確かめない(入れた直後だけ確かめる)。自己更新で壊れても、playbook は失敗しない。
 - モデル、チャネル、常駐、管理画面の設定は、Ansible では行わない。Hermes の側で設定する。
+- 受付(hermes01)の管理画面(9119番)を、`hermes.<lab_domain>` で LAN に公開する(k3s の Traefik の `k3s_lan_proxy`。Cloudflare Tunnel には載せない)。ログインは Hermes 側の OIDC で、Authentik に OIDC クライアント `hermes` を置く。シークレットは `vault/hermes.yml` で決め、Hermes 側の設定にも同じ値を入れる。管理画面を動かし、9119番で VM の外から受けるようにするのは、Hermes の側(状態)。
+  - Hermes のコールバックのパスは Hermes の側で決まるため、Authentik は `https://hermes.<lab_domain>/` の下のパスをすべて許可する(正規表現)。パスが決まったら、完全一致に絞る。
+  - 必要な通信は、k3s の全ノード(VLAN12)から `172.16.13.1:9119` と、hermes01 から Authentik(`172.16.12.5:443`)。VLAN 間の FW ポリシー([network.md](network.md) の未決)で、この2つを通す。
+  - Hermes は k3s のアプリではないため、[k3s.md](k3s.md) の緊急用のユーザーの規則の対象外。ログインの方法は Hermes 側の状態。
 - ブラウザの自動操作(Chromium)と Computer Use は、導入のときには入れない(`hermes_skip_browser`・`hermes_skip_computer_use`)。使うかどうかと導入は Hermes が決める(状態)。
 
 ### ユーザーと権限
@@ -72,6 +76,7 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 
 ## 確認が要る事項
 
+- Hermes の管理画面のログイン(OIDC)が有効になっていること。プロキシは認証を掛けないため、管理画面が認証なしで動くと、`hermes.<lab_domain>` から LAN にそのまま出る。
 - Debian のパッケージの Docker(26 系)で、Hermes の隔離環境が動くか。動かなければ、Docker の公式のリポジトリから入れる。
 - cloud イメージのカーネルで ZRAM が動くか。`vm` ロールが、swap が有効になったことを確かめる。
 - 決めたメモリで足りるか。導入して使ったあとの使用量を見る。
@@ -82,7 +87,6 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 - インフラ(このリポジトリ、Proxmox、k3s)を操作させる組織を作るか。
 - VM が動いていることの監視(Hermes 同士の監視とは別に、インフラの側で持つか)。
 - LLM の接続先(LiteLLM の `hermes_llm`。[k3s.md](k3s.md))と、組織ごとに仮想キーと予算を分けるか。VM に置いた鍵は、その組織が自由に使えるものとして扱うことになる(共通の鍵を置くと、全組織に同じ鍵を渡すことになる)。
-- 管理画面の公開(`k3s_lan_proxy`)と、Authentik の SSO。
 - OS のパッケージの更新。VM を作り直さないため、更新の方法(自動更新か、playbook か)を決める。
 - Hermes の状態の保護。PBS をつなぐまでの、スナップショットの取り方。
 - Hermes の VLAN と、ほかの VLAN・インターネットとの間の通信の制限([network.md](network.md) の未決)。

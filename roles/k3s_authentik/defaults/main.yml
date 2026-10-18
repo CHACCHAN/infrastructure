@@ -24,6 +24,11 @@ authentik_oidc_clients:
     slug: litellm
     redirect_uris:
       - "https://{{ litellm_host }}/sso/callback"
+  # Hermes Agent の受付(hermes01)の管理画面。コールバックのパスは Hermes 側で決まるため、ホストの中だけを許可する
+  - name: Hermes
+    slug: hermes
+    redirect_uris: []
+    redirect_uri_regex: "^https://{{ hermes_host | regex_escape }}/.*$"
 # 認証プロキシ(forward auth)で守るアプリケーション。自前のログインを持たない画面を、Traefik のミドルウェア(authentik_forward_auth_middleware)で守る
 authentik_proxy_apps:
   - name: Longhorn
