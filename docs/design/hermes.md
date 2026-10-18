@@ -17,7 +17,7 @@ Hermes Agent の VM(`vm_hermes`)の設計。ネットワークは [network.md](n
 
 - 役割ごとに決める。値はインベントリ(`inventory/group_vars/hermes.yml` が既定、`inventory/hosts/13_hermes.yml` が差分)。
   - 既定は、ブラウザ(Chromium)を使う組織(本社・ライン子会社・ディスコード子会社・秘書会社)に合わせる。
-  - 受付は、依頼を通すだけなので小さくし、ブラウザも入れない。
+  - 受付は、依頼を通すだけなので小さくする。
   - 社内サービス会社は、Android エミュレータを動かすため大きくする。`hermes` を `kvm` グループに入れ、VM の中の KVM を使わせる。
 - メモリの合計は、pve02 で k3s02 と Proxmox 本体が使う残り(約17GiB)から、本体の分を残した約15GiB に収める。VM ごとの QEMU の分も要るため、すべてが動いたときの残りは1〜2GiB で、pve02 のメモリの使用量を見る。足りない分は ZRAM で補い、実際に使ってから見直す。Hermes の設計のプロジェクトから、足りないと伝えられたときも見直す。
 - CPU の種類は `host`。VM の中で KVM(Android エミュレータなど)を使うため。CPU の違うノードへは移せないが、Hermes の VM は pve02 に置くと決めていて、VLAN13 のブリッジも pve02 にしかないため、移さない。
@@ -38,6 +38,7 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 - Hermes の版は固定しない。導入した時点の最新が入り、そのあとは Hermes が自分で更新する。Ansible は、版を引き戻さない。[conventions.md](../conventions.md) の「バージョン管理」の例外。インストーラも版を固定できないため、チェックサムは照合せず、HTTPS で取得したものをそのまま実行する。
 - 導入済みの Hermes が動くかどうかは、Ansible では確かめない(入れた直後だけ確かめる)。自己更新で壊れても、playbook は失敗しない。
 - モデル、チャネル、常駐、管理画面の設定は、Ansible では行わない。Hermes の側で設定する。
+- ブラウザの自動操作(Chromium)と Computer Use は、導入のときには入れない(`hermes_skip_browser`・`hermes_skip_computer_use`)。使うかどうかと導入は Hermes が決める(状態)。
 
 ### ユーザーと権限
 
@@ -66,16 +67,14 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 
 - `hermes` に、`pve_vm_ssh_pubkeys` の公開鍵を登録する(Hermes の初期設定を、このユーザーのログインで行うため)。登録は `hermes` 自身の権限で行う。Hermes は、自分で鍵を足せる。消した鍵は、次に playbook を流すと戻る。
 - ZRAM の swap の大きさは、メモリの 50%、圧縮は zstd。
-- Computer Use は入れない(画面を持たない VM のため。`hermes_skip_computer_use`)。
 
 ## 確認が要る事項
 
 - Debian のパッケージの Docker(26 系)で、Hermes の隔離環境が動くか。動かなければ、Docker の公式のリポジトリから入れる。
 - cloud イメージのカーネルで ZRAM が動くか。`vm` ロールが、swap が有効になったことを確かめる。
 - pve02 で入れ子の仮想化が有効か(`/sys/module/kvm_amd/parameters/nested` が `1`)と、hermes06 の中に `/dev/kvm` があるか(cloud イメージのカーネルが KVM のモジュールを持つか)。無いと、Android エミュレータが遅いか動かない。カーネルに無ければ、hermes06 には通常のカーネル(`linux-image-amd64`)を入れる。
-- sudo を持たない `hermes` のまま、インストーラがブラウザ(Chromium)を入れられるか。OS のパッケージ(Chromium が使う共有ライブラリ)が要るときは、`hermes_packages` に足す。初めは1台で試す([playbooks/vm/README.md](../../playbooks/vm/README.md))。
 - 決めたメモリで足りるか。導入して使ったあとの使用量を見る。
-- Hermes が OS のパッケージを要求したとき(新しい版が要求する場合を含む)。再現できるよう、`hermes_packages` に足して playbook を流す(Hermes が Docker を通して自分で入れたものは、Ansible からは再現されない)。
+- Hermes が OS のパッケージを要求したとき(新しい版が要求する場合や、ブラウザが使う共有ライブラリを含む)。再現できるよう、`hermes_packages` に足して playbook を流す(Hermes が Docker を通して自分で入れたものは、Ansible からは再現されない)。
 
 ## 未決
 

@@ -12,7 +12,6 @@ hermes:
       pve_vm_cores: 2
       pve_vm_memory: 1024
       pve_vm_disk_size: 32
-      hermes_skip_browser: true
     hermes02:
       id: 2
       node: pve02
