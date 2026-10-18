@@ -12,8 +12,9 @@
 | 10 | `172.16.10.0/24` | Proxmox ノード |
 | 11 | `172.16.11.0/24` | Private(開発専用機など) |
 | 12 | `172.16.12.0/24` | k3s ノード |
+| 13 | `172.16.13.0/24` | Hermes Agent(AI専用) |
 
-基幹システム(物理PBS、TrueNAS)と Hermes Agent(AI専用)の VLAN は、まだ割り当てていない(未決)。
+基幹システム(物理PBS、TrueNAS)の VLAN は、まだ割り当てていない(未決)。
 
 ### ID・VMID・IP
 
@@ -76,7 +77,7 @@ IP   = 172.16.<VLAN>.<ID>
 ## 未決
 
 - NIC2側の分割。クラスタ/バックアップ用と、ストレージ用に VLAN を分けるか(VLAN 番号も未決)。k3s ノードは NIC2 に載せない([k3s.md](k3s.md))。
-- 基幹システム(PBS・TrueNAS)と Hermes Agent の VLAN 番号。
+- 基幹システム(PBS・TrueNAS)の VLAN 番号。
 - タグなしの `172.16.5.0/24` の用途。自宅LAN(以前は `192.168.68.0/24`)がどこにあるか。
 - OPNsense での VPN と DDNS の構成。
 - VLAN間のFWポリシー(特にHermes帯域の隔離、ラボから自宅LANへの通信の遮断)。OPNsense のルールで行う。

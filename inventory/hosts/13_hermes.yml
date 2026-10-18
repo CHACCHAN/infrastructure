@@ -1,0 +1,6 @@
+# VLAN13 172.16.13.0/24: Hermes Agent(AI専用)。組織の数と VM のサイズは未決(docs/design/hermes.md)
+---
+hermes:
+  vars:
+    vlan: 13
+  hosts: {}

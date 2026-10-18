@@ -9,7 +9,7 @@ The rules and the VLAN table are in [docs/design/network.md](../../../docs/desig
 
 ## Rules in brief
 
-- VLANs: 10 Proxmox nodes · 11 Private · 12 k3s. Core (PBS, TrueNAS) and Hermes Agent have no VLAN yet (undecided); ask the owner before adding hosts there.
+- VLANs: 10 Proxmox nodes · 11 Private · 12 k3s · 13 Hermes Agent. Core (PBS, TrueNAS) has no VLAN yet (undecided); ask the owner before adding hosts there.
 - `VMID = VLAN × 100 + ID`, `IP = 172.16.<VLAN>.<ID>`, gateway `172.16.<VLAN>.254`; ID is an integer 1–99, unique within the VLAN across physical and virtual hosts. Write it without leading zeros in YAML (`08` is read as a string, `010` as octal).
 - Reserved IDs are listed in docs/design/network.md (for example VLAN12 `5` and `6`, the VIPs). Never assign them.
 - A host belongs to the VLAN of its primary NIC. A second NIC on another network does not change the VMID.
