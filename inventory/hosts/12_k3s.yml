@@ -7,11 +7,14 @@ k3s:
     k3s01:
       id: 1
       node: pve01
+      # 重いワークロードを寄せるノード(docs/design/hardware.md)
+      heavy_workloads: true
       # qemu-guest-agent が入っている VM だけ有効にする(docs/design/pve.md)
       pve_vm_agent: 1
     k3s02:
       id: 2
       node: pve02
+      heavy_workloads: true
       pve_vm_agent: 1
     k3s03:
       id: 3

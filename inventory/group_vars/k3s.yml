@@ -33,3 +33,35 @@ cloudflared_hosts:
   - "{{ openwebui_host }}"
 # OpenWebUI の緊急用の管理者(ログイン名。SSO のユーザーのメールアドレスと重ねない。パスワードは vault/openwebui.yml)
 openwebui_admin_email: "admin@{{ lab_domain }}"
+# 重いワークロード(PostgreSQL・Open WebUI・Authentik・LiteLLM)を、heavy_workloads のノードへ寄せる。寄せるだけで、そのノードが止まればほかのノードでも動く(docs/design/hardware.md)
+heavy_workload_nodes: >-
+  {{ groups['k3s'] | map('extract', hostvars) | selectattr('heavy_workloads', 'defined')
+     | selectattr('heavy_workloads') | map(attribute='inventory_hostname') | list }}
+heavy_workload_node_affinity:
+  preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      preference:
+        matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values: "{{ heavy_workload_nodes }}"
+postgresql_values:
+  cluster:
+    affinity:
+      nodeAffinity: "{{ heavy_workload_node_affinity }}"
+openwebui_values:
+  affinity:
+    nodeAffinity: "{{ heavy_workload_node_affinity }}"
+litellm_values:
+  affinity:
+    nodeAffinity: "{{ heavy_workload_node_affinity }}"
+# Authentik のチャートは、サーバーとワーカーへ共通のノードの条件を渡す(soft が preferred)
+authentik_values:
+  global:
+    affinity:
+      nodeAffinity:
+        type: soft
+        matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values: "{{ heavy_workload_nodes }}"
