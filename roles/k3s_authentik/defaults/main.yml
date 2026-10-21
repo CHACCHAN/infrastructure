@@ -29,6 +29,11 @@ authentik_oidc_clients:
     slug: hermes
     redirect_uris: []
     redirect_uri_regex: "^https://{{ hermes_host | regex_escape }}/.*$"
+  # ルータ(OPNsense)の管理画面。パスの末尾は、OPNsense の OIDC の設定の Application code(authentik)
+  - name: OPNsense
+    slug: opnsense
+    redirect_uris:
+      - "https://{{ opnsense_host }}/api/oidc/rp/finalize/authentik"
 # 認証プロキシ(forward auth)で守るアプリケーション。自前のログインを持たない画面を、Traefik のミドルウェア(authentik_forward_auth_middleware)で守る
 authentik_proxy_apps:
   - name: Longhorn

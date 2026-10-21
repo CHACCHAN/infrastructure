@@ -131,7 +131,7 @@ kubectl・Ansible
   - Cloudflare の API トークンは、対象ゾーンの DNS の編集とゾーンの読み取り(cert-manager がゾーンの ID を引くため)だけを許可する。`vault/cloudflare.yml` に置く。ACME の連絡先メールアドレスはインベントリに宣言する(`cert_manager_acme_email`)。
 - Longhorn: 複製数は、ノードが1台の間は1、2台以上なら2(CSI・マネージャーの Pod の数は、ノードの数)。ノード停止時の Pod 削除ポリシーと、同時リビルド数の制限(1)を設定する。管理 UI は認証を持たないため、Authentik の認証プロキシを通して公開する(`longhorn`)。
 - PostgreSQL: メジャーバージョン17、pgvector を含む CloudNativePG の `standard` イメージ。1インスタンス。アプリごとに DB とロールを宣言で作り、パスワードは `vault/postgresql.yml` に置く。スーパーユーザーのアクセスは無効にする。
-- 公開ホスト名は `<名前>.<lab_domain>` で、インベントリ(`inventory/group_vars/k3s.yml`)に宣言する(`auth`・`homarr`・`ai`・`litellm`・`longhorn`・`hermes`)。TLS は Traefik で終端し、Ingress は Traefik の既定の証明書を使う。
+- 公開ホスト名は `<名前>.<lab_domain>` で、インベントリ(`inventory/group_vars/k3s.yml`)に宣言する(`auth`・`homarr`・`ai`・`litellm`・`longhorn`・`hermes`・`opnsense`)。TLS は Traefik で終端し、Ingress は Traefik の既定の証明書を使う。
 - アプリの秘密情報は `vault/<アプリ名>.yml` に置く(DB のパスワードは `vault/postgresql.yml`)。
 - ログインは、すべてのアプリで Authentik の SSO(OIDC)にする(Homarr・OpenWebUI・LiteLLM)。Ansible が管理するのは、OIDC の接続(Authentik の OIDC クライアントと、各アプリの接続先)まで。グループの作成、グループの所属、アプリケーションを使えるグループの結びつけ、Authentik の管理者権限は、Authentik の画面で設定する(状態)。例外は、認証プロキシで守る画面を使えるグループだけ(後述)。権限はグループに付け、ユーザーには直接付けない。アプリは、Authentik が渡すグループ(`groups`)を見て権限を決める。
 - Ansible が持つアカウントは、緊急用のユーザーだけにする。緊急用のパスワードは機械的に作った値をそのまま使う(人が決めるパスワードより強いため)。普段使うユーザーと、グループの所属は状態で、Authentik の画面で決める。MFA を登録していないユーザーには、ログインの途中で登録させる。
@@ -158,7 +158,8 @@ kubectl・Ansible
   - 宛先の証明書は検証しない(Proxmox の証明書が自己署名のため)。
   - 認証プロキシは掛けない(自前のログインを持つため)。Cloudflare Tunnel には載せない。
   - TrueNAS と PBS は、接続したときに足す([network.md](network.md) の移行)。
-  - Proxmox 以外の宛先は、インベントリの `lan_proxy_extra_services` に宣言する。現在は Hermes Agent の受付の管理画面(`hermes.<lab_domain>`。[hermes.md](hermes.md))。
+  - Proxmox 以外の宛先は、インベントリの `lan_proxy_extra_services` に宣言する。現在は Hermes Agent の受付の管理画面(`hermes.<lab_domain>`。[hermes.md](hermes.md))と、ルータ(OPNsense)の管理画面(`opnsense.<lab_domain>` → `172.16.5.254:443`。宛先の証明書は検証しない)。
+  - OPNsense の管理画面のログインは、OPNsense 側の OIDC で、Authentik に OIDC クライアント `opnsense` を置く(シークレットは `vault/opnsense.yml`)。OPNsense の OIDC の設定の Application code は `authentik` にする(コールバックのパス `/api/oidc/rp/finalize/<Application code>` を、Authentik で完全一致で許可するため)。OPNsense 側の設定は、OPNsense の画面で行う(状態)。
 - 公開ホスト名の DNS は、`*.<lab_domain>` を Ingress の VIP(`172.16.12.5`)へ向ける(Cloudflare の画面で管理する)。
 - クラスタ内から公開ホスト名を引くと、Traefik の Service を返す(CoreDNS の `coredns-custom`)。Pod から Authentik への OIDC の通信が、外の DNS([network.md](network.md) の名前解決)に頼らないようにする。
 - Homarr と OpenWebUI はボリュームを持たず、データを PostgreSQL に置く。LLM への接続は OpenWebUI の管理画面で登録する。SSO でのアカウント作成(`ENABLE_OAUTH_SIGNUP`)とメールでの統合(`OAUTH_MERGE_ACCOUNTS_BY_EMAIL`)を有効にする。Authentik では、ユーザーが自分でメールアドレスを変えられないようにする。

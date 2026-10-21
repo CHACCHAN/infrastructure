@@ -71,7 +71,7 @@ IP   = 172.16.<VLAN>.<ID>
 ### リモートアクセス・公開
 
 - リモートアクセスは `cloudflared` を使う。
-- 管理UI(Proxmox・PBS・TrueNAS)は LAN 内だけで使う。Cloudflare Tunnel には載せない。
+- 管理UI(Proxmox・PBS・TrueNAS・OPNsense)は LAN 内だけで使う。Cloudflare Tunnel には載せない。
 - k3s のクラスタ内アプリのうち、Authentik・Homarr・OpenWebUI を Cloudflare Tunnel で公開する。LiteLLM と Longhorn の管理 UI は載せない。詳細と未決は [k3s.md](k3s.md)。
 
 ## 未決

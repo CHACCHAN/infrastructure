@@ -21,6 +21,7 @@ openwebui_host: "ai.{{ lab_domain }}"
 litellm_host: "litellm.{{ lab_domain }}"
 longhorn_host: "longhorn.{{ lab_domain }}"
 hermes_host: "hermes.{{ lab_domain }}"
+opnsense_host: "opnsense.{{ lab_domain }}"
 # クラスタ内から Traefik へ向ける公開ホスト名(Pod からの OIDC の通信などが、外の DNS に頼らないようにする)
 k3s_ingress_hosts:
   - "{{ authentik_host }}"
@@ -74,3 +75,10 @@ lan_proxy_extra_services:
     address: "{{ hostvars['hermes01'].ansible_host }}"
     port: 9119
     scheme: http
+  # ルータ(OPNsense)の管理画面。ルータはインベントリに無いため、IP を直接書く。ログインは OPNsense 側の OIDC(Authentik のクライアント opnsense)
+  - name: opnsense
+    host: "{{ opnsense_host }}"
+    address: 172.16.5.254
+    port: 443
+    scheme: https
+    insecure_skip_verify: true

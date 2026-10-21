@@ -16,6 +16,7 @@ Ansible Vault で暗号化した秘密情報。規則は [docs/conventions.md](.
 | `openwebui.yml` | `vault_openwebui_oidc_client_secret`、`vault_openwebui_secret_key`、`vault_openwebui_admin_password`(緊急用の管理者) | `playbooks/k3s/openwebui.yml`、`authentik.yml` |
 | `litellm.yml` | `vault_litellm_master_key`(API の鍵)、`vault_litellm_salt_key`(DB に保存する認証情報の暗号化キー)、`vault_litellm_oidc_client_secret`、`vault_litellm_ui_password`(緊急用の `admin`)、`vault_litellm_provider_keys`(プロバイダーの API キーの辞書) | `playbooks/k3s/litellm.yml`、`authentik.yml` |
 | `hermes.yml` | `vault_hermes_oidc_client_secret`(Hermes の管理画面の OIDC クライアントのシークレット。Hermes 側の設定にも同じ値を入れる) | `playbooks/k3s/authentik.yml` |
+| `opnsense.yml` | `vault_opnsense_oidc_client_secret`(OPNsense の管理画面の OIDC クライアントのシークレット。OPNsense 側の設定にも同じ値を入れる) | `playbooks/k3s/authentik.yml` |
 | `ssh.yml` | `vault_ssh_private_key`(ラボ専用の SSH 秘密鍵。対の公開鍵は `inventory/group_vars/all/ssh.yml`) | `playbooks/vm/`、`playbooks/utils/k3s_token.yml` |
 
 ファイル名はサービス名、変数名は `vault_<サービス>_<用途>`。
