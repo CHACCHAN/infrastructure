@@ -33,7 +33,7 @@ authentik_oidc_clients:
   - name: OPNsense
     slug: opnsense
     redirect_uris:
-      - "https://{{ opnsense_host }}/api/oidc/rp/finalize/authentik"
+      - "https://{{ opnsense_host }}/api/openidconnect/auth/callback/authentik"
 # 認証プロキシ(forward auth)で守るアプリケーション。自前のログインを持たない画面を、Traefik のミドルウェア(authentik_forward_auth_middleware)で守る
 authentik_proxy_apps:
   - name: Longhorn

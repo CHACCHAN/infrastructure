@@ -159,7 +159,7 @@ kubectl・Ansible
   - 認証プロキシは掛けない(自前のログインを持つため)。Cloudflare Tunnel には載せない。
   - TrueNAS と PBS は、接続したときに足す([network.md](network.md) の移行)。
   - Proxmox 以外の宛先は、インベントリの `lan_proxy_extra_services` に宣言する。現在は Hermes Agent の受付の管理画面(`hermes.<lab_domain>`。[hermes.md](hermes.md))と、ルータ(OPNsense)の管理画面(`opnsense.<lab_domain>` → `172.16.5.254:443`。宛先の証明書は検証しない)。
-  - OPNsense の管理画面のログインは、OPNsense 側の OIDC で、Authentik に OIDC クライアント `opnsense` を置く(シークレットは `vault/opnsense.yml`)。OPNsense の OIDC の設定の Application code は `authentik` にする(コールバックのパス `/api/oidc/rp/finalize/<Application code>` を、Authentik で完全一致で許可するため)。OPNsense 側の設定は、OPNsense の画面で行う(状態)。
+  - OPNsense の管理画面のログインは、OPNsense 側の OIDC で、Authentik に OIDC クライアント `opnsense` を置く(シークレットは `vault/opnsense.yml`)。OPNsense の OIDC の設定の Application code は `authentik` にする(コールバックのパス `/api/openidconnect/auth/callback/<Application code>` を、Authentik で完全一致で許可するため)。OPNsense 側の設定は、OPNsense の画面で行う(状態)。
 - 公開ホスト名の DNS は、`*.<lab_domain>` を Ingress の VIP(`172.16.12.5`)へ向ける(Cloudflare の画面で管理する)。
 - クラスタ内から公開ホスト名を引くと、Traefik の Service を返す(CoreDNS の `coredns-custom`)。Pod から Authentik への OIDC の通信が、外の DNS([network.md](network.md) の名前解決)に頼らないようにする。
 - Homarr と OpenWebUI はボリュームを持たず、データを PostgreSQL に置く。LLM への接続は OpenWebUI の管理画面で登録する。SSO でのアカウント作成(`ENABLE_OAUTH_SIGNUP`)とメールでの統合(`OAUTH_MERGE_ACCOUNTS_BY_EMAIL`)を有効にする。Authentik では、ユーザーが自分でメールアドレスを変えられないようにする。
