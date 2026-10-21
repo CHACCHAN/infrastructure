@@ -1,0 +1,33 @@
+---
+- name: 管理画面に掛けるミドルウェアがあることを確認する
+  ansible.builtin.assert:
+    that: cliproxy_ingress_middleware is match('.+@kubernetescrd$')
+    fail_msg: "管理画面のログインは共有の管理キーだけのため、cliproxy_ingress_middleware には認証プロキシのミドルウェア(<namespace>-<名前>@kubernetescrd)を渡す"
+    quiet: true
+
+# API キーが空だと、API のパスを誰でも使える。初期値は DB に残り、Ansible は上書きしない
+- name: API キーの初期値があることを確認する
+  ansible.builtin.assert:
+    that:
+      - cliproxy_api_keys | length > 0
+      - cliproxy_api_keys | select('match', '^\\S{20,}$') | list | length == cliproxy_api_keys | length
+    fail_msg: "cliproxy_api_keys には、空白を含まない20文字以上の鍵を1つ以上渡す"
+    quiet: true
+  no_log: true
+
+- name: CLIProxyAPI を適用する
+  ansible.builtin.include_role:
+    name: k3s
+  vars:
+    helm_release_name: "{{ cliproxy_release_name }}"
+    helm_namespace: "{{ cliproxy_namespace }}"
+    helm_secrets: "{{ __cliproxy_secrets }}"
+    helm_manifests: "{{ __cliproxy_manifests }}"
+    # API のパス(cliproxy_api_paths)以外を、認証プロキシを通す
+    helm_ingress:
+      host: "{{ cliproxy_host }}"
+      service_port: "{{ cliproxy_port }}"
+      middlewares:
+        - "{{ cliproxy_ingress_middleware }}"
+    helm_network_policy: true
+    helm_network_policy_from: "{{ cliproxy_client_namespaces }}"

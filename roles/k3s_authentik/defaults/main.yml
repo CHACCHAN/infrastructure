@@ -39,11 +39,15 @@ authentik_oidc_clients:
     slug: proxmox
     redirect_uris: []
     redirect_uri_regex: "^https://({{ groups['pve'] | default([]) | map('regex_escape') | join('|') }})\\.{{ lab_domain | regex_escape }}/?$"
-# 認証プロキシ(forward auth)で守るアプリケーション。自前のログインを持たない画面を、Traefik のミドルウェア(authentik_forward_auth_middleware)で守る
+# 認証プロキシ(forward auth)で守るアプリケーション。自前のログインを持たない画面(と、ログインが共有の鍵だけの画面)を、Traefik のミドルウェア(authentik_forward_auth_middleware)で守る
 authentik_proxy_apps:
   - name: Longhorn
     slug: longhorn
     host: "{{ longhorn_host }}"
+  # CLIProxyAPI の管理画面と管理 API(ログインが共有の管理キーだけのため)。API のパスには掛けない(roles/k3s_cliproxy)
+  - name: CLIProxyAPI
+    slug: cliproxy
+    host: "{{ cliproxy_host }}"
 # 認証プロキシで守る画面を使える Authentik のグループ(グループ自体と所属は、Authentik の画面で作る)
 authentik_proxy_access_group: admins
 # 認証プロキシのミドルウェアの名前。Ingress からは <namespace>-<名前>@kubernetescrd で参照する

@@ -1,0 +1,134 @@
+# CLIProxyAPI のマニフェスト。チャートが無いため、k3s ロールへマニフェストとして渡す。
+---
+# 設定の初期値。DB が空のときだけ使われ、以降は管理画面で変えた内容が DB に残る(Ansible は上書きしない)
+__cliproxy_seed_config:
+  config-version: 8
+  server:
+    port: "{{ cliproxy_port | int }}"
+    trusted-proxies: "{{ cliproxy_trusted_proxies }}"
+  access:
+    api-keys: "{{ cliproxy_api_keys }}"
+__cliproxy_env_data:
+  PGSTORE_DSN: >-
+    {{ ('postgresql://' ~ cliproxy_db_user ~ ':' ~ (cliproxy_db_password | urlencode | replace('/', '%2F')) ~ '@'
+        ~ cliproxy_db_host ~ ':5432/' ~ cliproxy_db_name ~ '?sslmode=require') | b64encode }}
+  MANAGEMENT_PASSWORD: "{{ cliproxy_management_password | b64encode }}"
+__cliproxy_secrets:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: cliproxy-env
+      namespace: "{{ cliproxy_namespace }}"
+    data: "{{ __cliproxy_env_data }}"
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: cliproxy-seed
+      namespace: "{{ cliproxy_namespace }}"
+    data:
+      config.yaml: "{{ __cliproxy_seed_config | to_nice_yaml | b64encode }}"
+__cliproxy_labels:
+  app.kubernetes.io/name: cliproxy
+__cliproxy_manifests:
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: "{{ cliproxy_release_name }}"
+      namespace: "{{ cliproxy_namespace }}"
+    spec:
+      # 設定と認証情報を DB と作業用のディレクトリで持つため、同時に動かすのは1つだけにする
+      replicas: 1
+      strategy:
+        type: Recreate
+      selector:
+        matchLabels: "{{ __cliproxy_labels }}"
+      template:
+        metadata:
+          labels: "{{ __cliproxy_labels }}"
+          annotations:
+            # 管理画面のパスワードや DB の接続先が変わったら、Pod を作り直す
+            checksum/env: "{{ __cliproxy_env_data | to_json | hash('sha256') }}"
+        spec:
+          containers:
+            - name: cliproxy
+              image: "{{ cliproxy_image }}:{{ cliproxy_version }}"
+              imagePullPolicy: IfNotPresent
+              envFrom:
+                - secretRef:
+                    name: cliproxy-env
+              env:
+                - name: TZ
+                  value: "{{ cliproxy_timezone }}"
+                # DB の内容を書き出す作業用のディレクトリ(管理画面のファイルも置く)
+                - name: WRITABLE_PATH
+                  value: /data
+              ports:
+                - name: http
+                  containerPort: "{{ cliproxy_port | int }}"
+              readinessProbe:
+                httpGet:
+                  path: /healthz
+                  port: http
+              livenessProbe:
+                httpGet:
+                  path: /healthz
+                  port: http
+                initialDelaySeconds: 30
+              resources: "{{ cliproxy_resources }}"
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                # DB が空のときに、イメージの設定例の代わりに使われる初期値
+                - name: seed
+                  mountPath: /CLIProxyAPI/config.example.yaml
+                  subPath: config.yaml
+                  readOnly: true
+          volumes:
+            - name: data
+              emptyDir:
+                medium: Memory
+                sizeLimit: "{{ cliproxy_spool_size }}"
+            - name: seed
+              secret:
+                secretName: cliproxy-seed
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: "{{ cliproxy_release_name }}"
+      namespace: "{{ cliproxy_namespace }}"
+    spec:
+      type: ClusterIP
+      selector: "{{ __cliproxy_labels }}"
+      ports:
+        - name: http
+          protocol: TCP
+          port: "{{ cliproxy_port | int }}"
+          targetPort: http
+  # API のパスは認証プロキシを通さない(クライアントは CLIProxyAPI の API キーで認証する)。パスが長い経路が優先されるため、残りのパスは認証プロキシを通る
+  - apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: "{{ cliproxy_release_name }}-api"
+      namespace: "{{ cliproxy_namespace }}"
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    spec:
+      ingressClassName: traefik
+      tls:
+        - hosts:
+            - "{{ cliproxy_host }}"
+      rules:
+        - host: "{{ cliproxy_host }}"
+          http:
+            paths: >-
+              {%- set out = [] -%}
+              {%- for path in cliproxy_api_paths -%}
+              {%- set _ = out.append({'path': path, 'pathType': 'Prefix',
+                    'backend': {'service': {'name': cliproxy_release_name, 'port': {'number': cliproxy_port | int}}}}) -%}
+              {%- endfor -%}
+              {{ out }}

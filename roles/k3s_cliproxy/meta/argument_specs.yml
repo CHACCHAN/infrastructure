@@ -1,0 +1,76 @@
+---
+argument_specs:
+  main:
+    short_description: CLIProxyAPI を k3s に置き、管理画面を Authentik の認証プロキシで守る
+    description:
+      - チャートが無いため、Deployment・Service・Ingress をマニフェストで置く。接続と適用は k3s ロール(helm_*)に任せる。
+      - 設定と認証情報は PostgreSQL に置く。設定の初期値は DB が空のときだけ使われ、以降は管理画面で変えた内容が残る。
+    options:
+      cliproxy_version:
+        type: str
+        description: "イメージのタグ"
+      cliproxy_image:
+        type: str
+        description: "イメージ(タグを除く)"
+      cliproxy_release_name:
+        type: str
+        description: "Deployment・Service・Ingress の名前"
+      cliproxy_namespace:
+        type: str
+        description: "リソースを置く namespace"
+      cliproxy_port:
+        type: int
+        description: "API と管理画面を受けるポート"
+      cliproxy_host:
+        type: str
+        required: true
+        description: "CLIProxyAPI の公開ホスト名(インベントリで宣言する)"
+      cliproxy_db_host:
+        type: str
+        description: "PostgreSQL のホスト"
+      cliproxy_db_name:
+        type: str
+        description: "DB 名"
+      cliproxy_db_user:
+        type: str
+        description: "DB のロール"
+      cliproxy_db_password:
+        type: str
+        required: true
+        no_log: true
+        description: "DB のパスワード(vault/postgresql.yml)"
+      cliproxy_management_password:
+        type: str
+        required: true
+        no_log: true
+        description: "管理画面と管理 API の管理キー(vault/cliproxy.yml)"
+      cliproxy_api_keys:
+        type: list
+        elements: str
+        required: true
+        no_log: true
+        description: "API のクライアントの鍵の初期値(vault/cliproxy.yml)。DB が空のときだけ使われ、以降は管理画面で管理する"
+      cliproxy_trusted_proxies:
+        type: list
+        elements: str
+        description: "転送ヘッダーを信頼する送信元(CIDR)の初期値"
+      cliproxy_api_paths:
+        type: list
+        elements: str
+        description: "認証プロキシを通さず、API キーだけで通すパス(前方一致)"
+      cliproxy_ingress_middleware:
+        type: str
+        description: "管理画面と管理 API に掛ける、認証プロキシのミドルウェア(<namespace>-<名前>@kubernetescrd)"
+      cliproxy_client_namespaces:
+        type: list
+        elements: str
+        description: "Traefik を通さず、クラスタ内の Service へ直接つなげる namespace"
+      cliproxy_timezone:
+        type: str
+        description: "コンテナのタイムゾーン"
+      cliproxy_spool_size:
+        type: str
+        description: "DB の内容を書き出す作業用のディレクトリ(メモリ上)の上限"
+      cliproxy_resources:
+        type: dict
+        description: "コンテナの resources"
