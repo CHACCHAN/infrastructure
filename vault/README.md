@@ -7,6 +7,7 @@ Ansible Vault で暗号化した秘密情報。規則は [docs/conventions.md](.
 | ファイル | 変数 | 使う playbook |
 | --- | --- | --- |
 | `proxmox.yml` | `vault_proxmox_token_id`(`user@realm!name` の形)、`vault_proxmox_token_secret` | `playbooks/pve/provision.yml` |
+| `proxmox_oidc.yml` | `vault_proxmox_oidc_client_secret`(Proxmox の OpenID のレルムの OIDC クライアントのシークレット。Proxmox 側の設定にも同じ値を入れる。API トークンを Authentik の playbook に渡さないよう、`proxmox.yml` と分ける) | `playbooks/k3s/authentik.yml` |
 | `k3s.yml` | `vault_k3s_api_token`(ServiceAccount のトークン)、`vault_k3s_ca_cert`(API の認証局の証明書)、`vault_k3s_cluster_token`(サーバーの参加に使うクラスタのトークン) | `playbooks/k3s/`(作成は `playbooks/utils/k3s_token.yml`)、`playbooks/utils/homarr_admin.yml`、`playbooks/vm/k3s.yml`(クラスタのトークンの作成は `playbooks/utils/k3s_cluster_token.yml`) |
 | `cloudflare.yml` | `vault_cloudflare_api_token`(対象ゾーンの DNS の編集とゾーンの読み取りだけを許可した API トークン) | `playbooks/k3s/cert_manager.yml` |
 | `cloudflared.yml` | `vault_cloudflared_tunnel_token`(Cloudflare の画面で作った Tunnel のトークン) | `playbooks/k3s/cloudflared.yml` |

@@ -34,6 +34,11 @@ authentik_oidc_clients:
     slug: opnsense
     redirect_uris:
       - "https://{{ opnsense_host }}/api/openidconnect/auth/callback/authentik"
+  # Proxmox の管理画面(OpenID のレルム)。Proxmox は、開いている画面の URL をそのままリダイレクト URI にするため、pve グループの各ノードの公開ホスト名だけを許可する
+  - name: Proxmox
+    slug: proxmox
+    redirect_uris: []
+    redirect_uri_regex: "^https://({{ groups['pve'] | default([]) | map('regex_escape') | join('|') }})\\.{{ lab_domain | regex_escape }}/?$"
 # 認証プロキシ(forward auth)で守るアプリケーション。自前のログインを持たない画面を、Traefik のミドルウェア(authentik_forward_auth_middleware)で守る
 authentik_proxy_apps:
   - name: Longhorn
