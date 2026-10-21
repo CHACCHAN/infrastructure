@@ -23,10 +23,11 @@ helm_no_log: false
 # 公開する Ingress(host、service_port、省略可の service_name と middlewares)。空なら作らない。TLS は Traefik の既定の証明書を使う
 # tunnel を true にすると、Traefik の Tunnel 専用の入口(外部からの通信)にも経路を作る。tunnel_deny_paths は、その入口でだけ通さないパス。tunnel を false にすると、経路を消す
 helm_ingress: {}
-# namespace の Pod が受ける通信を絞る NetworkPolicy を置く。通すのは、同じ namespace、Traefik(helm_ingress があるとき)、helm_network_policy_from の namespace だけ。false なら置かず、置いてあれば消す
+# namespace の Pod が受ける通信を絞る NetworkPolicy を置く。通すのは、同じ namespace、Traefik(helm_ingress があるとき)、helm_network_policies の namespace だけ。false なら置かず、置いてあれば消す
 helm_network_policy: false
-# 追加で通信を通す namespace
-helm_network_policy_from: []
+# NetworkPolicy を置く namespace と、追加で通信を通す namespace の表(namespace をキーにした辞書)。インベントリで宣言する。
+# helm_network_policy が true のロールは、自分の namespace がこの表に無ければ止まる
+helm_network_policies: {}
 # 絞る対象の Pod のラベル。空なら namespace のすべての Pod
 helm_network_policy_pod_labels: {}
 # 適用の前に、Ready のノードがこの数以上あることを確かめる。0 なら確かめない

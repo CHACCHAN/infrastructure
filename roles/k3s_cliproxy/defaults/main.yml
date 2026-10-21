@@ -16,17 +16,8 @@ cliproxy_db_user: cliproxy
 # k3s の既定の cluster-cidr に合わせている。vm_k3s で cluster-cidr を変えるときは、ここも変える(DB が空のときだけ使われる初期値)
 cliproxy_trusted_proxies:
   - 10.42.0.0/16
-# 認証プロキシを通さず、API キーだけで通すパス(文字列の前方一致のため、末尾を / で閉じる)。ほかのパス(管理画面・管理 API・OAuth のコールバック)には、認証プロキシを掛ける
-cliproxy_api_paths:
-  - /v1/
-  - /v1beta/
-  - /openai/
-  - /backend-api/
-# 管理画面と管理 API に掛ける、Authentik の認証プロキシのミドルウェア
+# 公開ホスト名のすべてのパスに掛ける、Authentik の認証プロキシのミドルウェア。API はクラスタ内の Service からだけ使う
 cliproxy_ingress_middleware: authentik-forward-auth@kubernetescrd
-# Traefik を通さず、クラスタ内の Service(cliproxy.<namespace>.svc)へ直接つなげる namespace
-cliproxy_client_namespaces:
-  - litellm
 cliproxy_timezone: Asia/Tokyo
 # DB の内容を書き出す作業用のディレクトリ(メモリ上。プロバイダーの認証情報をノードのディスクに残さない)の上限
 cliproxy_spool_size: 64Mi

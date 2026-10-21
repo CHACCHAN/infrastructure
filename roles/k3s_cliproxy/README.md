@@ -1,6 +1,6 @@
 # k3s_cliproxy
 
-CLIProxyAPI(Codex・Claude Code などの CLI の OAuth の認証情報を、OpenAI・Claude・Gemini 互換の API として出すプロキシ)を k3s に置く。管理画面(Management Center)は `https://<cliproxy_host>/management.html` で、Authentik の認証プロキシを通して LAN に公開する。設計は [docs/design/k3s.md](../../docs/design/k3s.md)。
+CLIProxyAPI(Codex・Claude Code などの CLI の OAuth の認証情報を、OpenAI・Claude・Gemini 互換の API として出すプロキシ)を k3s に置く。管理画面(Management Center)だけを、`https://<cliproxy_host>/management.html` で、Authentik の認証プロキシを通して LAN に公開する。API はクラスタ内からだけ使う。設計は [docs/design/k3s.md](../../docs/design/k3s.md)。
 
 ## 使い方
 
@@ -23,9 +23,10 @@ Authentik が使えないときは、k3s01 に SSH で入り、`sudo k3s kubectl
 
 ## API
 
-- クラスタ内からは `http://cliproxy.cliproxy.svc.cluster.local:8317/v1`(OpenAI 互換)を使う。Pod が受ける通信は、同じ namespace、Traefik、`cliproxy_client_namespaces`(既定は LiteLLM)に絞る。
-- LAN からは `https://<cliproxy_host>/v1` を使う。認証プロキシを通さないのは `cliproxy_api_paths` のパスだけで、ほかのパス(管理画面・管理 API・OAuth のコールバック)は認証プロキシを通る。
-- クライアントは、API キー(初期値は `vault_cliproxy_api_keys`)で認証する。初回の適用のあと、鍵なしの `https://<cliproxy_host>/v1/models` が 401 になることを確かめる。
+- API は、クラスタ内の Service(`http://cliproxy.cliproxy.svc.cluster.local:8317/v1`。OpenAI 互換)からだけ使う。LAN のクライアントは、LiteLLM を経由して使う。
+- 公開ホスト名(`<cliproxy_host>`)は、すべてのパスが認証プロキシを通る。外から使えるのは管理画面だけ。
+- Pod が受ける通信は、同じ namespace、Traefik、インベントリの `helm_network_policies` の `cliproxy` に挙げた namespace(LiteLLM)に絞る。
+- クライアントは、API キー(初期値は `vault_cliproxy_api_keys`)で認証する。
 
 ## 注意
 

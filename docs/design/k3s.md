@@ -144,7 +144,9 @@ kubectl・Ansible
   - Traefik のミドルウェア(`authentik` namespace の `forward-auth`)を、守る画面の Ingress に掛ける。ミドルウェアが無いとき、Traefik はその画面を通さない。
   - 使えるのは、グループ `admins` のメンバーだけ。これだけは、Authentik の画面ではなく Blueprint で宣言する(`authentik_proxy_access_group`)。守る画面は自分で権限を分けられず、入れた全員がすべての操作をできるため、結びつけを忘れても開かないようにする。グループ自体と所属は、Authentik の画面で作る。
 - アプリの Pod が受ける通信は、NetworkPolicy で絞る。通すのは、同じ namespace、Traefik、名前を挙げた namespace だけ(PostgreSQL は、オペレーターと DB を使うアプリ。LiteLLM は OpenWebUI。CLIProxyAPI は LiteLLM)。対象は `authentik`・`homarr`・`open-webui`・`litellm`・`cliproxy`・`postgresql`・`cloudflared` の namespace と、Longhorn の管理 UI の Pod(Longhorn 本体の API は、Longhorn のチャートが置く NetworkPolicy が、Longhorn の Pod だけに絞っている)。外向きの通信は絞らない(LLM の API、Google、Let's Encrypt などへ出るため)。クラスタの基盤(`kube-system`、MetalLB、cert-manager、CloudNativePG のオペレーター、Longhorn の本体)には掛けない。
-- 外部への公開は Cloudflare Tunnel で行う。公開するのは Authentik・Homarr・OpenWebUI。LiteLLM・CLIProxyAPI(プロバイダーの認証情報を持ち、API が課金や利用枠につながる)と Longhorn の管理 UI は公開せず、LAN と VPN から使う。
+  - NetworkPolicy を置く namespace と、追加で通す namespace は、インベントリ(`inventory/group_vars/k3s.yml`)の表 `helm_network_policies` に1か所で宣言する。各アプリのロールは、自分の namespace が表に無ければ止まる(宣言を忘れて NetworkPolicy が消えないため)。
+  - 送信元の IP による受け入れの制限(Traefik の許可リストなど)は、クラスタ内では設定しない。どこから届くかは、上流のルータ(OPNsense)で一律に管理する。
+- 外部への公開は Cloudflare Tunnel で行う。公開するのは Authentik・Homarr・OpenWebUI。LiteLLM・CLIProxyAPI(プロバイダーの認証情報を持ち、API が課金や利用枠につながる)と Longhorn の管理 UI は公開せず、LAN と VPN から使う(CLIProxyAPI は管理画面だけ。API はクラスタ内からだけ)。
   - 公開するホスト名は、インベントリ(`inventory/group_vars/k3s.yml`)の `cloudflared_hosts` に宣言する。ここに無いアプリは、LAN と VPN からだけ使う。
   - `cloudflared` を k3s で動かし、Traefik の Tunnel 専用の入口(クラスタ内だけで開く)につなぐ。公開するアプリだけを、この入口に載せる。LAN 用の入口(`172.16.12.5`)とは別にし、外から届く経路を入口で絞れるようにする。
   - Tunnel・経路表(ホスト名から向け先への対応)・DNS は、Cloudflare の画面で管理する(状態)。Ansible が持つのは、`cloudflared` のコネクタ(トークンは `vault/cloudflared.yml`)と、Traefik の Tunnel 専用の入口に載せるアプリ(`cloudflared_hosts`)。
@@ -167,7 +169,8 @@ kubectl・Ansible
 - Homarr の緊急用の管理者は、宣言できないため単発ツール(`playbooks/utils/homarr_admin.yml`)で作る。
 - LiteLLM は、チャートの PostgreSQL を使わず、共有の PostgreSQL に接続する。モデルとプロバイダーの認証情報は、管理画面で登録する(`store_model_in_db` を有効にする。OAuth を使うプロバイダーは宣言できないため)。登録した内容と仮想キーは DB に保存される状態で、バックアップの対象になる。認証情報は `LITELLM_SALT_KEY`(`vault/litellm.yml`)で暗号化される。Hermes Agent が使うモデルの名前は `hermes_llm` にする。
 - CLIProxyAPI(CLI の OAuth の認証情報を、OpenAI 互換などの API として出すプロキシ)は、`cliproxy.<lab_domain>` で LAN に公開する。
-  - 管理画面は OIDC を持たず、ログインは共有の管理キー(`vault/cliproxy.yml`)だけ。認証プロキシは、API のパス(`/v1`・`/v1beta` など。`cliproxy_api_paths`)以外のすべて(管理画面・管理 API・プロバイダーの OAuth のコールバック)に掛ける。認証プロキシを通ったあとも、管理キーを求められる。API のパスは、CLIProxyAPI の API キーだけで通す。
+  - 外から使えるのは管理画面だけ。API は、クラスタ内の Service からだけ使う(LiteLLM だけが使う。LAN のクライアントは LiteLLM を経由する)。
+  - 管理画面は OIDC を持たず、ログインは共有の管理キー(`vault/cliproxy.yml`)だけ。認証プロキシは、公開ホスト名のすべてのパスに掛ける。認証プロキシを通ったあとも、管理キーを求められる。
   - Authentik が使えないときは、k3s01 の上の `k3s kubectl port-forward` と SSH のポート転送で管理画面を使う(緊急用のユーザーの代わり)。
   - 設定とプロバイダーの認証情報は、共有の PostgreSQL に置く(公式の Postgres のストア)。Pod はボリュームを持たない。設定の初期値(API キーなど)は、DB が空のときだけ Ansible が渡し、以降は管理画面で変えた内容が DB に残る(状態)。
   - LiteLLM は、クラスタ内の Service へ直接つなぐ。

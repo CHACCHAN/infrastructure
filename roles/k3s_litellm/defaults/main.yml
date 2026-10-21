@@ -20,8 +20,5 @@ litellm_ui_username: admin
 litellm_models: []
 # モデルのプロバイダーの API キー。環境変数名をキーにした辞書(例: ANTHROPIC_API_KEY)
 litellm_provider_keys: {}
-# Traefik を通さず、クラスタ内の Service(litellm.<namespace>.svc)へ直接つなげる namespace
-litellm_client_namespaces:
-  - open-webui
 # Helm values の上書き(基本値へ再帰的に合成する)
 litellm_values: {}

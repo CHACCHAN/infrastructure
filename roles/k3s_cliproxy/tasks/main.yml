@@ -23,11 +23,10 @@
     helm_namespace: "{{ cliproxy_namespace }}"
     helm_secrets: "{{ __cliproxy_secrets }}"
     helm_manifests: "{{ __cliproxy_manifests }}"
-    # API のパス(cliproxy_api_paths)以外を、認証プロキシを通す
+    # 外から届くのは管理画面だけにする(すべてのパスが認証プロキシを通る)
     helm_ingress:
       host: "{{ cliproxy_host }}"
       service_port: "{{ cliproxy_port }}"
       middlewares:
         - "{{ cliproxy_ingress_middleware }}"
     helm_network_policy: true
-    helm_network_policy_from: "{{ cliproxy_client_namespaces }}"

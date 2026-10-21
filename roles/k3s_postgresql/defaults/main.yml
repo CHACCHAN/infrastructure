@@ -21,13 +21,5 @@ postgresql_databases:
       - vector
   - name: litellm
   - name: cliproxy
-# PostgreSQL へ接続できる namespace(オペレーターと、DB を使うアプリ)。ほかの namespace からの通信は通さない
-postgresql_client_namespaces:
-  - cnpg-system
-  - authentik
-  - homarr
-  - open-webui
-  - litellm
-  - cliproxy
 # Helm values の上書き(基本値へ再帰的に合成する)
 postgresql_values: {}

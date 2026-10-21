@@ -15,4 +15,3 @@
       service_name: litellm
       service_port: 4000
     helm_network_policy: true
-    helm_network_policy_from: "{{ litellm_client_namespaces }}"

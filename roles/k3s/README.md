@@ -23,7 +23,7 @@ values に秘密値を渡すアプリは、`helm_no_log: true` にする。
 
 ## 通信の制限
 
-`helm_network_policy: true` にすると、namespace の Pod が受ける通信を、同じ namespace、Traefik(`helm_ingress` があるとき)、`helm_network_policy_from` の namespace だけに絞る。外向きの通信は絞らない。ノード自身からの通信(kubelet のヘルスチェック)は、NetworkPolicy の対象にならない。
+`helm_network_policy: true` にすると、namespace の Pod が受ける通信を、同じ namespace、Traefik(`helm_ingress` があるとき)、インベントリの表 `helm_network_policies` でその namespace に挙げた namespace だけに絞る。表に namespace が無ければ止まる。外向きの通信は絞らない。ノード自身からの通信(kubelet のヘルスチェック)は、NetworkPolicy の対象にならない。
 
 `helm_ingress.tunnel: true` にすると、Traefik の Tunnel 専用の入口(`tunnel`。[k3s_metallb](../k3s_metallb/README.md) が作る)にも経路(`IngressRoute`)を作り、Cloudflare Tunnel を通る外部からの通信を受ける。`helm_ingress.tunnel_deny_paths` のパスは、この入口でだけ 404 にする(緊急用のパスワードのログインなど)。`tunnel` を false に戻すと、経路を消す。この経路にはミドルウェアが掛からないため、`middlewares` とは同時に指定できない。
 

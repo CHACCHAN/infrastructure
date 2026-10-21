@@ -83,3 +83,29 @@ lan_proxy_extra_services:
     port: 443
     scheme: https
     insecure_skip_verify: true
+# クラスタ内の通信の許可(NetworkPolicy。docs/design/k3s.md)。キーは NetworkPolicy を置く namespace、値は追加で通す namespace。
+# どの namespace の Pod も、同じ namespace と Traefik(Ingress があるとき)からは受ける。外向きの通信は絞らない(cloudflared を除く)。
+# 値の namespace は検証されないため、各ロールの *_namespace を変えるときは、ここも合わせる。
+# ここに無い namespace(kube-system・MetalLB・cert-manager・CloudNativePG のオペレーターなど)には置かない。送信元の IP では絞らない(ルータで一律に管理する)
+helm_network_policies:
+  authentik: []
+  homarr: []
+  open-webui: []
+  # OpenWebUI が、クラスタ内の Service で LiteLLM を使う
+  litellm:
+    - open-webui
+  # LiteLLM だけが、クラスタ内の Service で CLIProxyAPI を使う(CLIProxyAPI の API は外に出さない)
+  cliproxy:
+    - litellm
+  # オペレーターと、DB を使うアプリ
+  postgresql:
+    - cnpg-system
+    - authentik
+    - homarr
+    - open-webui
+    - litellm
+    - cliproxy
+  # Tunnel のコネクタ。外向きの通信も、ロール(k3s_cloudflared)で絞る
+  cloudflared: []
+  # Longhorn の管理 UI の Pod だけ(Longhorn 本体は、チャートの NetworkPolicy が絞る)
+  longhorn-system: []

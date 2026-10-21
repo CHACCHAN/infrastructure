@@ -77,10 +77,6 @@ argument_specs:
         type: dict
         no_log: true
         description: "プロバイダーの API キー(環境変数名をキーにした辞書。vault/litellm.yml)"
-      litellm_client_namespaces:
-        type: list
-        elements: str
-        description: "Traefik を通さず、クラスタ内の Service へ直接つなげる namespace"
       litellm_values:
         type: dict
         description: "LiteLLM の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"

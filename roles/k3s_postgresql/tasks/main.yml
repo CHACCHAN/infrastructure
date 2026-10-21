@@ -23,4 +23,3 @@
     helm_values: "{{ __postgresql_values | combine(postgresql_values, recursive=True) }}"
     helm_secrets: "{{ __postgresql_secrets }}"
     helm_network_policy: true
-    helm_network_policy_from: "{{ postgresql_client_namespaces }}"

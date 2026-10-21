@@ -14,7 +14,7 @@ PostgreSQL(CloudNativePG の `Cluster`)を Helm の `cluster` チャートで作
 
 アプリは `postgresql-rw.postgresql.svc.cluster.local:5432` に、DB 名と同名のロールで接続する。DB を足すときは、`postgresql_databases` に足して、vault にパスワードを足す。
 
-Pod が受ける通信は、`postgresql_client_namespaces`(オペレーターと、DB を使うアプリの namespace)に絞る(NetworkPolicy)。別の namespace のアプリが DB を使うときは、ここに足す。namespace の名前は、各ロールの `*_namespace` と別に書いてあるので、変えるときは合わせる(`k3s_litellm` の `litellm_client_namespaces`、`k3s_longhorn` の `longhorn_ingress_middleware` も同じ)。
+Pod が受ける通信は、インベントリの `helm_network_policies` の `postgresql` に挙げた namespace(オペレーターと、DB を使うアプリ)に絞る(NetworkPolicy)。別の namespace のアプリが DB を使うときは、ここに足す。namespace の名前は、各ロールの `*_namespace` と別に書いてあるので、変えるときは `helm_network_policies`(`inventory/group_vars/k3s.yml`)のキーと値も合わせる(`k3s_longhorn` の `longhorn_ingress_middleware` も同じ)。
 
 スーパーユーザーのアクセスは無効。バックアップは設定していない(NAS の構築後に設計する)。
 

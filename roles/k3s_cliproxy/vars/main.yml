@@ -109,26 +109,3 @@ __cliproxy_manifests:
           protocol: TCP
           port: "{{ cliproxy_port | int }}"
           targetPort: http
-  # API のパスは認証プロキシを通さない(クライアントは CLIProxyAPI の API キーで認証する)。パスが長い経路が優先されるため、残りのパスは認証プロキシを通る
-  - apiVersion: networking.k8s.io/v1
-    kind: Ingress
-    metadata:
-      name: "{{ cliproxy_release_name }}-api"
-      namespace: "{{ cliproxy_namespace }}"
-      annotations:
-        traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    spec:
-      ingressClassName: traefik
-      tls:
-        - hosts:
-            - "{{ cliproxy_host }}"
-      rules:
-        - host: "{{ cliproxy_host }}"
-          http:
-            paths: >-
-              {%- set out = [] -%}
-              {%- for path in cliproxy_api_paths -%}
-              {%- set _ = out.append({'path': path, 'pathType': 'Prefix',
-                    'backend': {'service': {'name': cliproxy_release_name, 'port': {'number': cliproxy_port | int}}}}) -%}
-              {%- endfor -%}
-              {{ out }}

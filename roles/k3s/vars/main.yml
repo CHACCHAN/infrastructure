@@ -70,7 +70,7 @@ __helm_network_policy_manifest:
     ingress:
       - from: >-
           {%- set peers = [{'podSelector': {}}] + ([__helm_traefik_peer] if helm_ingress | length > 0 else []) -%}
-          {%- for namespace in helm_network_policy_from -%}
+          {%- for namespace in helm_network_policies[helm_namespace] | default([], true) -%}
           {%- set _ = peers.append({'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': namespace}}}) -%}
           {%- endfor -%}
           {{ peers }}

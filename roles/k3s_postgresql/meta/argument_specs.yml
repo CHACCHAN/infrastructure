@@ -45,10 +45,6 @@ argument_specs:
         required: true
         no_log: true
         description: "ロール名ごとのパスワード(vault/postgresql.yml の vault_postgresql_passwords)"
-      postgresql_client_namespaces:
-        type: list
-        elements: str
-        description: "PostgreSQL へ接続できる namespace(オペレーターと、DB を使うアプリ)"
       postgresql_values:
         type: dict
         description: "PostgreSQL の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"

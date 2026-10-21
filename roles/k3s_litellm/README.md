@@ -14,7 +14,7 @@ LiteLLM Proxy(LLM API のゲートウェイ)を Helm で入れる。設計は [d
 
 - 管理画面は Authentik の SSO でログインする。グループ `litellm_admin_group`(既定は `admins`)のユーザーが管理者(`proxy_admin`)になる。管理画面を使えるユーザーを管理者だけに絞るのは、Authentik の画面で、LiteLLM のアプリケーションにそのグループを結びつけて行う。
 - 緊急用の管理者(`litellm_ui_username`、パスワードは `vault_litellm_ui_password`)は、`https://<litellm_host>/fallback/login` からパスワードでログインする。
-- Pod が受ける通信は、同じ namespace、Traefik、`litellm_client_namespaces`(既定は OpenWebUI の namespace)に絞る。OpenWebUI からは、クラスタ内の Service(`http://litellm.<namespace>.svc.cluster.local:4000`)へ直接つなげる。
+- Pod が受ける通信は、同じ namespace、Traefik、インベントリの `helm_network_policies` の `litellm` に挙げた namespace(OpenWebUI)に絞る。OpenWebUI からは、クラスタ内の Service(`http://litellm.<namespace>.svc.cluster.local:4000`)へ直接つなげる。
 - マスターキー(`vault_litellm_master_key`)は API の鍵で、管理画面のログインには使えない。
 - 管理画面で登録したモデル・認証情報・仮想キーは DB に保存される(状態で、Ansible では管理しない)。
 - 認証情報は `vault_litellm_salt_key` で暗号化される。モデルを登録したあとにこのキーを変えると、登録済みの認証情報が読めなくなる。

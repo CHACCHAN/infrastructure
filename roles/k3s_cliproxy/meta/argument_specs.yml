@@ -54,17 +54,9 @@ argument_specs:
         type: list
         elements: str
         description: "転送ヘッダーを信頼する送信元(CIDR)の初期値"
-      cliproxy_api_paths:
-        type: list
-        elements: str
-        description: "認証プロキシを通さず、API キーだけで通すパス(前方一致)"
       cliproxy_ingress_middleware:
         type: str
-        description: "管理画面と管理 API に掛ける、認証プロキシのミドルウェア(<namespace>-<名前>@kubernetescrd)"
-      cliproxy_client_namespaces:
-        type: list
-        elements: str
-        description: "Traefik を通さず、クラスタ内の Service へ直接つなげる namespace"
+        description: "公開ホスト名のすべてのパスに掛ける、認証プロキシのミドルウェア(<namespace>-<名前>@kubernetescrd)"
       cliproxy_timezone:
         type: str
         description: "コンテナのタイムゾーン"

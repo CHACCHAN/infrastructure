@@ -81,11 +81,10 @@ argument_specs:
             description: "Tunnel 専用の入口でだけ通さないパス(前方一致。大文字・小文字を区別しない)"
       helm_network_policy:
         type: bool
-        description: "Pod が受ける通信を絞る NetworkPolicy を置く(同じ namespace、Traefik、helm_network_policy_from だけを通す)。false なら消す"
-      helm_network_policy_from:
-        type: list
-        elements: str
-        description: "追加で通信を通す namespace"
+        description: "Pod が受ける通信を絞る NetworkPolicy を置く(同じ namespace、Traefik、helm_network_policies の namespace だけを通す)。false なら消す"
+      helm_network_policies:
+        type: dict
+        description: "NetworkPolicy を置く namespace と、追加で通信を通す namespace のリストの表(インベントリで宣言する)"
       helm_network_policy_pod_labels:
         type: dict
         description: "絞る対象の Pod のラベル。空なら namespace のすべての Pod"
