@@ -8,6 +8,9 @@ __cliproxy_seed_config:
     trusted-proxies: "{{ cliproxy_trusted_proxies }}"
   access:
     api-keys: "{{ cliproxy_api_keys }}"
+  # プラグインを使う(入れるのは、管理画面から公式ストアのもの)
+  plugins:
+    enabled: true
 __cliproxy_env_data:
   PGSTORE_DSN: >-
     {{ ('postgresql://' ~ cliproxy_db_user ~ ':' ~ (cliproxy_db_password | urlencode | replace('/', '%2F')) ~ '@'
@@ -30,13 +33,25 @@ __cliproxy_secrets:
 __cliproxy_labels:
   app.kubernetes.io/name: cliproxy
 __cliproxy_manifests:
+  # 入れたプラグインの置き場。PostgreSQL のストアはプラグインを保存しないため、ボリュームに置く
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: "{{ cliproxy_release_name }}-plugins"
+      namespace: "{{ cliproxy_namespace }}"
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: "{{ cliproxy_plugins_size }}"
   - apiVersion: apps/v1
     kind: Deployment
     metadata:
       name: "{{ cliproxy_release_name }}"
       namespace: "{{ cliproxy_namespace }}"
     spec:
-      # 設定と認証情報を DB と作業用のディレクトリで持つため、同時に動かすのは1つだけにする
+      # 設定と認証情報を DB と作業用のディレクトリで持ち、プラグインのボリュームは1つの Pod にしか付かないため、同時に動かすのは1つだけにする
       replicas: 1
       strategy:
         type: Recreate
@@ -83,6 +98,8 @@ __cliproxy_manifests:
               volumeMounts:
                 - name: data
                   mountPath: /data
+                - name: plugins
+                  mountPath: /CLIProxyAPI/plugins
                 # DB が空のときに、イメージの設定例の代わりに使われる初期値
                 - name: seed
                   mountPath: /CLIProxyAPI/config.example.yaml
@@ -96,6 +113,9 @@ __cliproxy_manifests:
             - name: seed
               secret:
                 secretName: cliproxy-seed
+            - name: plugins
+              persistentVolumeClaim:
+                claimName: "{{ cliproxy_release_name }}-plugins"
   - apiVersion: v1
     kind: Service
     metadata:

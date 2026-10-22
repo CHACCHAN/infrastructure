@@ -5,6 +5,7 @@ argument_specs:
     description:
       - チャートが無いため、Deployment・Service・Ingress をマニフェストで置く。接続と適用は k3s ロール(helm_*)に任せる。
       - 設定と認証情報は PostgreSQL に置く。設定の初期値は DB が空のときだけ使われ、以降は管理画面で変えた内容が残る。
+      - 入れたプラグインは、Longhorn のボリュームに置く。
     options:
       cliproxy_version:
         type: str
@@ -63,6 +64,9 @@ argument_specs:
       cliproxy_spool_size:
         type: str
         description: "DB の内容を書き出す作業用のディレクトリ(メモリ上)の上限"
+      cliproxy_plugins_size:
+        type: str
+        description: "プラグインの置き場のボリューム(Longhorn)の大きさ"
       cliproxy_resources:
         type: dict
         description: "コンテナの resources"

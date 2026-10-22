@@ -28,9 +28,15 @@ Authentik が使えないときは、k3s01 に SSH で入り、`sudo k3s kubectl
 - Pod が受ける通信は、同じ namespace、Traefik、インベントリの `helm_network_policies` の `cliproxy` に挙げた namespace(LiteLLM)に絞る。
 - クライアントは、API キー(初期値は `vault_cliproxy_api_keys`)で認証する。
 
+## プラグイン
+
+プラグインは有効にしてある(設定の初期値の `plugins.enabled`)。管理画面から、公式ストア(第三者の作者のものを含む)のプラグインを入れる。入れたプラグインは、Longhorn のボリューム(`cliproxy_plugins_size`)の `/CLIProxyAPI/plugins` に残る。どのプラグインを入れ、有効にするかは、DB の設定に残る(状態)。
+
+プラグインは CLIProxyAPI のプロセスの中で動き、プロバイダーの認証情報・管理キー・DB の接続先に触れられる。入れる前に、作者とリポジトリを確かめる。
+
 ## 注意
 
-- 設定と認証情報(プロバイダーの OAuth のトークン)は、PostgreSQL に保存される(状態)。Pod は、起動時に DB の内容を作業用のディレクトリへ書き出す。
+- 設定と認証情報(プロバイダーの OAuth のトークン)は、PostgreSQL に保存される(状態)。Pod は、起動時に DB の内容を作業用のディレクトリへ書き出す。入れたプラグインだけは、Longhorn のボリュームに置く(バックアップは無い)。
 - 設定の初期値(`vault_cliproxy_api_keys`、`cliproxy_trusted_proxies` など)は、DB が空のときだけ使われる。以降は、管理画面で変えた内容が残り、Ansible は上書きしない。vault の API キーを変えても、動いている設定には効かない(管理画面で変える)。
 - 管理画面のファイル(`management.html`)は、CLIProxyAPI が起動後に GitHub の最新のリリースから取得する。CLIProxyAPI は取得先を最新のリリースに固定しているため、バージョンを固定できない。
 - 作業用のディレクトリはメモリ上にあり(`cliproxy_spool_size`)、コンテナのメモリの上限に含まれる。

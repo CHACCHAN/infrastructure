@@ -19,6 +19,8 @@ cliproxy_trusted_proxies:
 # 公開ホスト名のすべてのパスに掛ける、Authentik の認証プロキシのミドルウェア。API はクラスタ内の Service からだけ使う
 cliproxy_ingress_middleware: authentik-forward-auth@kubernetescrd
 cliproxy_timezone: Asia/Tokyo
+# プラグイン(管理画面から公式ストアのものを入れる)の置き場のボリューム(Longhorn)の大きさ
+cliproxy_plugins_size: 1Gi
 # DB の内容を書き出す作業用のディレクトリ(メモリ上。プロバイダーの認証情報をノードのディスクに残さない)の上限
 cliproxy_spool_size: 64Mi
 cliproxy_resources:
