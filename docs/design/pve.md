@@ -24,7 +24,7 @@
 
 - VM 用の SSD(`ssd01`〜)は、通常の LVM(thick)にする。VM のディスクは作成時に容量をすべて確保するため、領域が足りなくなって VM のディスクが壊れることはない。`local-lvm` は、Proxmox の標準の LVM-thin のまま使う([hardware.md](hardware.md))。
 - SYS 以外の SSD(各ノードの ssd01〜)は、すべてVM用のストレージにする。
-- SSD ごとに別のストレージ(`ssd01`〜)にする。k3s の VM と、そのノードのテンプレートは `ssd01` に置く。開発VM は pve01 の `ssd02`、Hermes Agent の VM は pve02 の `ssd03` に置く。
+- SSD ごとに別のストレージ(`ssd01`〜)にする。k3s の VM と、そのノードのテンプレートは `ssd01` に置く。開発VM は pve01 の `ssd02`、Hermes Agent の VM は pve01・pve02 の `ssd03` に置く。
 
 ### VM の層
 
@@ -82,7 +82,7 @@ VM は層に分けて作る。Ansible が持つのは、器(テンプレート)�
 
 ## 未決
 
-- k3s・テンプレート(`ssd01`)、開発VM(pve01 の `ssd02`)、Hermes Agent(pve02 の `ssd03`)以外の SSD に置くもの(pve01 の `ssd03`、pve02 の `ssd02`、pve03 の `ssd02`)。
+- k3s・テンプレート(`ssd01`)、開発VM(pve01 の `ssd02`)、Hermes Agent(pve01・pve02 の `ssd03`)以外の SSD に置くもの(pve02 の `ssd02`、pve03 の `ssd02`)。
 - Proxmox の APT リポジトリ(no-subscription を使うか)。
 - API トークンの権限の範囲(権限の分離、ロールの割り当て)。
 - VM に渡す DNS サーバー([network.md](network.md) の名前解決の設計に依存する)。
