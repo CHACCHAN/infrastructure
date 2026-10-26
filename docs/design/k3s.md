@@ -191,7 +191,7 @@ kubectl・Ansible
   - データは Longhorn のボリューム1つ(Pod は1つ)に置く。初期の容量は 50Gi で、使用量が7割を超えたら広げる(Longhorn のボリュームは付けたまま広げられるが、縮められない)。ユーザーごとの容量の上限は、既定で 10GB にする(`default_quota`)。
   - メモリを多く使うため、`heavy_workloads` のノードに寄せる([hardware.md](hardware.md))。
   - 設定は、Nextcloud の既定のままにする。変えるのは、ほかの決定のために要るものだけ(以下)。
-  - ログインは、`user_oidc` で Authentik の SSO にする。Authentik の OIDC クライアント `nextcloud`(シークレットは `vault/nextcloud.yml`)と、Nextcloud 側の接続先は、Ansible で設定する。グループは、Authentik が渡すグループ(`groups`)を写す。管理者は Nextcloud の画面で付け、写す対象に含めない(ログインのたびに外されないため)。
+  - ログインは、`user_oidc` で Authentik の SSO にする。Authentik の OIDC クライアント `nextcloud`(シークレットは `vault/nextcloud.yml`)と、Nextcloud 側の接続先は、Ansible で設定する。グループは、Authentik が渡すグループ(`groups`)を写す。管理者は Nextcloud の画面で付け、写す対象に含めない(ログインのたびに外されないため)。Nextcloud がクラスタ内の Authentik(プライベートの IP)へ届くよう、ローカルのアドレスへの通信を許す(`allow_local_remote_servers`。Nextcloud の既定では拒む)。そのため、ユーザーが指定する URL(カレンダーの購読、リンクのプレビューなど)でも、Nextcloud から LAN とクラスタ内へ届く。届く先は、ルータと NetworkPolicy で絞る。
   - 緊急用の `admin` は、最初のインストールのときに、チャートが vault のパスワードで作る。`admin` にはアプリパスワードを作らない(外からも使えるため)。
   - クライアント(同期・カレンダー・連絡先)には、アプリパスワードだけを使わせる(`token_auth_enforced`)。外からのクライアントは、ブラウザで Authentik にログインして、端末ごとのアプリパスワードを受け取る(Login Flow v2)。Tunnel 専用の入口で塞ぐのは、パスワードを受け取るパスだけで、このログインの流れは通す。
   - ログインの失敗の制限(IP ごと)は、Authentik と同じく、Pod のネットワークからの通信には掛けない(Tunnel を通る通信は、すべて `cloudflared` の Pod の IP に見えるため)。LAN からは、クライアントの実 IP で数える。外からの試行回数は Cloudflare のレート制限で絞り、対象に Nextcloud のログインと、同期・カレンダーのパス(`/remote.php` など)を含める。

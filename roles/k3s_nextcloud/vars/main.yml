@@ -85,6 +85,8 @@ __nextcloud_values:
         $CONFIG = [
           'appstoreenabled' => false,
           'token_auth_enforced' => true,
+          // クラスタ内の Authentik(プライベートの IP に解決する)へ、OIDC の問い合わせを届ける
+          'allow_local_remote_servers' => true,
           'trusted_domains' => {{ [nextcloud_host] | to_json }},
           'trusted_proxies' => {{ nextcloud_trusted_proxies | to_json }},
           'forwarded_for_headers' => ['HTTP_X_FORWARDED_FOR'],
