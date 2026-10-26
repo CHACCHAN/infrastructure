@@ -45,11 +45,45 @@ ask() {
   local ws=$1 brief=$2
   shift 2
   server_alive || { echo "no server for this DELEGATE_DIR; run start first" >&2; exit 1; }
+  ASK_OFFSET=$(if [ -f "$ws/run.jsonl" ]; then wc -c < "$ws/run.jsonl"; else echo 0; fi)
+  ASK_STATUS=0
   # opencode run reads a non-terminal stdin until EOF and appends it to the message; an inherited stdin that
   # never closes (an agent's shell) stalls the run, so the brief is the only input.
   (cd "$ws/repo" && OPENCODE_PASSWORD="$(cat "$DELEGATE_DIR/password")" \
     timeout "${DELEGATE_TIMEOUT:-7200}" opencode run --server "$URL" --agent worker --format json "$@" -- "$(cat "$brief")") \
-    < /dev/null >> "$ws/run.jsonl" 2>> "$ws/run.err" || echo "opencode run exited with $?" >> "$ws/run.err"
+    < /dev/null >> "$ws/run.jsonl" 2>> "$ws/run.err" || ASK_STATUS=$?
+  [ "$ASK_STATUS" = 0 ] || echo "opencode run exited with $ASK_STATUS" >> "$ws/run.err"
+}
+
+# Prints the last error event that the latest ask appended to run.jsonl (a provider error ends a run this way).
+last_error() {
+  python3 -I - "$1/run.jsonl" "$ASK_OFFSET" 2>/dev/null <<'PY' || true
+import json, sys
+with open(sys.argv[1], "rb") as f:
+    f.seek(int(sys.argv[2]))
+    lines = f.read().decode("utf-8", "replace").splitlines()
+message = ""
+for line in lines:
+    try:
+        event = json.loads(line)
+    except ValueError:
+        continue
+    if event.get("type") == "error":
+        message = str((event.get("error") or {}).get("message") or event.get("error"))
+print(message[:300])
+PY
+}
+
+# Fails the run or continue command when the run ended in an error, so the caller resumes it instead of
+# mistaking a cut-off run for a finished one.
+check_run() {
+  local ws=$1 task=$2 error
+  error=$(last_error "$ws")
+  if [ "$ASK_STATUS" != 0 ] || [ -n "$error" ]; then
+    echo "[run failed (exit $ASK_STATUS)${error:+: $error}]" >&2
+    echo "[resume with: $0 continue $task <brief-file>]" >&2
+    exit 1
+  fi
 }
 
 show_result() {
@@ -129,6 +163,7 @@ case "$cmd" in
     ws=$(workspace "${1:-}")
     ask "$ws" "${3:?brief file}" -m "litellm/${2:?model}" --title "$1"
     show_result "$ws"
+    check_run "$ws" "$1"
     ;;
   continue)
     ws=$(workspace "${1:-}")
@@ -136,6 +171,7 @@ case "$cmd" in
     [ -n "$session" ] || { echo "no session recorded for task $1" >&2; exit 1; }
     ask "$ws" "${2:?brief file}" -s "$session"
     show_result "$ws"
+    check_run "$ws" "$1"
     ;;
   result)
     show_result "$(workspace "${1:-}")"
