@@ -1,21 +1,21 @@
 # k3s_postgresql
 
-PostgreSQL(CloudNativePG の `Cluster`)を Helm の `cluster` チャートで作り、アプリごとの DB とロールを宣言する。設計は [docs/design/k3s.md](../../docs/design/k3s.md)。
+アプリ1つ専用の PostgreSQL(CloudNativePG の `Cluster`)を Helm の `cluster` チャートで作り、DB とその所有者のロールを宣言する。設計は [docs/design/k3s.md](../../docs/design/k3s.md)。
 
 ## 使い方
 
-`playbooks/k3s/postgresql.yml` から使う([playbooks/k3s/README.md](../../playbooks/k3s/README.md))。変数の一覧は `ansible-doc -t role k3s_postgresql` と `defaults/main.yml`。
+DB を使うアプリのロール(`k3s_authentik`・`k3s_openwebui`・`k3s_litellm`)が、自分の DB を作るために `include_role` で呼ぶ。単独の playbook は無い。変数の一覧は `ansible-doc -t role k3s_postgresql` と `defaults/main.yml`。
 
-前提: [k3s_cnpg](../k3s_cnpg/README.md) でオペレーターが入っている。`vault/postgresql.yml` の `vault_postgresql_passwords` に、`postgresql_databases` の名前ごとのパスワードがある。
+前提: [k3s_cnpg](../k3s_cnpg/README.md) でオペレーターが入っている(`playbooks/k3s/cnpg.yml`)。
 
 ## 処理の流れ
 
-`postgresql_databases` から、ロール(同名)・`Database`・パスワードの Secret(`postgresql-role-<名前>`)を導出し、リリースの前に Secret を渡して適用する。
+所有者のロールのパスワードの Secret(`<リリース名>-owner`)を渡してから、`Cluster` を適用する。DB と所有者のロール(どちらも `postgresql_database` の名前)は初期化で作り、以降はロールのパスワードを Secret に合わせ、拡張(`postgresql_extensions`)を宣言で保つ。
 
-アプリは `postgresql-rw.postgresql.svc.cluster.local:5432` に、DB 名と同名のロールで接続する。DB を足すときは、`postgresql_databases` に足して、vault にパスワードを足す。
+アプリは `<リリース名>-rw.<namespace>.svc.cluster.local:5432` に接続する。リリース名の既定は namespace と同じ。
 
-Pod が受ける通信は、インベントリの `helm_network_policies` の `postgresql` に挙げた namespace(オペレーターと、DB を使うアプリ)に絞る(NetworkPolicy)。別の namespace のアプリが DB を使うときは、ここに足す。namespace の名前は、各ロールの `*_namespace` と別に書いてあるので、変えるときは `helm_network_policies`(`inventory/group_vars/k3s.yml`)のキーと値も合わせる(`k3s_longhorn` の `longhorn_ingress_middleware` も同じ)。
+DB はアプリと別の namespace(`<アプリの namespace>-db`)に置く。Pod が受ける通信は、インベントリの `helm_network_policies` に、その namespace をキーにして挙げた namespace(オペレーターの `cnpg-system` と、DB を使うアプリ)に絞る(NetworkPolicy)。アプリの namespace の NetworkPolicy は Traefik などからも受けるため、同じ namespace に置くと DB にも届いてしまう。
 
-スーパーユーザーのアクセスは無効。バックアップは設定していない(NAS の構築後に設計する)。
+スーパーユーザーのアクセスは無効。インスタンスが1つのときは、PodDisruptionBudget を置かない(ノードの退避を止めないため)。バックアップは設定していない(NAS の構築後に設計する)。
 
-接続先のホスト名(`postgresql-rw.<namespace>.svc.cluster.local`)は、各アプリのロール(`k3s_authentik`・`k3s_homarr`・`k3s_openwebui`・`k3s_litellm`)の `*_db_host` にも既定値として書いてある。リリース名か namespace を変えるときは、4つとも合わせる。
+DB を消すときは、アプリと別に、DB の namespace も [k3s_app_remove](../../playbooks/utils/README.md) で消す。

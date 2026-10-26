@@ -1,7 +1,7 @@
 # PostgreSQL の接続 URL(パスワードを含むため、Secret にだけ置く)。
 ---
 __openwebui_db_url: >-
-  postgresql://{{ openwebui_db_user }}:{{ openwebui_db_password | urlencode | replace('/', '%2F') }}@{{ openwebui_db_host }}:5432/{{ openwebui_db_name }}
+  postgresql://{{ openwebui_db_name }}:{{ openwebui_db_password | urlencode | replace('/', '%2F') }}@{{ openwebui_db_host }}:5432/{{ openwebui_db_name }}
 __openwebui_values:
   ollama:
     enabled: false
@@ -17,6 +17,9 @@ __openwebui_values:
     enabled: false
   strategy:
     type: Recreate
+  # DB の接続先(Secret)が変わったら、Pod を入れ替えて読み直す
+  podAnnotations:
+    checksum/db: "{{ __openwebui_db_url | hash('sha256') }}"
   podSecurityContext:
     runAsNonRoot: true
     runAsUser: 1000

@@ -27,8 +27,8 @@
       - cert-manager
       - longhorn-system
       - cnpg-system
-      - postgresql
       - authentik
+      - authentik-db
   tasks:
     - name: 消す対象と、確認の値を確かめる
       ansible.builtin.assert:

@@ -22,20 +22,20 @@ argument_specs:
         type: str
         required: true
         description: "Authentik の公開ホスト名(インベントリで宣言する)"
+      authentik_db_namespace:
+        type: str
+        description: "専用の PostgreSQL を置く namespace(インベントリの helm_network_policies にも宣言する)"
       authentik_db_host:
         type: str
         description: "PostgreSQL のホスト"
       authentik_db_name:
         type: str
-        description: "DB 名"
-      authentik_db_user:
-        type: str
-        description: "DB のロール"
+        description: "DB 名(所有者のロールも同じ名前)"
       authentik_db_password:
         type: str
         required: true
         no_log: true
-        description: "DB のパスワード(vault/postgresql.yml)"
+        description: "DB の所有者のロールのパスワード(vault/authentik.yml)"
       authentik_secret_key:
         type: str
         required: true

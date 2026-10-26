@@ -6,7 +6,7 @@ OpenWebUI を Helm で入れ、Authentik の OIDC でログインできるよう
 
 `playbooks/k3s/openwebui.yml` から使う([playbooks/k3s/README.md](../../playbooks/k3s/README.md))。変数の一覧は `ansible-doc -t role k3s_openwebui` と `defaults/main.yml`。
 
-前提: PostgreSQL に `openwebui` の DB とロールがあり、pgvector が使える。OIDC のクライアントは [k3s_authentik](../k3s_authentik/README.md) の Blueprint で宣言する(同じ `vault/openwebui.yml` の client_secret を使う)。
+前提: CloudNativePG のオペレーターが入っている(`playbooks/k3s/cnpg.yml`)。専用の PostgreSQL(namespace `open-webui-db`。pgvector の拡張を作る)は、このロールが [k3s_postgresql](../k3s_postgresql/README.md) で作る。OIDC のクライアントは [k3s_authentik](../k3s_authentik/README.md) の Blueprint で宣言する(同じ `vault/openwebui.yml` の client_secret を使う)。
 
 ## 注意
 

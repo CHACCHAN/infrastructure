@@ -10,12 +10,10 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     helm_api_token: "{{ vault_k3s_api_token }}"
     helm_ca_cert: "{{ vault_k3s_ca_cert }}"
-    homarr_db_password: "{{ vault_postgresql_passwords.homarr }}"
     homarr_oidc_client_secret: "{{ vault_homarr_oidc_client_secret }}"
     homarr_db_encryption_key: "{{ vault_homarr_db_encryption_key }}"
   vars_files:
     - "{{ playbook_dir }}/../../vault/k3s.yml"
-    - "{{ playbook_dir }}/../../vault/postgresql.yml"
     - "{{ playbook_dir }}/../../vault/homarr.yml"
   roles:
     - k3s_homarr

@@ -6,7 +6,7 @@ Homarr(ダッシュボード)を Helm で入れ、Authentik の OIDC でログ�
 
 `playbooks/k3s/homarr.yml` から使う([playbooks/k3s/README.md](../../playbooks/k3s/README.md))。変数の一覧は `ansible-doc -t role k3s_homarr` と `defaults/main.yml`。
 
-前提: PostgreSQL に `homarr` の DB とロールがある。OIDC のクライアントは [k3s_authentik](../k3s_authentik/README.md) の Blueprint で宣言する(同じ `vault/homarr.yml` の client_secret を使う)。
+前提: Longhorn が入っている(データのボリューム)。OIDC のクライアントは [k3s_authentik](../k3s_authentik/README.md) の Blueprint で宣言する(同じ `vault/homarr.yml` の client_secret を使う)。
 
 ## 注意
 
@@ -16,4 +16,4 @@ Homarr(ダッシュボード)を Helm で入れ、Authentik の OIDC でログ�
 - ボード、ユーザー、統合の設定は Homarr の状態で、Ansible では管理しない。
 - 外部(Cloudflare Tunnel)に公開するのは、インベントリの `cloudflared_hosts` に `homarr_host` があるとき。外からは、このアプリのパスワードのログイン(緊急用の管理者)を通さない。
 - Pod が受ける通信を、同じ namespace と Traefik に絞る(NetworkPolicy)。
-- ボリュームを持たない。データは PostgreSQL に置き、`/appdata`(キャッシュ)は Pod を作り直すと消える。
+- データは SQLite の DB で、Longhorn のボリューム(`/appdata`)に置く。Pod は1つで、作り直すときは止めてから立ち上げる(`Recreate`)。Homarr の画面のバックアップ(管理画面の Backup & Restore)も使える。

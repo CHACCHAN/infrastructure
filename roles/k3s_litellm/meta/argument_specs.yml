@@ -26,20 +26,20 @@ argument_specs:
         type: list
         elements: dict
         description: "宣言で持つ model_list(model_name、litellm_params)。空なら、管理画面で登録したものだけを使う"
+      litellm_db_namespace:
+        type: str
+        description: "専用の PostgreSQL を置く namespace(インベントリの helm_network_policies にも宣言する)"
       litellm_db_host:
         type: str
         description: "PostgreSQL のホスト"
       litellm_db_name:
         type: str
-        description: "DB 名"
-      litellm_db_user:
-        type: str
-        description: "DB のロール"
+        description: "DB 名(所有者のロールも同じ名前)"
       litellm_db_password:
         type: str
         required: true
         no_log: true
-        description: "DB のパスワード(vault/postgresql.yml)"
+        description: "DB の所有者のロールのパスワード(vault/litellm.yml)"
       litellm_master_key:
         type: str
         required: true

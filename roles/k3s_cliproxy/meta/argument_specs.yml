@@ -4,8 +4,8 @@ argument_specs:
     short_description: CLIProxyAPI を k3s に置き、管理画面を Authentik の認証プロキシで守る
     description:
       - チャートが無いため、Deployment・Service・Ingress をマニフェストで置く。接続と適用は k3s ロール(helm_*)に任せる。
-      - 設定と認証情報は PostgreSQL に置く。設定の初期値は DB が空のときだけ使われ、以降は管理画面で変えた内容が残る。
-      - 入れたプラグインは、Longhorn のボリュームに置く。
+      - 設定ファイル・プロバイダーの認証情報・入れたプラグインは、Longhorn のボリュームに置く。
+      - 設定の初期値は設定ファイルが無いときだけ使われ、以降は管理画面で変えた内容が残る。
     options:
       cliproxy_version:
         type: str
@@ -26,20 +26,6 @@ argument_specs:
         type: str
         required: true
         description: "CLIProxyAPI の公開ホスト名(インベントリで宣言する)"
-      cliproxy_db_host:
-        type: str
-        description: "PostgreSQL のホスト"
-      cliproxy_db_name:
-        type: str
-        description: "DB 名"
-      cliproxy_db_user:
-        type: str
-        description: "DB のロール"
-      cliproxy_db_password:
-        type: str
-        required: true
-        no_log: true
-        description: "DB のパスワード(vault/postgresql.yml)"
       cliproxy_management_password:
         type: str
         required: true
@@ -50,7 +36,7 @@ argument_specs:
         elements: str
         required: true
         no_log: true
-        description: "API のクライアントの鍵の初期値(vault/cliproxy.yml)。DB が空のときだけ使われ、以降は管理画面で管理する"
+        description: "API のクライアントの鍵の初期値(vault/cliproxy.yml)。設定ファイルが無いときだけ使われ、以降は管理画面で管理する"
       cliproxy_trusted_proxies:
         type: list
         elements: str
@@ -61,12 +47,12 @@ argument_specs:
       cliproxy_timezone:
         type: str
         description: "コンテナのタイムゾーン"
-      cliproxy_spool_size:
+      cliproxy_storage_size:
         type: str
-        description: "DB の内容を書き出す作業用のディレクトリ(メモリ上)の上限"
-      cliproxy_plugins_size:
+        description: "設定ファイル・プロバイダーの認証情報・プラグインを置くボリューム(Longhorn)の大きさ"
+      cliproxy_work_size:
         type: str
-        description: "プラグインの置き場のボリューム(Longhorn)の大きさ"
+        description: "ログと管理画面のファイルを置く作業用のディレクトリの上限"
       cliproxy_resources:
         type: dict
         description: "コンテナの resources"

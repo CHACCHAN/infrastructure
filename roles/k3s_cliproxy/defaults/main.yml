@@ -8,21 +8,17 @@ cliproxy_release_name: cliproxy
 cliproxy_namespace: cliproxy
 # API と管理画面を受けるポート
 cliproxy_port: 8317
-# PostgreSQL への接続(DB とロールは k3s_postgresql が作る)。設定と認証情報は DB に置く
-cliproxy_db_host: postgresql-rw.postgresql.svc.cluster.local
-cliproxy_db_name: cliproxy
-cliproxy_db_user: cliproxy
 # 転送ヘッダー(X-Forwarded-For)を信頼する送信元。Traefik の Pod のネットワーク。
-# k3s の既定の cluster-cidr に合わせている。vm_k3s で cluster-cidr を変えるときは、ここも変える(DB が空のときだけ使われる初期値)
+# k3s の既定の cluster-cidr に合わせている。vm_k3s で cluster-cidr を変えるときは、ここも変える(設定ファイルが無いときだけ使われる初期値)
 cliproxy_trusted_proxies:
   - 10.42.0.0/16
 # 公開ホスト名のすべてのパスに掛ける、Authentik の認証プロキシのミドルウェア。API はクラスタ内の Service からだけ使う
 cliproxy_ingress_middleware: authentik-forward-auth@kubernetescrd
 cliproxy_timezone: Asia/Tokyo
-# プラグイン(管理画面から公式ストアのものを入れる)の置き場のボリューム(Longhorn)の大きさ
-cliproxy_plugins_size: 1Gi
-# DB の内容を書き出す作業用のディレクトリ(メモリ上。プロバイダーの認証情報をノードのディスクに残さない)の上限
-cliproxy_spool_size: 64Mi
+# 設定ファイル・プロバイダーの認証情報・プラグインを置くボリューム(Longhorn)の大きさ
+cliproxy_storage_size: 1Gi
+# ログと管理画面のファイルを置く作業用のディレクトリ(Pod を作り直すと消える)の上限
+cliproxy_work_size: 1Gi
 cliproxy_resources:
   requests:
     cpu: 50m

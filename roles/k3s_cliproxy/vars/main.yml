@@ -1,6 +1,6 @@
 # CLIProxyAPI のマニフェスト。チャートが無いため、k3s ロールへマニフェストとして渡す。
 ---
-# 設定の初期値。DB が空のときだけ使われ、以降は管理画面で変えた内容が DB に残る(Ansible は上書きしない)
+# 設定の初期値。設定ファイルが無いときだけ使われ、以降は管理画面で変えた内容がファイルに残る(Ansible は上書きしない)
 __cliproxy_seed_config:
   config-version: 8
   server:
@@ -12,9 +12,6 @@ __cliproxy_seed_config:
   plugins:
     enabled: true
 __cliproxy_env_data:
-  PGSTORE_DSN: >-
-    {{ ('postgresql://' ~ cliproxy_db_user ~ ':' ~ (cliproxy_db_password | urlencode | replace('/', '%2F')) ~ '@'
-        ~ cliproxy_db_host ~ ':5432/' ~ cliproxy_db_name ~ '?sslmode=require') | b64encode }}
   MANAGEMENT_PASSWORD: "{{ cliproxy_management_password | b64encode }}"
 __cliproxy_secrets:
   - apiVersion: v1
@@ -32,26 +29,32 @@ __cliproxy_secrets:
       config.yaml: "{{ __cliproxy_seed_config | to_nice_yaml | b64encode }}"
 __cliproxy_labels:
   app.kubernetes.io/name: cliproxy
+__cliproxy_config_file: /CLIProxyAPI/config/config.yaml
+__cliproxy_security_context:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
 __cliproxy_manifests:
-  # 入れたプラグインの置き場。PostgreSQL のストアはプラグインを保存しないため、ボリュームに置く
+  # 設定ファイル(config)・プロバイダーの認証情報(auths)・入れたプラグイン(plugins)を、ディレクトリに分けて置く
   - apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
-      name: "{{ cliproxy_release_name }}-plugins"
+      name: "{{ cliproxy_release_name }}-data"
       namespace: "{{ cliproxy_namespace }}"
     spec:
       accessModes:
         - ReadWriteOnce
       resources:
         requests:
-          storage: "{{ cliproxy_plugins_size }}"
+          storage: "{{ cliproxy_storage_size }}"
   - apiVersion: apps/v1
     kind: Deployment
     metadata:
       name: "{{ cliproxy_release_name }}"
       namespace: "{{ cliproxy_namespace }}"
     spec:
-      # 設定と認証情報を DB と作業用のディレクトリで持ち、プラグインのボリュームは1つの Pod にしか付かないため、同時に動かすのは1つだけにする
+      # ボリュームは1つの Pod にしか付かないため、同時に動かすのは1つだけにする
       replicas: 1
       strategy:
         type: Recreate
@@ -61,22 +64,44 @@ __cliproxy_manifests:
         metadata:
           labels: "{{ __cliproxy_labels }}"
           annotations:
-            # 管理画面のパスワードや DB の接続先が変わったら、Pod を作り直す
+            # 管理画面のパスワードが変わったら、Pod を作り直す
             checksum/env: "{{ __cliproxy_env_data | to_json | hash('sha256') }}"
         spec:
+          initContainers:
+            # 設定ファイルが無いとき(最初の起動)だけ、初期値を置く。CLIProxyAPI は設定ファイルが無いと起動しない
+            - name: seed
+              image: "{{ cliproxy_image }}:{{ cliproxy_version }}"
+              imagePullPolicy: IfNotPresent
+              command:
+                - sh
+                - -c
+                - test -f /config/config.yaml || install -m 600 /seed/config.yaml /config/config.yaml
+              securityContext: "{{ __cliproxy_security_context }}"
+              volumeMounts:
+                - name: data
+                  mountPath: /config
+                  subPath: config
+                - name: seed
+                  mountPath: /seed
+                  readOnly: true
           containers:
             - name: cliproxy
               image: "{{ cliproxy_image }}:{{ cliproxy_version }}"
               imagePullPolicy: IfNotPresent
+              command:
+                - ./CLIProxyAPI
+              args:
+                - --config
+                - "{{ __cliproxy_config_file }}"
               envFrom:
                 - secretRef:
                     name: cliproxy-env
               env:
                 - name: TZ
                   value: "{{ cliproxy_timezone }}"
-                # DB の内容を書き出す作業用のディレクトリ(管理画面のファイルも置く)
+                # ログと管理画面のファイルを置く作業用のディレクトリ
                 - name: WRITABLE_PATH
-                  value: /data
+                  value: /work
               ports:
                 - name: http
                   containerPort: "{{ cliproxy_port | int }}"
@@ -90,32 +115,31 @@ __cliproxy_manifests:
                   port: http
                 initialDelaySeconds: 30
               resources: "{{ cliproxy_resources }}"
-              securityContext:
-                allowPrivilegeEscalation: false
-                capabilities:
-                  drop:
-                    - ALL
+              securityContext: "{{ __cliproxy_security_context }}"
               volumeMounts:
                 - name: data
-                  mountPath: /data
-                - name: plugins
+                  mountPath: /CLIProxyAPI/config
+                  subPath: config
+                # 認証情報の既定の置き場(auth-dir の既定の ~/.cli-proxy-api)
+                - name: data
+                  mountPath: /root/.cli-proxy-api
+                  subPath: auths
+                # プラグインの既定の置き場(plugins.dir の既定の plugins。作業ディレクトリからの相対)
+                - name: data
                   mountPath: /CLIProxyAPI/plugins
-                # DB が空のときに、イメージの設定例の代わりに使われる初期値
-                - name: seed
-                  mountPath: /CLIProxyAPI/config.example.yaml
-                  subPath: config.yaml
-                  readOnly: true
+                  subPath: plugins
+                - name: work
+                  mountPath: /work
           volumes:
             - name: data
-              emptyDir:
-                medium: Memory
-                sizeLimit: "{{ cliproxy_spool_size }}"
+              persistentVolumeClaim:
+                claimName: "{{ cliproxy_release_name }}-data"
             - name: seed
               secret:
                 secretName: cliproxy-seed
-            - name: plugins
-              persistentVolumeClaim:
-                claimName: "{{ cliproxy_release_name }}-plugins"
+            - name: work
+              emptyDir:
+                sizeLimit: "{{ cliproxy_work_size }}"
   - apiVersion: v1
     kind: Service
     metadata:

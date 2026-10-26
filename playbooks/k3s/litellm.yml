@@ -10,7 +10,7 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     helm_api_token: "{{ vault_k3s_api_token }}"
     helm_ca_cert: "{{ vault_k3s_ca_cert }}"
-    litellm_db_password: "{{ vault_postgresql_passwords.litellm }}"
+    litellm_db_password: "{{ vault_litellm_db_password }}"
     litellm_master_key: "{{ vault_litellm_master_key }}"
     litellm_salt_key: "{{ vault_litellm_salt_key }}"
     litellm_ui_password: "{{ vault_litellm_ui_password }}"
@@ -18,7 +18,6 @@
     litellm_provider_keys: "{{ vault_litellm_provider_keys | default({}) }}"
   vars_files:
     - "{{ playbook_dir }}/../../vault/k3s.yml"
-    - "{{ playbook_dir }}/../../vault/postgresql.yml"
     - "{{ playbook_dir }}/../../vault/litellm.yml"
   roles:
     - k3s_litellm

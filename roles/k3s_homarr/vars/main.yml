@@ -1,7 +1,5 @@
-# PostgreSQL の接続 URL(パスワードを含むため、Secret にだけ置く)。
+# Homarr の Helm values の基本値。
 ---
-__homarr_db_url: >-
-  postgresql://{{ homarr_db_user }}:{{ homarr_db_password | urlencode | replace('/', '%2F') }}@{{ homarr_db_host }}:5432/{{ homarr_db_name }}
 __homarr_values:
   strategyType: Recreate
   replicaCount: 1
@@ -16,7 +14,7 @@ __homarr_values:
     AUTH_OIDC_SCOPE_OVERWRITE: "openid email profile"
     AUTH_OIDC_GROUPS_ATTRIBUTE: groups
   database:
-    type: postgresql
+    type: sqlite
   envSecrets:
     authOidcCredentials:
       existingSecret: homarr-oidc
@@ -25,13 +23,12 @@ __homarr_values:
     dbEncryption:
       existingSecret: homarr-db-encryption
       key: db-encryption-key
-    dbCredentials:
-      existingSecret: homarr-db
-      dbUrlKey: db-url
   persistence:
-    # データは PostgreSQL に置く。/appdata はキャッシュだけなので、ボリュームを持たない
+    # SQLite の DB を /appdata/db.sqlite に置く。ボリュームは1つの Pod にしか付かないため、Recreate で入れ替える
     homarrDatabase:
-      enabled: false
+      enabled: true
+      storageClassName: longhorn
+      size: "{{ homarr_storage_size }}"
   resources:
     requests:
       cpu: 100m

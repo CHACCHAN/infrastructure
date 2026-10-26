@@ -5,7 +5,7 @@
     fail_msg: "管理画面のログインは共有の管理キーだけのため、cliproxy_ingress_middleware には認証プロキシのミドルウェア(<namespace>-<名前>@kubernetescrd)を渡す"
     quiet: true
 
-# API キーが空だと、API のパスを誰でも使える。初期値は DB に残り、Ansible は上書きしない
+# API キーが空だと、API のパスを誰でも使える。初期値は設定ファイルに残り、Ansible は上書きしない
 - name: API キーの初期値があることを確認する
   ansible.builtin.assert:
     that:

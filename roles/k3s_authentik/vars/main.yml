@@ -5,7 +5,7 @@ __authentik_secret_data: >-
     'AUTHENTIK_SECRET_KEY': authentik_secret_key | b64encode,
     'AUTHENTIK_POSTGRESQL__HOST': authentik_db_host | b64encode,
     'AUTHENTIK_POSTGRESQL__NAME': authentik_db_name | b64encode,
-    'AUTHENTIK_POSTGRESQL__USER': authentik_db_user | b64encode,
+    'AUTHENTIK_POSTGRESQL__USER': authentik_db_name | b64encode,
     'AUTHENTIK_POSTGRESQL__PASSWORD': authentik_db_password | b64encode,
     'AUTHENTIK_BOOTSTRAP_PASSWORD': authentik_bootstrap_password | b64encode,
     'AUTHENTIK_BOOTSTRAP_TOKEN': authentik_bootstrap_token | b64encode,

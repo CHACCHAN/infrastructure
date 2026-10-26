@@ -1,4 +1,12 @@
 ---
+- name: 専用の PostgreSQL を適用する
+  ansible.builtin.include_role:
+    name: k3s_postgresql
+  vars:
+    postgresql_namespace: "{{ litellm_db_namespace }}"
+    postgresql_database: "{{ litellm_db_name }}"
+    postgresql_password: "{{ litellm_db_password }}"
+
 - name: LiteLLM を適用する
   ansible.builtin.include_role:
     name: k3s

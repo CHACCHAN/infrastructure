@@ -1,8 +1,9 @@
 ---
 argument_specs:
   main:
-    short_description: PostgreSQL(CloudNativePG の Cluster)と、アプリごとの DB・ロールを作る
+    short_description: アプリ1つ専用の PostgreSQL(CloudNativePG の Cluster)と、DB・所有者のロールを作る
     description:
+      - DB を使うアプリのロールが、自分の DB を作るために呼ぶ。
       - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
       - ロールのパスワードは Secret(kubernetes.io/basic-auth)として、リリースの前に渡す。
     options:
@@ -12,39 +13,38 @@ argument_specs:
       postgresql_chart_repo_url:
         type: str
         description: "チャートの配布元の URL"
-      postgresql_release_name:
-        type: str
-        description: "Helm のリリース名(Cluster の名前にもなる)"
       postgresql_namespace:
         type: str
-        description: "リリースの namespace"
+        required: true
+        description: "リリースの namespace(アプリの namespace とは分ける)"
+      postgresql_release_name:
+        type: str
+        description: "Helm のリリース名(Cluster の名前にもなる)。既定は namespace と同じ"
+      postgresql_version:
+        type: str
+        description: "PostgreSQL のイメージのタグ"
       postgresql_image:
         type: str
-        description: "PostgreSQL のイメージ"
+        description: "PostgreSQL のイメージ(タグを除く)"
       postgresql_instances:
         type: int
         description: "インスタンスの数"
       postgresql_storage_size:
         type: str
         description: "ボリュームのサイズ"
-      postgresql_databases:
+      postgresql_database:
+        type: str
+        required: true
+        description: "DB の名前。同名のロールが所有者になる"
+      postgresql_extensions:
         type: list
-        elements: dict
-        description: "アプリごとの DB(name、extensions)。同名のロールが所有者になる"
-        options:
-          name:
-            type: str
-            required: true
-            description: "DB とロールの名前"
-          extensions:
-            type: list
-            elements: str
-            description: "作成する拡張"
-      postgresql_passwords:
-        type: dict
+        elements: str
+        description: "DB に作る拡張"
+      postgresql_password:
+        type: str
         required: true
         no_log: true
-        description: "ロール名ごとのパスワード(vault/postgresql.yml の vault_postgresql_passwords)"
+        description: "所有者のロールのパスワード(アプリの vault)"
       postgresql_values:
         type: dict
-        description: "PostgreSQL の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"
+        description: "PostgreSQL の Helm values の上書き(基本値へ再帰的に合成する。例: affinity)"

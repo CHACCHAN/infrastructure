@@ -17,7 +17,7 @@
     homarr_admin_namespace: homarr
     homarr_admin_pod_selector: app.kubernetes.io/name=homarr
     homarr_admin_username: admin
-    # CLI は、処理が終わっても DB の接続を持ったまま終了しない。時間で打ち切り、成否は出力で判定する
+    # CLI は、処理が終わっても終了しない。時間で打ち切り、成否は出力で判定する
     homarr_admin_cli:
       - timeout
       - "30"

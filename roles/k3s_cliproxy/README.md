@@ -8,7 +8,7 @@ CLIProxyAPI(Codex・Claude Code などの CLI の OAuth の認証情報を、Ope
 
 前提:
 
-- PostgreSQL に `cliproxy` の DB とロールがある(`playbooks/k3s/postgresql.yml`)。
+- Longhorn が入っている(設定と認証情報のボリューム)。
 - 管理画面を開くには、Authentik の認証プロキシ(`playbooks/k3s/authentik.yml` の `authentik_proxy_apps` の `cliproxy`)と、グループ `admins` の所属が要る。
 
 チャートが無いため、Deployment・Service・Ingress をマニフェストで置く(Helm のリリースは作らない)。
@@ -30,14 +30,14 @@ Authentik が使えないときは、k3s01 に SSH で入り、`sudo k3s kubectl
 
 ## プラグイン
 
-プラグインは有効にしてある(設定の初期値の `plugins.enabled`)。管理画面から、公式ストア(第三者の作者のものを含む)のプラグインを入れる。入れたプラグインは、Longhorn のボリューム(`cliproxy_plugins_size`)の `/CLIProxyAPI/plugins` に残る。どのプラグインを入れ、有効にするかは、DB の設定に残る(状態)。
+プラグインは有効にしてある(設定の初期値の `plugins.enabled`)。管理画面から、公式ストア(第三者の作者のものを含む)のプラグインを入れる。入れたプラグインは、Longhorn のボリュームの `/CLIProxyAPI/plugins` に残る。どのプラグインを入れ、有効にするかは、設定ファイルに残る(状態)。
 
-プラグインは CLIProxyAPI のプロセスの中で動き、プロバイダーの認証情報・管理キー・DB の接続先に触れられる。入れる前に、作者とリポジトリを確かめる。
+プラグインは CLIProxyAPI のプロセスの中で動き、プロバイダーの認証情報・管理キーに触れられる。入れる前に、作者とリポジトリを確かめる。
 
 ## 注意
 
-- 設定と認証情報(プロバイダーの OAuth のトークン)は、PostgreSQL に保存される(状態)。Pod は、起動時に DB の内容を作業用のディレクトリへ書き出す。入れたプラグインだけは、Longhorn のボリュームに置く(バックアップは無い)。
-- 設定の初期値(`vault_cliproxy_api_keys`、`cliproxy_trusted_proxies` など)は、DB が空のときだけ使われる。以降は、管理画面で変えた内容が残り、Ansible は上書きしない。vault の API キーを変えても、動いている設定には効かない(管理画面で変える)。
+- 設定ファイル・認証情報(プロバイダーの OAuth のトークン)・入れたプラグインは、Longhorn のボリューム(`cliproxy_storage_size`)に置く(状態。バックアップは無い)。
+- 設定の初期値(`vault_cliproxy_api_keys`、`cliproxy_trusted_proxies` など)は、設定ファイルが無いとき(最初の起動)だけ使われる。以降は、管理画面で変えた内容が残り、Ansible は上書きしない。vault の API キーを変えても、動いている設定には効かない(管理画面で変える)。
 - 管理画面のファイル(`management.html`)は、CLIProxyAPI が起動後に GitHub の最新のリリースから取得する。CLIProxyAPI は取得先を最新のリリースに固定しているため、バージョンを固定できない。
-- 作業用のディレクトリはメモリ上にあり(`cliproxy_spool_size`)、コンテナのメモリの上限に含まれる。
+- ログと管理画面のファイルは、作業用のディレクトリ(`cliproxy_work_size`)に置き、Pod を作り直すと消える。
 - 管理キーは、5回間違えると、その送信元 IP から30分間使えなくなる。

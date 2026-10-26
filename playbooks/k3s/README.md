@@ -11,7 +11,7 @@ k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconf
 | `metallb.yml` | MetalLB(L2)を入れ、Ingress の VIP を LoadBalancer に割り当てる。内蔵の Traefik の配置と、Cloudflare Tunnel 専用の入口も設定する(変えると Traefik が入れ替わり、Ingress が一時的に途切れる) | `ansible-playbook playbooks/k3s/metallb.yml [--check --diff] 2>&1 \| cat` |
 | `cert_manager.yml` | cert-manager を入れ、Let's Encrypt(Cloudflare の DNS-01)のワイルドカード証明書を Traefik の既定の証明書にする | `ansible-playbook playbooks/k3s/cert_manager.yml [--check --diff] 2>&1 \| cat` |
 | `longhorn.yml` | Longhorn を入れ、既定の StorageClass にする。管理 UI を、Authentik の認証プロキシを通して公開する | `ansible-playbook playbooks/k3s/longhorn.yml [--check --diff] 2>&1 \| cat` |
-| `postgresql.yml` | CloudNativePG のオペレーターと、PostgreSQL(アプリごとの DB・ロール)を入れる | `ansible-playbook playbooks/k3s/postgresql.yml [--check --diff] 2>&1 \| cat` |
+| `cnpg.yml` | CloudNativePG のオペレーターを入れる。各アプリ専用の PostgreSQL は、そのアプリの playbook が作る([roles/k3s_postgresql](../../roles/k3s_postgresql/README.md)) | `ansible-playbook playbooks/k3s/cnpg.yml [--check --diff] 2>&1 \| cat` |
 | `authentik.yml` | Authentik を入れ、アプリの OIDC クライアントと認証プロキシを Blueprint で宣言する | `ansible-playbook playbooks/k3s/authentik.yml [--check --diff] 2>&1 \| cat` |
 | `homarr.yml` | Homarr を入れる | `ansible-playbook playbooks/k3s/homarr.yml [--check --diff] 2>&1 \| cat` |
 | `openwebui.yml` | OpenWebUI を入れる | `ansible-playbook playbooks/k3s/openwebui.yml [--check --diff] 2>&1 \| cat` |
@@ -22,7 +22,7 @@ k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconf
 
 ## 実行の順序
 
-`metallb.yml` → `cert_manager.yml` → `longhorn.yml` → `postgresql.yml` → `authentik.yml` の順に実行する。そのあとの `homarr.yml`・`openwebui.yml`・`litellm.yml`・`cliproxy.yml` は、順不同。OIDC の client_secret は vault で決まっているため、アプリを `authentik.yml` より先に入れてもよい(ログインできるのは Authentik の起動後)。`cloudflared.yml` は、Tunnel を Cloudflare の画面で作ってから実行する([roles/k3s_cloudflared](../../roles/k3s_cloudflared/README.md))。公開するホスト名(`cloudflared_hosts`)を変えたときは、そのアプリの playbook を実行し、Cloudflare の画面の経路も合わせる。`lan_proxy.yml` は、`metallb.yml` と `cert_manager.yml` のあとなら、いつ実行してもよい。Longhorn の管理 UI と CLIProxyAPI の管理画面は、`authentik.yml` を実行するまで開けない(認証プロキシのミドルウェアが無いため)。Longhorn は、ノード側の前提(`vm_k3s` の `storage`)が先に要るので、`playbooks/vm/k3s.yml` を流してから実行する。
+`metallb.yml` → `cert_manager.yml` → `longhorn.yml` → `cnpg.yml` → `authentik.yml` の順に実行する。そのあとの `homarr.yml`・`openwebui.yml`・`litellm.yml`・`cliproxy.yml` は、順不同。OIDC の client_secret は vault で決まっているため、アプリを `authentik.yml` より先に入れてもよい(ログインできるのは Authentik の起動後)。`cloudflared.yml` は、Tunnel を Cloudflare の画面で作ってから実行する([roles/k3s_cloudflared](../../roles/k3s_cloudflared/README.md))。公開するホスト名(`cloudflared_hosts`)を変えたときは、そのアプリの playbook を実行し、Cloudflare の画面の経路も合わせる。`lan_proxy.yml` は、`metallb.yml` と `cert_manager.yml` のあとなら、いつ実行してもよい。Longhorn の管理 UI と CLIProxyAPI の管理画面は、`authentik.yml` を実行するまで開けない(認証プロキシのミドルウェアが無いため)。Longhorn は、ノード側の前提(`vm_k3s` の `storage`)が先に要るので、`playbooks/vm/k3s.yml` を流してから実行する。
 
 ## 前提
 

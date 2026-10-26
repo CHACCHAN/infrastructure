@@ -1,4 +1,12 @@
 ---
+- name: 専用の PostgreSQL を適用する
+  ansible.builtin.include_role:
+    name: k3s_postgresql
+  vars:
+    postgresql_namespace: "{{ authentik_db_namespace }}"
+    postgresql_database: "{{ authentik_db_name }}"
+    postgresql_password: "{{ authentik_db_password }}"
+
 - name: OIDC クライアントの client_secret があることを確認する
   ansible.builtin.assert:
     that:

@@ -1,16 +1,4 @@
 ---
-- name: 宣言した DB にパスワードがあることを確認する
-  ansible.builtin.assert:
-    that:
-      - postgresql_passwords[item.name] is defined
-      - postgresql_passwords[item.name] | length > 0
-    fail_msg: "{{ item.name }} のパスワードが vault/postgresql.yml にありません"
-    quiet: true
-  loop: "{{ postgresql_databases }}"
-  loop_control:
-    label: "{{ item.name }}"
-  no_log: true
-
 - name: PostgreSQL を適用する
   ansible.builtin.include_role:
     name: k3s

@@ -36,7 +36,7 @@ cloudflared_hosts:
   - "{{ openwebui_host }}"
 # OpenWebUI の緊急用の管理者(ログイン名。SSO のユーザーのメールアドレスと重ねない。パスワードは vault/openwebui.yml)
 openwebui_admin_email: "admin@{{ lab_domain }}"
-# 重いワークロード(PostgreSQL・Open WebUI・Authentik・LiteLLM)を、heavy_workloads のノードへ寄せる。寄せるだけで、そのノードが止まればほかのノードでも動く(docs/design/hardware.md)
+# 重いワークロード(各アプリの PostgreSQL・Open WebUI・Authentik・LiteLLM)を、heavy_workloads のノードへ寄せる。寄せるだけで、そのノードが止まればほかのノードでも動く(docs/design/hardware.md)
 heavy_workload_nodes: >-
   {{ groups['k3s'] | map('extract', hostvars) | selectattr('heavy_workloads', 'defined')
      | selectattr('heavy_workloads') | map(attribute='inventory_hostname') | list }}
@@ -97,14 +97,16 @@ helm_network_policies:
   # LiteLLM だけが、クラスタ内の Service で CLIProxyAPI を使う(CLIProxyAPI の API は外に出さない)
   cliproxy:
     - litellm
-  # オペレーターと、DB を使うアプリ
-  postgresql:
+  # 各アプリ専用の PostgreSQL(<アプリの namespace>-db)。オペレーターと、DB を使うアプリだけ
+  authentik-db:
     - cnpg-system
     - authentik
-    - homarr
+  open-webui-db:
+    - cnpg-system
     - open-webui
+  litellm-db:
+    - cnpg-system
     - litellm
-    - cliproxy
   # Tunnel のコネクタ。外向きの通信も、ロール(k3s_cloudflared)で絞る
   cloudflared: []
   # Longhorn の管理 UI の Pod だけ(Longhorn 本体は、チャートの NetworkPolicy が絞る)

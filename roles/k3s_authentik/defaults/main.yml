@@ -6,10 +6,10 @@ authentik_chart_version: "2026.8.3"
 authentik_chart_repo_url: https://charts.goauthentik.io
 authentik_release_name: authentik
 authentik_namespace: authentik
-# PostgreSQL への接続(DB とロールは k3s_postgresql が作る)
-authentik_db_host: postgresql-rw.postgresql.svc.cluster.local
+# 専用の PostgreSQL(k3s_postgresql が、この namespace に作る)。DB の所有者のロールは、DB と同じ名前
+authentik_db_namespace: authentik-db
+authentik_db_host: "{{ authentik_db_namespace }}-rw.{{ authentik_db_namespace }}.svc.cluster.local"
 authentik_db_name: authentik
-authentik_db_user: authentik
 # OIDC クライアント。client_secret は authentik_oidc_client_secrets[slug] で渡す
 authentik_oidc_clients:
   - name: Homarr

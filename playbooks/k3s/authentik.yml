@@ -10,7 +10,7 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     helm_api_token: "{{ vault_k3s_api_token }}"
     helm_ca_cert: "{{ vault_k3s_ca_cert }}"
-    authentik_db_password: "{{ vault_postgresql_passwords.authentik }}"
+    authentik_db_password: "{{ vault_authentik_db_password }}"
     authentik_secret_key: "{{ vault_authentik_secret_key }}"
     authentik_bootstrap_password: "{{ vault_authentik_bootstrap_password }}"
     authentik_bootstrap_token: "{{ vault_authentik_bootstrap_token }}"
@@ -25,7 +25,6 @@
       proxmox: "{{ vault_proxmox_oidc_client_secret }}"
   vars_files:
     - "{{ playbook_dir }}/../../vault/k3s.yml"
-    - "{{ playbook_dir }}/../../vault/postgresql.yml"
     - "{{ playbook_dir }}/../../vault/authentik.yml"
     - "{{ playbook_dir }}/../../vault/homarr.yml"
     - "{{ playbook_dir }}/../../vault/openwebui.yml"

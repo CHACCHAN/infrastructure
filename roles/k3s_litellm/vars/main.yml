@@ -14,7 +14,7 @@ __litellm_secrets: >-
     {'apiVersion': 'v1', 'kind': 'Secret',
      'metadata': {'name': 'litellm-db', 'namespace': litellm_namespace},
      'type': 'kubernetes.io/basic-auth',
-     'data': {'username': litellm_db_user | b64encode, 'password': litellm_db_password | b64encode}},
+     'data': {'username': litellm_db_name | b64encode, 'password': litellm_db_password | b64encode}},
     {'apiVersion': 'v1', 'kind': 'Secret',
      'metadata': {'name': 'litellm-salt', 'namespace': litellm_namespace},
      'data': {'LITELLM_SALT_KEY': litellm_salt_key | b64encode}},

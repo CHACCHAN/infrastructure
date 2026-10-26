@@ -26,20 +26,9 @@ argument_specs:
         type: str
         required: true
         description: "Authentik の公開ホスト名(OIDC の発行者。インベントリで宣言する)"
-      homarr_db_host:
+      homarr_storage_size:
         type: str
-        description: "PostgreSQL のホスト"
-      homarr_db_name:
-        type: str
-        description: "DB 名"
-      homarr_db_user:
-        type: str
-        description: "DB のロール"
-      homarr_db_password:
-        type: str
-        required: true
-        no_log: true
-        description: "DB のパスワード(vault/postgresql.yml)"
+        description: "データ(SQLite の DB)を置くボリュームの大きさ"
       homarr_oidc_client_id:
         type: str
         description: "OIDC の client_id"

@@ -1,25 +1,20 @@
-# PostgreSQL(CloudNativePG の Cluster)を Helm で作り、アプリごとの DB とロールを宣言するロールの既定値。
-# オペレーターは k3s_cnpg が入れる。ロールのパスワード(postgresql_passwords)は、既定値を持たない。
+# アプリ1つ専用の PostgreSQL(CloudNativePG の Cluster)を Helm で作り、DB とその所有者のロールを宣言するロールの既定値。
+# オペレーターは k3s_cnpg が入れる。DB を使うアプリのロールが、自分の DB を作るために呼ぶ。
+# namespace(postgresql_namespace)、DB の名前(postgresql_database)、ロールのパスワード(postgresql_password)は、既定値を持たない。
 ---
 # チャート(cluster)のバージョン
 postgresql_chart_version: "0.9.0"
 postgresql_chart_repo_url: https://cloudnative-pg.github.io/charts
-postgresql_release_name: postgresql
-postgresql_namespace: postgresql
-# PostgreSQL のイメージ(pgvector を含む standard)
-postgresql_image: ghcr.io/cloudnative-pg/postgresql:17-standard-trixie
+# Helm のリリース名(Cluster の名前にもなる)。接続先は <リリース名>-rw.<namespace>.svc.cluster.local
+postgresql_release_name: "{{ postgresql_namespace }}"
+# PostgreSQL のイメージのタグ(pgvector を含む standard)
+postgresql_version: "17-standard-trixie"
+postgresql_image: ghcr.io/cloudnative-pg/postgresql
 # インスタンスの数
 postgresql_instances: 1
 # ボリュームのサイズ
-postgresql_storage_size: 20Gi
-# アプリごとの DB。同名のロールが所有者になる
-postgresql_databases:
-  - name: authentik
-  - name: homarr
-  - name: openwebui
-    extensions:
-      - vector
-  - name: litellm
-  - name: cliproxy
+postgresql_storage_size: 5Gi
+# DB に作る拡張
+postgresql_extensions: []
 # Helm values の上書き(基本値へ再帰的に合成する)
 postgresql_values: {}

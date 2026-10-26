@@ -25,13 +25,6 @@
           namespace: "{{ homarr_namespace }}"
         data:
           db-encryption-key: "{{ homarr_db_encryption_key | b64encode }}"
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: homarr-db
-          namespace: "{{ homarr_namespace }}"
-        data:
-          db-url: "{{ __homarr_db_url | b64encode }}"
     helm_ingress:
       host: "{{ homarr_host }}"
       service_port: 7575

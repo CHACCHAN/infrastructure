@@ -37,6 +37,7 @@
 ## k3s_app_remove.yml
 
 - 使わなくなったアプリを、クラスタから取り除く。Helm のリリースを消し、namespace ごと消す。**ボリュームのデータも消える。**
-- 取り違えを防ぐため、消す namespace の名前を `k3s_app_remove_confirm` にも渡す。クラスタ自体の namespace(`kube-system` など)と、ほかのアプリが頼る基盤(MetalLB、cert-manager、Longhorn、CloudNativePG、PostgreSQL、Authentik)は消せない。
+- 取り違えを防ぐため、消す namespace の名前を `k3s_app_remove_confirm` にも渡す。クラスタ自体の namespace(`kube-system` など)と、ほかのアプリが頼る基盤(MetalLB、cert-manager、Longhorn、CloudNativePG、Authentik とその PostgreSQL)は消せない。
 - リリース名が namespace と違うときは、`-e k3s_app_remove_release=<名前>` を付ける。リリースが見つからないときは止まる(リリースを消したあとの残りを消すときは `-e k3s_app_remove_no_release=true`)。
-- 消すのはクラスタの中だけ。ロール・playbook・vault・インベントリのホスト名・Authentik の OIDC クライアント・PostgreSQL の DB は、別に取り除く。
+- 専用の DB(PostgreSQL)を持つアプリは、DB の namespace(`<アプリの namespace>-db`)も、この playbook で別に消す。
+- 消すのはクラスタの中だけ。ロール・playbook・vault・インベントリのホスト名・Authentik の OIDC クライアントは、別に取り除く。

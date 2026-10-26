@@ -1,4 +1,14 @@
 ---
+- name: 専用の PostgreSQL を適用する
+  ansible.builtin.include_role:
+    name: k3s_postgresql
+  vars:
+    postgresql_namespace: "{{ openwebui_db_namespace }}"
+    postgresql_database: "{{ openwebui_db_name }}"
+    postgresql_password: "{{ openwebui_db_password }}"
+    postgresql_extensions:
+      - vector
+
 - name: OpenWebUI を適用する
   ansible.builtin.include_role:
     name: k3s

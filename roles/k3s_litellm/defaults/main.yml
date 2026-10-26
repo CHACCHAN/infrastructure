@@ -6,10 +6,10 @@ litellm_chart_version: "1.104.2"
 litellm_chart_url: oci://ghcr.io/berriai/litellm-helm
 litellm_release_name: litellm
 litellm_namespace: litellm
-# PostgreSQL への接続(DB とロールは k3s_postgresql が作る)
-litellm_db_host: postgresql-rw.postgresql.svc.cluster.local
+# 専用の PostgreSQL(k3s_postgresql が、この namespace に作る)。DB の所有者のロールは、DB と同じ名前
+litellm_db_namespace: litellm-db
+litellm_db_host: "{{ litellm_db_namespace }}-rw.{{ litellm_db_namespace }}.svc.cluster.local"
 litellm_db_name: litellm
-litellm_db_user: litellm
 # 管理者(proxy_admin)にする Authentik のグループの名前(グループ自体は Authentik の画面で作る)
 litellm_admin_group: admins
 # OIDC の client_id(Authentik の OIDC クライアントの slug と同じ)

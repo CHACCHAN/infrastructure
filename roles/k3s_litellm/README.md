@@ -6,7 +6,7 @@ LiteLLM Proxy(LLM API のゲートウェイ)を Helm で入れる。設計は [d
 
 `playbooks/k3s/litellm.yml` から使う([playbooks/k3s/README.md](../../playbooks/k3s/README.md))。変数の一覧は `ansible-doc -t role k3s_litellm` と `defaults/main.yml`。
 
-前提: PostgreSQL に `litellm` の DB とロールがある。
+前提: CloudNativePG のオペレーターが入っている(`playbooks/k3s/cnpg.yml`)。専用の PostgreSQL(namespace `litellm-db`)は、このロールが [k3s_postgresql](../k3s_postgresql/README.md) で作る。
 
 モデルとプロバイダーの認証情報は、管理画面(`https://<litellm_host>/ui`。Authentik の SSO でログインする)で登録する。Hermes Agent が使うモデルの名前は `hermes_llm` にする。宣言で持ちたいモデルは、`litellm_models`(プロキシの `model_list`)と `vault_litellm_provider_keys`(環境変数名をキーにした辞書)でも足せる。
 

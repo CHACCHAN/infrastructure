@@ -6,7 +6,7 @@ Authentik(IdP)を Helm で入れ、アプリの OIDC クライアントと認証
 
 `playbooks/k3s/authentik.yml` から使う([playbooks/k3s/README.md](../../playbooks/k3s/README.md))。変数の一覧は `ansible-doc -t role k3s_authentik` と `defaults/main.yml`。
 
-前提: PostgreSQL に `authentik` の DB とロールがある([k3s_postgresql](../k3s_postgresql/README.md))。
+前提: CloudNativePG のオペレーターが入っている(`playbooks/k3s/cnpg.yml`)。専用の PostgreSQL(namespace `authentik-db`)は、このロールが [k3s_postgresql](../k3s_postgresql/README.md) で作る。
 
 ## 処理の流れ
 
