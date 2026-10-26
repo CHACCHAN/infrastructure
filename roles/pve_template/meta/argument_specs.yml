@@ -7,3 +7,54 @@ argument_specs:
         type: str
         required: true
         description: テンプレートのディスクを置くストレージ
+      template_node:
+        type: str
+        description: "テンプレートを置く Proxmox ノード。既定は node から導出する。node が未定義なら inventory_hostname を使う"
+      template_image_storage:
+        type: str
+        description: "取り込み用の cloud イメージを置くストレージ"
+      template_download_timeout:
+        type: int
+        description: "cloud イメージのダウンロードの待ち時間(秒)"
+      template_import_timeout:
+        type: int
+        description: "cloud イメージからディスクを取り込む待ち時間(秒)"
+      template_name_prefix:
+        type: str
+        description: "テンプレート名の先頭に付ける OS の名前"
+      template_index:
+        type: str
+        description: "テンプレートの VMID に使う OS の番号(先頭の0を保持する文字列)"
+      template_image_filename:
+        type: str
+        description: "取り込み用の cloud イメージのファイル名"
+      template_image_url:
+        type: str
+        description: "cloud イメージの取得元 URL。既定は template_image_filename から導出する"
+      template_checksum_url:
+        type: str
+        description: "cloud イメージの検証に使うチェックサムファイルの取得元 URL"
+      template_checksum_algorithm:
+        type: str
+        description: "cloud イメージの検証に使うチェックサムのアルゴリズム"
+      template_memory:
+        type: int
+        description: "テンプレート元の VM のメモリ(MiB)"
+      template_cores:
+        type: int
+        description: "テンプレート元の VM のソケットあたりのコア数"
+      template_disk_ssd:
+        type: bool
+        description: "テンプレートの起動ディスクを SSD としてゲストに認識させる"
+      template_disk_iothread:
+        type: bool
+        description: "テンプレートの起動ディスクに専用の I/O スレッドを使う"
+      template_disk_discard:
+        type: str
+        description: "テンプレートの起動ディスクの discard 設定(on か ignore)"
+      template_vmid:
+        type: int
+        description: "テンプレートの VMID。既定は先頭の9、template_index、template_node の末尾2文字から導出する"
+      template_name:
+        type: str
+        description: "テンプレートの名前。既定は template_name_prefix と template_node から導出する"
