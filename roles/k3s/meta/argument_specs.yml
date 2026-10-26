@@ -47,7 +47,7 @@ argument_specs:
         type: list
         elements: dict
         no_log: true
-        description: "リリースの適用前に適用する Secret(data に base64 で書く)"
+        description: "リリースの適用前に適用する Secret(data に base64 で書く)。各 Secret を宣言どおりに置き換えるため、ラベル・すべてのキー・type(Opaque 以外のとき)を含む完全な定義が必要。定義にないキー・ラベル・アノテーションは削除される"
       helm_manifests:
         type: list
         elements: dict

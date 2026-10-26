@@ -16,7 +16,7 @@
     helm_chart_repo_url: "{{ nextcloud_chart_repo_url }}"
     helm_chart_version: "{{ nextcloud_chart_version }}"
     helm_namespace: "{{ nextcloud_namespace }}"
-    helm_timeout: 45m
+    helm_timeout: 15m
     helm_values: "{{ __nextcloud_values | combine(nextcloud_values, recursive=True) }}"
     helm_secrets:
       - apiVersion: v1

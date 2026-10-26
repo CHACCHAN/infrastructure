@@ -58,7 +58,7 @@ argument_specs:
         description: Longhorn のボリュームの大きさ
       nextcloud_default_quota:
         type: str
-        description: ユーザーごとの既定の容量の上限
+        description: ユーザーごとの既定の容量の上限。最初のインストールでだけ適用する
       nextcloud_trusted_proxies:
         type: list
         elements: str

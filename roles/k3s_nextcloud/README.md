@@ -22,7 +22,7 @@ DB → アプリの Secret → Helm のリリース → Ingress と NetworkPolic
 
 - 緊急用の `admin` は初回のインストールでだけ作る。パスワードは `vault/nextcloud.yml` を `ansible-vault view` で確認する。あとから vault を変えても、既存のパスワードは変わらない。Authentik が使えないときは LAN か VPN からログインする。`admin` にはアプリパスワードを作らない。
 - 外部からはパスワードでログインできない。クライアントは Login Flow v2 で Authentik にログインしてアプリパスワードを受け取る。LAN でもクライアントにはアプリパスワードを使う。
-- Pod の起動のたびに、フックがユーザーごとの既定の容量の上限(`nextcloud_default_quota`)と、Talk の通話開始を禁止する設定を宣言した値に合わせる(画面で変えても戻る)。Pod のネットワーク(`nextcloud_trusted_proxies`)は、ログインの失敗の制限の例外に足す(画面で足した例外は消さない)。
+- ユーザーごとの既定の容量の上限(`nextcloud_default_quota`)と、Talk の通話開始を禁止する設定は、最初のインストールでだけ設定する初期値。その後の Nextcloud の画面での変更は保つ。`nextcloud_default_quota` をあとから変えても既存のインストールには反映しないため、画面で変更する。Pod のネットワーク(`nextcloud_trusted_proxies`)は、ログインの失敗の制限の例外に足す(画面で足した例外は消さない)。
 - External sites のサイトと表示方法は画面で設定する。既定で入っているアプリの有効・無効は変更しない。
 - データは Longhorn の PVC 1つと専用の PostgreSQL に保存する。**現在はバックアップがない。** 使用量が7割を超えたら PVC を広げる。縮小はできない。
 - Cloudflare の1リクエストの上限を超える、分割に対応しないアップロードは LAN か VPN から行う。iOS のバックグラウンドのアップロードは実機で確認する。
@@ -30,3 +30,13 @@ DB → アプリの Secret → Helm のリリース → Ingress と NetworkPolic
 ## バージョンを上げる
 
 Nextcloud は1メジャーずつ更新する。チャートの既定のイメージと、各アプリの対応する Nextcloud の版を確かめ、`defaults/main.yml` のチャートとアプリの版を更新する。アプリは、リリースのアーカイブについてアプリストアの署名を検証してから、URL と SHA-256 を記入する。更新前にバックアップの確保を検討し、更新後は Pod のログ、管理画面、SSO と同期を確認する。
+
+## アプリを削除する
+
+`nextcloud_apps` から外すだけでは、アプリは無効化も削除もされない。対象を `nextcloud_apps` から外し、`playbooks/k3s/nextcloud.yml` を適用してから、Pod 内で web ユーザーとして `occ app:remove` を実行する。逆の順序では、次の Pod 起動時に再インストールされる。
+
+Ansible は vault のトークンで接続し、開発マシンに kubeconfig は置かない([k3s](../k3s/README.md))。削除は k3s01 に SSH で入り、次のように実行する(namespace・リリース名が既定値の場合。`<app>` は対象のアプリ名に置き換える)。
+
+```sh
+sudo k3s kubectl exec -n nextcloud deploy/nextcloud -c nextcloud -- su -s /bin/sh www-data -c 'php occ app:remove <app>'
+```

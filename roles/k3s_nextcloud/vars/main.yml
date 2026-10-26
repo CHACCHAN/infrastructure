@@ -1,5 +1,6 @@
 # Nextcloud Hub の Helm values の基本値。
 ---
+__nextcloud_initial_settings_marker: /var/www/html/config/.lab-initial-settings
 __nextcloud_values:
   fullnameOverride: "{{ nextcloud_release_name }}"
   replicaCount: 1
@@ -48,7 +49,7 @@ __nextcloud_values:
         limits:
           cpu: 500m
           memory: 768Mi
-  # 初期化とアプリの取得が済むまで、liveness probe による再起動を待つ
+  # 初期化・アプリの取得・occ upgrade が済むまで、liveness probe による再起動を待つ
   startupProbe:
     enabled: true
     failureThreshold: 180
@@ -95,4 +96,5 @@ __nextcloud_values:
           'files.chunked_upload.max_size' => 20971520,
         ];
     hooks:
+      post-installation: "{{ lookup('ansible.builtin.template', 'post-installation.sh.j2') }}"
       before-starting: "{{ lookup('ansible.builtin.template', 'before-starting.sh.j2') }}"

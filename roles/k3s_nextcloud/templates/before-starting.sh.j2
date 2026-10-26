@@ -53,10 +53,15 @@ occ upgrade --no-interaction
 occ app:enable {{ app.name | quote }} --no-interaction
 {% endfor %}
 
-# 宣言したアプリ設定とバックグラウンド処理を合わせる
+# cron サイドカーでバックグラウンド処理を動かす
 occ background:cron
-occ config:app:set spreed start_calls --value=3
-occ config:app:set files default_quota --value={{ nextcloud_default_quota | quote }}
+
+# 最初のインストールでだけ初期値を設定し、その後の画面での変更を保つ
+if [ -f {{ __nextcloud_initial_settings_marker | quote }} ]; then
+    occ config:app:set spreed start_calls --value=3
+    occ config:app:set files default_quota --value={{ nextcloud_default_quota | quote }}
+    rm {{ __nextcloud_initial_settings_marker | quote }}
+fi
 
 # 画面で追加した例外を保ち、Pod のネットワークだけを重複なく追加する
 add_proxy_range() {

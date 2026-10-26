@@ -85,10 +85,12 @@
           when: (helm_secrets | length > 0 or helm_chart | length == 0) and helm_create_namespace
           register: __helm_namespace
 
+        # 定義にないキー・ラベル・アノテーションを残さず、Secret を宣言どおりにする
         - name: リリースの前に Secret を適用する
           kubernetes.core.k8s:
             definition: "{{ item }}"
             state: present
+            force: true
           loop: "{{ helm_secrets }}"
           loop_control:
             label: "{{ item.metadata.name }}"

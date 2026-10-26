@@ -15,6 +15,8 @@ k3s のクラスタへ、Helm のリリースを適用する共通処理。kubec
 
 認証局の証明書を書き出す → `helm_secrets` を適用する(あれば namespace を先に作る)→ Helm のリリースを適用する(`helm_wait` で Ready を待つ)→ `helm_manifests` と `helm_ingress` の Ingress を適用する → Tunnel 専用の入口の経路を適用する(`helm_ingress.tunnel` が false なら消す)→ NetworkPolicy を適用する(`helm_network_policy` が false なら消す)→ 証明書を消す。
 
+`helm_secrets` の各 Secret は宣言どおりに置き換える。ラベル・すべてのキー・`type`(Opaque 以外のとき)を含む、完全な定義を書く。定義にないキー・ラベル・アノテーションは削除される。
+
 `--check --diff` のときは helm-diff プラグインで差分を見る。リリースが新規または更新になる場合は、CRD などが揃っていないことがあるため、`helm_manifests`・Ingress・NetworkPolicy の確認を飛ばす。マニフェストが webhook に拒否されることがあるため、数回再試行する。
 
 `helm_chart` を空にすると、Helm のリリースを作らず、namespace・`helm_manifests`・Ingress だけを適用する(チャートの無いもの。[k3s_lan_proxy](../k3s_lan_proxy/README.md) が使う)。
