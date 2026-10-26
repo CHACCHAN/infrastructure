@@ -79,6 +79,8 @@
                 name: "{{ k3s_app_remove_release }}"
                 release_namespace: "{{ k3s_app_remove_namespace }}"
               register: __k3s_app_remove_info
+              # 結果に、リリースの values(秘密値を含む)が入る
+              no_log: true
 
             - name: リリースがあることを確かめる
               ansible.builtin.assert:
@@ -95,6 +97,7 @@
                 release_namespace: "{{ k3s_app_remove_namespace }}"
                 release_state: absent
                 wait: true
+              no_log: true
 
             - name: namespace を消す
               kubernetes.core.k8s:

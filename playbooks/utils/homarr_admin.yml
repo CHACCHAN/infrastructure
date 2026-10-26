@@ -75,6 +75,8 @@
                 field_selectors:
                   - status.phase=Running
               register: __homarr_admin_pods
+              # 結果に、Pod の環境変数が入る
+              no_log: true
 
             - name: Pod が動いていることを確かめる
               ansible.builtin.assert:
