@@ -49,6 +49,6 @@ SYS 以外の SSD(ssd01〜)は、すべてVM用のストレージにし、通常
 | pve02 | k3s02、Hermes Agent(3台) | 32GB のうち12GB を k3s02 に使い、残りを Hermes に回す |
 | pve03 | k3s03 | 32GB のうち12GB を k3s03 に使う |
 - 3台のk3sは同じ性能ではない。重いワークロードは、`nodeAffinity` で k3s01・k3s02 に寄せる。k3s03 は etcd の定数、Longhorn の複製、軽いワークロードを受け持つ。
-  - 寄せるのは、メモリを多く使う Open WebUI・Authentik・LiteLLM・Nextcloud Hub と、それぞれの PostgreSQL。Homarr・cloudflared は寄せない。
+  - 寄せるのは、メモリを多く使う Open WebUI・Authentik・LiteLLM・Nextcloud Hub と、それぞれの PostgreSQL。cloudflared は寄せない。
   - 寄せ先はインベントリの `heavy_workloads` のノードで、条件は優先(preferred)にする。寄せ先が止まっても、k3s03 で動き続けるため。
 - `ssd01` に置く k3s の VM のディスク(430GiB)には、Longhorn のデータも入る。VM の中のディスクの使用率を監視する。

@@ -12,7 +12,7 @@ Authentik(IdP)を Helm で入れ、アプリの OIDC クライアントと認証
 
 [k3s](../k3s/README.md) ロールに、チャートと、設定の Secret(`authentik-config`)、Blueprint の ConfigMap を渡して適用する。
 
-- OIDC クライアントの `client_id` は slug と同じ。`client_secret` は、アプリ側の vault ファイル(`vault/homarr.yml` など)の値を、Authentik の Blueprint と、アプリの Secret の両方に渡す。そのため、Authentik を先に完成させなくても、アプリを先に入れられる。
+- OIDC クライアントの `client_id` は slug と同じ。`client_secret` は、アプリ側の vault ファイル(`vault/openwebui.yml` など)の値を、Authentik の Blueprint と、アプリの Secret の両方に渡す。そのため、Authentik を先に完成させなくても、アプリを先に入れられる。
 - クライアントを足すときは、`authentik_oidc_clients` に足し、`playbooks/k3s/authentik.yml` の `authentik_oidc_client_secrets` に secret を足す。
 - Blueprint は2つ(`oidc-clients` と、認証プロキシの `forward-auth`)。Authentik が ConfigMap の変更を検知して適用する。playbook は適用の成否を見ないので、Authentik の画面(Customization → Blueprints)で `successful` を確かめる。
 - IP ごとに、ログインの失敗が成功を `authentik_login_failure_limit` 回だけ上回ると、その IP からのログインを拒否する(同じ IP からの成功は、失敗を1回ずつ打ち消す。最初の記録から `authentik_login_failure_expiry` 秒で解ける。緊急用の `akadmin` も同じ IP からは入れない)。解除を待てないときは、別の IP から入るか、ログイン済みのセッションで管理画面の Reputation の記録を消す。

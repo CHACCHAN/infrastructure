@@ -12,10 +12,6 @@ authentik_db_host: "{{ authentik_db_namespace }}-rw.{{ authentik_db_namespace }}
 authentik_db_name: authentik
 # OIDC クライアント。client_secret は authentik_oidc_client_secrets[slug] で渡す
 authentik_oidc_clients:
-  - name: Homarr
-    slug: homarr
-    redirect_uris:
-      - "https://{{ homarr_host }}/api/auth/callback/oidc"
   - name: OpenWebUI
     slug: openwebui
     redirect_uris:

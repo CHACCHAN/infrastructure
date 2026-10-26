@@ -16,7 +16,6 @@ cert_manager_issuer: letsencrypt-production
 ansible_user: debian
 # アプリの公開ホスト名。各 k3s_<app> ロールと、Authentik の OIDC クライアントが同じ値を参照する
 authentik_host: "auth.{{ lab_domain }}"
-homarr_host: "homarr.{{ lab_domain }}"
 openwebui_host: "ai.{{ lab_domain }}"
 litellm_host: "litellm.{{ lab_domain }}"
 longhorn_host: "longhorn.{{ lab_domain }}"
@@ -27,14 +26,12 @@ nextcloud_host: "nextcloud.{{ lab_domain }}"
 # クラスタ内から Traefik へ向ける公開ホスト名(Pod からの OIDC の通信などが、外の DNS に頼らないようにする)
 k3s_ingress_hosts:
   - "{{ authentik_host }}"
-  - "{{ homarr_host }}"
   - "{{ openwebui_host }}"
   - "{{ litellm_host }}"
   - "{{ nextcloud_host }}"
 # Cloudflare Tunnel で外部に公開するホスト名。ここに無いアプリは、LAN と VPN からだけ使う。
 cloudflared_hosts:
   - "{{ authentik_host }}"
-  - "{{ homarr_host }}"
   - "{{ openwebui_host }}"
   - "{{ nextcloud_host }}"
 # OpenWebUI の緊急用の管理者(ログイン名。SSO のユーザーのメールアドレスと重ねない。パスワードは vault/openwebui.yml)
@@ -95,7 +92,6 @@ lan_proxy_extra_services:
 # ここに無い namespace(kube-system・MetalLB・cert-manager・CloudNativePG のオペレーターなど)には置かない。送信元の IP では絞らない(ルータで一律に管理する)
 helm_network_policies:
   authentik: []
-  homarr: []
   open-webui: []
   nextcloud: []
   # OpenWebUI が、クラスタ内の Service で LiteLLM を使う

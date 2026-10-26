@@ -32,7 +32,7 @@
 ### アプリ
 
 - PostgreSQL は k3s で運用する。CloudNativePG(オペレーターの `cloudnative-pg` と、DB 本体を作る `cluster` の2つのチャート)を使う。PostgreSQL を使うアプリ(Authentik・OpenWebUI・LiteLLM)ごとに専用のクラスタを置き、アプリ同士で共有しない(1つのアプリの DB の障害・更新・削除を、ほかのアプリに及ぼさないため)。インスタンスは1つで、ボリュームは Longhorn(複製数2)に置く。
-- 次のアプリを、旧構成から引き継いで k3s で動かす: Authentik、PostgreSQL、Homarr、OpenWebUI。LiteLLM Proxy・CLIProxyAPI・Nextcloud Hub を新しく足す。CLIProxyAPI 以外は、Helm のチャートで入れる。Homarr は、Nextcloud Hub に置き換えて外す(後述)。
+- 次のアプリを、旧構成から引き継いで k3s で動かす: Authentik、PostgreSQL、OpenWebUI。LiteLLM Proxy・CLIProxyAPI・Nextcloud Hub を新しく足す。CLIProxyAPI 以外は、Helm のチャートで入れる。
 - 証明書は cert-manager で自動取得する。
 - NAS ができるまで、データ保護の暫定策は設けない(オーナーの判断)。
 - リモートアクセスの VPN(WireGuard)と DDNS は、ルータ(OPNsense)が担う予定。k3s では動かさない。
@@ -123,7 +123,7 @@ kubectl・Ansible
 
 ### 決定済み
 
-- 導入の順序: トークン → MetalLB → cert-manager → Longhorn → CloudNativePG のオペレーター → Authentik → Homarr・OpenWebUI・LiteLLM・CLIProxyAPI → cloudflared。Longhorn の管理 UI は、Authentik を入れるまで開けない(認証プロキシのミドルウェアが無いため)。
+- 導入の順序: トークン → MetalLB → cert-manager → Longhorn → CloudNativePG のオペレーター → Authentik → OpenWebUI・LiteLLM・CLIProxyAPI → cloudflared。Longhorn の管理 UI は、Authentik を入れるまで開けない(認証プロキシのミドルウェアが無いため)。
 - namespace はアプリごとに分ける(`cert-manager`、`longhorn-system`、`cnpg-system`、`authentik` など)。アプリ専用の DB(PostgreSQL)は、アプリと別の `<アプリの namespace>-db` に置く(アプリの namespace は Traefik からも受けるため、DB には届かないよう分ける)。
 - 証明書:
   - Let's Encrypt と Cloudflare の DNS-01 を使う。ドメインは `lab_domain`(`cc-chacchan.com`、`inventory/group_vars/all/domain.yml`)。ホスト名がインターネットに出ないよう、ワイルドカード1枚(`*.cc-chacchan.com`)にする。
@@ -132,29 +132,29 @@ kubectl・Ansible
   - 自己チェックの DNS は、公開リゾルバ(`1.1.1.1`・`1.0.0.1`)を直接指す。ノードに渡す DNS サーバーが未決で、プライベートIPを返す応答の扱いも未決のため。
   - Cloudflare の API トークンは、対象ゾーンの DNS の編集とゾーンの読み取り(cert-manager がゾーンの ID を引くため)だけを許可する。`vault/cloudflare.yml` に置く。ACME の連絡先メールアドレスはインベントリに宣言する(`cert_manager_acme_email`)。
 - Longhorn: 複製数は、ノードが1台の間は1、2台以上なら2(CSI・マネージャーの Pod の数は、ノードの数)。ノード停止時の Pod 削除ポリシーと、同時リビルド数の制限(1)を設定する。管理 UI は認証を持たないため、Authentik の認証プロキシを通して公開する(`longhorn`)。
-- PostgreSQL: メジャーバージョン17、pgvector を含む CloudNativePG の `standard` イメージ。アプリごとの専用のクラスタ(1インスタンス、ボリューム 5Gi)は、アプリのロールが作る(`k3s_postgresql`)。DB とその所有者のロールを宣言で作り、パスワードはアプリの vault(`vault/<アプリ名>.yml`)に置く。スーパーユーザーのアクセスは無効にする。インスタンスが1つの間は PodDisruptionBudget を置かない(ノードの退避を止めないため)。Homarr と CLIProxyAPI は PostgreSQL を使わない(後述)。
-- 公開ホスト名は `<名前>.<lab_domain>` で、インベントリ(`inventory/group_vars/k3s.yml`)に宣言する(`auth`・`homarr`・`ai`・`litellm`・`longhorn`・`hermes`・`opnsense`・`cliproxy`)。TLS は Traefik で終端し、Ingress は Traefik の既定の証明書を使う。
+- PostgreSQL: メジャーバージョン17、pgvector を含む CloudNativePG の `standard` イメージ。アプリごとの専用のクラスタ(1インスタンス、ボリューム 5Gi)は、アプリのロールが作る(`k3s_postgresql`)。DB とその所有者のロールを宣言で作り、パスワードはアプリの vault(`vault/<アプリ名>.yml`)に置く。スーパーユーザーのアクセスは無効にする。インスタンスが1つの間は PodDisruptionBudget を置かない(ノードの退避を止めないため)。CLIProxyAPI は PostgreSQL を使わない(後述)。
+- 公開ホスト名は `<名前>.<lab_domain>` で、インベントリ(`inventory/group_vars/k3s.yml`)に宣言する(`auth`・`ai`・`litellm`・`longhorn`・`hermes`・`opnsense`・`cliproxy`・`nextcloud`)。TLS は Traefik で終端し、Ingress は Traefik の既定の証明書を使う。
 - アプリの秘密情報は `vault/<アプリ名>.yml` に置く(DB のパスワードも含む)。
-- ログインは、すべてのアプリで Authentik の SSO(OIDC)にする(Homarr・OpenWebUI・LiteLLM・Nextcloud Hub)。Ansible が管理するのは、OIDC の接続(Authentik の OIDC クライアントと、各アプリの接続先)まで。本体が OIDC を持たないアプリは、OPNsense と同じく Authentik の OIDC クライアントだけを置き、アプリ側の接続はアプリの画面で設定する。グループの作成、グループの所属、アプリケーションを使えるグループの結びつけ、Authentik の管理者権限は、Authentik の画面で設定する(状態)。例外は、認証プロキシで守る画面を使えるグループだけ(後述)。権限はグループに付け、ユーザーには直接付けない。アプリは、Authentik が渡すグループ(`groups`)を見て権限を決める。
+- ログインは、すべてのアプリで Authentik の SSO(OIDC)にする(OpenWebUI・LiteLLM・Nextcloud Hub)。Ansible が管理するのは、OIDC の接続(Authentik の OIDC クライアントと、各アプリの接続先)まで。本体が OIDC を持たないアプリは、OPNsense と同じく Authentik の OIDC クライアントだけを置き、アプリ側の接続はアプリの画面で設定する。グループの作成、グループの所属、アプリケーションを使えるグループの結びつけ、Authentik の管理者権限は、Authentik の画面で設定する(状態)。例外は、認証プロキシで守る画面を使えるグループだけ(後述)。権限はグループに付け、ユーザーには直接付けない。アプリは、Authentik が渡すグループ(`groups`)を見て権限を決める。
 - Ansible が持つアカウントは、緊急用のユーザーだけにする。緊急用のパスワードは機械的に作った値をそのまま使う(人が決めるパスワードより強いため)。普段使うユーザーと、グループの所属は状態で、Authentik の画面で決める。MFA を登録していないユーザーには、ログインの途中で登録させる。
 - Authentik には、Google でもログインできる(Authentik の外部のログイン元)。入れるのは、Authentik に作ってあるユーザーと、メールアドレスが一致する Google アカウントだけで、ユーザーを自動では作らない。Google でのログインでは Authentik の MFA を求めず、Google の2段階認証に任せる。パスワードでのログインも残す。OAuth クライアントの client_id と client_secret は `vault/authentik.yml` に置く。
 - ログインの試行回数の制限は、LAN からのログインは Authentik で行う(外からのログインは Cloudflare)。IP ごとに、ログインの失敗が成功を10回上回ると、その IP からのログインを拒否する(同じ IP からの成功は、失敗を1回ずつ打ち消す。最初の記録から1時間で解ける。緊急用の `akadmin` も同じ IP からは入れない)。アプリ側のパスワードのログイン(緊急用)には、この制限は効かない。
-- グループからアプリの権限への対応づけは、アプリの画面で行う。Homarr は、Authentik と同じ名前のグループを Homarr の画面で作り、権限を付ける。OpenWebUI は、管理画面の OAuth の設定で行う(`ENABLE_OAUTH_PERSISTENT_CONFIG` で、画面からの変更を許す。画面で保存した OAuth の設定は DB に残り、環境変数より優先される)。例外は LiteLLM で、グループ `admins` を管理者にする対応づけだけを Ansible で設定する(`litellm_admin_group`)。LiteLLM の管理画面を使えるユーザーは、Authentik でアプリケーションにグループを結びつけて、管理者だけに絞る。
-- 緊急用のユーザー: 各アプリに、Authentik が使えないときのための、パスワードでログインする管理者を1つずつ残す(Authentik の `akadmin`、Homarr・LiteLLM・Nextcloud Hub の `admin`、OpenWebUI の `admin@<lab_domain>`・表示名 `Admin`)。名前は、各アプリの公式の既定に合わせる(Homarr には既定がないため `admin`。Nextcloud Hub は、イメージに既定がなく、チャートの既定の `admin`)。パスワードは機械的に作った 24〜32 文字の英数字で、vault にだけ置き、`ansible-vault view` で確認する。ログイン画面からパスワードの入力欄は隠さない。LiteLLM のマスターキーは API の鍵で、この規則の対象外。
-- 認証プロキシ(Authentik の forward auth)は、自前のログインを持たない画面にだけ掛ける(現在は Longhorn の管理 UI)。例外として、ログインが共有の鍵1つだけの画面にも掛ける(現在は CLIProxyAPI の管理画面)。ユーザーを分けられず、MFA も無いため。Homarr・OpenWebUI・LiteLLM には掛けない。自前の OIDC のログインがあり、掛けると、Authentik が使えないときに緊急用のユーザーへ届かなくなり、API キーでの利用(LiteLLM の `/v1` など)も止まるため。
+- グループからアプリの権限への対応づけは、アプリの画面で行う。OpenWebUI は、管理画面の OAuth の設定で行う(`ENABLE_OAUTH_PERSISTENT_CONFIG` で、画面からの変更を許す。画面で保存した OAuth の設定は DB に残り、環境変数より優先される)。例外は LiteLLM で、グループ `admins` を管理者にする対応づけだけを Ansible で設定する(`litellm_admin_group`)。LiteLLM の管理画面を使えるユーザーは、Authentik でアプリケーションにグループを結びつけて、管理者だけに絞る。
+- 緊急用のユーザー: 各アプリに、Authentik が使えないときのための、パスワードでログインする管理者を1つずつ残す(Authentik の `akadmin`、LiteLLM・Nextcloud Hub の `admin`、OpenWebUI の `admin@<lab_domain>`・表示名 `Admin`)。名前は、各アプリの公式の既定に合わせる(Nextcloud Hub は、イメージに既定がなく、チャートの既定の `admin`)。パスワードは機械的に作った 24〜32 文字の英数字で、vault にだけ置き、`ansible-vault view` で確認する。ログイン画面からパスワードの入力欄は隠さない。LiteLLM のマスターキーは API の鍵で、この規則の対象外。
+- 認証プロキシ(Authentik の forward auth)は、自前のログインを持たない画面にだけ掛ける(現在は Longhorn の管理 UI)。例外として、ログインが共有の鍵1つだけの画面にも掛ける(現在は CLIProxyAPI の管理画面)。ユーザーを分けられず、MFA も無いため。OpenWebUI・LiteLLM には掛けない。自前の OIDC のログインがあり、掛けると、Authentik が使えないときに緊急用のユーザーへ届かなくなり、API キーでの利用(LiteLLM の `/v1` など)も止まるため。
   - 守る画面は、Authentik のアプリケーション(プロキシプロバイダー、アプリケーションごとの forward auth)として Blueprint で宣言する(`authentik_proxy_apps`)。問い合わせには、Authentik 内蔵のアウトポストが答える。アウトポストの設定(ブラウザを送る Authentik の URL など)も Blueprint で宣言する。
   - Traefik のミドルウェア(`authentik` namespace の `forward-auth`)を、守る画面の Ingress に掛ける。ミドルウェアが無いとき、Traefik はその画面を通さない。
   - 使えるのは、グループ `admins` のメンバーだけ。これだけは、Authentik の画面ではなく Blueprint で宣言する(`authentik_proxy_access_group`)。守る画面は自分で権限を分けられず、入れた全員がすべての操作をできるため、結びつけを忘れても開かないようにする。グループ自体と所属は、Authentik の画面で作る。
-- アプリの Pod が受ける通信は、NetworkPolicy で絞る。通すのは、同じ namespace、Traefik、名前を挙げた namespace だけ(各アプリの PostgreSQL は、オペレーターとそのアプリ。LiteLLM は OpenWebUI。CLIProxyAPI は LiteLLM)。対象は `authentik`・`homarr`・`open-webui`・`litellm`・`cliproxy`・`nextcloud`・`cloudflared` と各アプリの DB(`<アプリの namespace>-db`)の namespace と、Longhorn の管理 UI の Pod(Longhorn 本体の API は、Longhorn のチャートが置く NetworkPolicy が、Longhorn の Pod だけに絞っている)。外向きの通信は絞らない(LLM の API、Google、Let's Encrypt などへ出るため)。クラスタの基盤(`kube-system`、MetalLB、cert-manager、CloudNativePG のオペレーター、Longhorn の本体)には掛けない。
+- アプリの Pod が受ける通信は、NetworkPolicy で絞る。通すのは、同じ namespace、Traefik、名前を挙げた namespace だけ(各アプリの PostgreSQL は、オペレーターとそのアプリ。LiteLLM は OpenWebUI。CLIProxyAPI は LiteLLM)。対象は `authentik`・`open-webui`・`litellm`・`cliproxy`・`nextcloud`・`cloudflared` と各アプリの DB(`<アプリの namespace>-db`)の namespace と、Longhorn の管理 UI の Pod(Longhorn 本体の API は、Longhorn のチャートが置く NetworkPolicy が、Longhorn の Pod だけに絞っている)。外向きの通信は絞らない(LLM の API、Google、Let's Encrypt などへ出るため)。クラスタの基盤(`kube-system`、MetalLB、cert-manager、CloudNativePG のオペレーター、Longhorn の本体)には掛けない。
   - NetworkPolicy を置く namespace と、追加で通す namespace は、インベントリ(`inventory/group_vars/k3s.yml`)の表 `helm_network_policies` に1か所で宣言する。各アプリのロールは、自分の namespace が表に無ければ止まる(宣言を忘れて NetworkPolicy が消えないため)。
   - 送信元の IP による受け入れの制限(Traefik の許可リストなど)は、クラスタ内では設定しない。どこから届くかは、上流のルータ(OPNsense)で一律に管理する。
-- 外部への公開は Cloudflare Tunnel で行う。公開するのは Authentik・Homarr・OpenWebUI・Nextcloud Hub。LiteLLM・CLIProxyAPI(プロバイダーの認証情報を持ち、API が課金や利用枠につながる)と Longhorn の管理 UI は公開せず、LAN と VPN から使う(CLIProxyAPI は管理画面だけ。API はクラスタ内からだけ)。
+- 外部への公開は Cloudflare Tunnel で行う。公開するのは Authentik・OpenWebUI・Nextcloud Hub。LiteLLM・CLIProxyAPI(プロバイダーの認証情報を持ち、API が課金や利用枠につながる)と Longhorn の管理 UI は公開せず、LAN と VPN から使う(CLIProxyAPI は管理画面だけ。API はクラスタ内からだけ)。
   - 公開するホスト名は、インベントリ(`inventory/group_vars/k3s.yml`)の `cloudflared_hosts` に宣言する。ここに無いアプリは、LAN と VPN からだけ使う。
   - `cloudflared` を k3s で動かし、Traefik の Tunnel 専用の入口(クラスタ内だけで開く)につなぐ。公開するアプリだけを、この入口に載せる。LAN 用の入口(`172.16.12.5`)とは別にし、外から届く経路を入口で絞れるようにする。
   - Tunnel・経路表(ホスト名から向け先への対応)・DNS は、Cloudflare の画面で管理する(状態)。Ansible が持つのは、`cloudflared` のコネクタ(トークンは `vault/cloudflared.yml`)と、Traefik の Tunnel 専用の入口に載せるアプリ(`cloudflared_hosts`)。
   - 経路表の向け先は、すべてのホスト名で Traefik の Tunnel 専用の入口(`https://traefik-tunnel.kube-system.svc.cluster.local:443`)にする。外部に出るアプリは `cloudflared_hosts` で決まり、画面にホスト名を足しただけでは届かない。
   - `cloudflared` の Pod は、外向きの通信も NetworkPolicy で絞る(通すのは、クラスタ内の DNS、Tunnel 専用の入口、インターネットだけ)。経路表がコードの外にあるため、画面の誤りや Cloudflare のアカウントの乗っ取りで、LAN 用の入口・LAN の機器・クラスタ内の別のサービスを向け先にされても届かないようにする。「外向きの通信は絞らない」の例外。
-  - 緊急用のユーザーのパスワードのログインは、外からは使えないようにする(Authentik が使えないときは、LAN か VPN から使う)。Homarr・OpenWebUI・Nextcloud Hub は、Tunnel 専用の入口でだけ、パスワードのログインのパスを通さない。
+  - 緊急用のユーザーのパスワードのログインは、外からは使えないようにする(Authentik が使えないときは、LAN か VPN から使う)。OpenWebUI・Nextcloud Hub は、Tunnel 専用の入口でだけ、パスワードのログインのパスを通さない。
   - Tunnel 専用の入口では、届いた転送ヘッダー(`X-Forwarded-*`)を信頼しない。Cloudflare は、クライアントが付けた `X-Forwarded-For` を消さずに後ろへ追記し、Authentik は先頭を使うため、信頼すると、外部から IP を偽って、ログインの失敗の制限をすり抜けることも、LAN の IP を名乗って LAN のログインを締め出すこともできる。入口に第三者のプラグインを入れて IP を直すことはしない。
   - そのため、Tunnel を通る通信は、アプリからはすべて `cloudflared` の Pod の IP に見える。Authentik のログインの失敗の制限は、Pod のネットワークからのログインには掛けない(掛けると、誰かの失敗で外部の全員が拒否される)。この例外は `cloudflared` だけでなく、すべての Pod に効く(クラスタ内の Pod は、公開ホスト名で Authentik へ届く)。外からのログインの試行回数は、Cloudflare で絞る(WAF のレート制限。Cloudflare の画面で設定する)。Authentik の記録には、外からのログインのクライアントの IP は残らない。
   - 入口を指定しない経路は、LAN 用の入口にだけ載る(Tunnel 専用の入口には、明示した経路だけを載せる)。認証プロキシで守る画面は、外部に公開しない(Tunnel 専用の入口の経路には、ミドルウェアが掛からない)。
@@ -167,8 +167,7 @@ kubectl・Ansible
   - Proxmox の管理画面のログインは、Proxmox の OpenID のレルムで、Authentik に OIDC クライアント `proxmox` を置く(シークレットは `vault/proxmox_oidc.yml`)。Proxmox は開いている画面の URL をリダイレクト URI にするため、Authentik は `pve` グループの各ノードの公開ホスト名(`https://<ノード名>.<lab_domain>`)だけを許可する。IP で開いた画面からは SSO を使えない。レルムの設定は、Proxmox の画面で行う(状態)。
 - 公開ホスト名の DNS は、`*.<lab_domain>` を Ingress の VIP(`172.16.12.5`)へ向ける(Cloudflare の画面で管理する)。
 - クラスタ内から公開ホスト名を引くと、Traefik の Service を返す(CoreDNS の `coredns-custom`)。Pod から Authentik への OIDC の通信が、外の DNS([network.md](network.md) の名前解決)に頼らないようにする。
-- Homarr は、データを SQLite の DB にして、Longhorn のボリューム(1Gi、Pod は1つ)に置く。OpenWebUI はボリュームを持たず、データを PostgreSQL に置く。LLM への接続は OpenWebUI の管理画面で登録する。SSO でのアカウント作成(`ENABLE_OAUTH_SIGNUP`)とメールでの統合(`OAUTH_MERGE_ACCOUNTS_BY_EMAIL`)を有効にする。Authentik では、ユーザーが自分でメールアドレスを変えられないようにする。
-- Homarr の緊急用の管理者は、宣言できないため単発ツール(`playbooks/utils/homarr_admin.yml`)で作る。
+- OpenWebUI はボリュームを持たず、データを PostgreSQL に置く。LLM への接続は OpenWebUI の管理画面で登録する。SSO でのアカウント作成(`ENABLE_OAUTH_SIGNUP`)とメールでの統合(`OAUTH_MERGE_ACCOUNTS_BY_EMAIL`)を有効にする。Authentik では、ユーザーが自分でメールアドレスを変えられないようにする。
 - LiteLLM は、チャートの PostgreSQL を使わず、専用の PostgreSQL(`k3s_postgresql`)に接続する。モデルとプロバイダーの認証情報は、管理画面で登録する(`store_model_in_db` を有効にする。OAuth を使うプロバイダーは宣言できないため)。登録した内容と仮想キーは DB に保存される状態で、バックアップの対象になる。認証情報は `LITELLM_SALT_KEY`(`vault/litellm.yml`)で暗号化される。Hermes Agent が使うモデルの名前は `hermes_llm` にする。
 - CLIProxyAPI(CLI の OAuth の認証情報を、OpenAI 互換などの API として出すプロキシ)は、`cliproxy.<lab_domain>` で LAN に公開する。
   - 外から使えるのは管理画面だけ。API は、クラスタ内の Service からだけ使う(LiteLLM だけが使う。LAN のクライアントは LiteLLM を経由する)。
@@ -196,12 +195,11 @@ kubectl・Ansible
   - クライアント(同期・カレンダー・連絡先)には、アプリパスワードだけを使わせる(`token_auth_enforced`)。外からのクライアントは、ブラウザで Authentik にログインして、端末ごとのアプリパスワードを受け取る(Login Flow v2)。Tunnel 専用の入口で塞ぐのは、パスワードを受け取るパスだけで、このログインの流れは通す。
   - ログインの失敗の制限(IP ごと)は、Authentik と同じく、Pod のネットワークからの通信には掛けない(Tunnel を通る通信は、すべて `cloudflared` の Pod の IP に見えるため)。LAN からは、クライアントの実 IP で数える。外からの試行回数は Cloudflare のレート制限で絞り、対象に Nextcloud のログインと、同期・カレンダーのパス(`/remote.php` など)を含める。
   - 分割アップロードの大きさは 20MiB にする(`files.chunked_upload.max_size`)。Cloudflare の1リクエストの上限(100MB)を超えないため。分割に対応しないクライアントで 100MB を超えるファイルは、LAN か VPN から送る。iOS のアプリのバックグラウンドのアップロードが分割に従うかは、実機で確かめる。
-  - External sites に並べるサイトと、その表示(リンクにするか、埋め込むか)は、画面で設定する(状態)。Homarr のボードと同じく、使い方に合わせて変わるため。
-  - Homarr は、Nextcloud Hub に置き換えて外す(外す時期は未決)。外したあとは、各サービスの状態の表示が無くなる。
+  - External sites に並べるサイトと、その表示(リンクにするか、埋め込むか)は、画面で設定する(状態)。使い方に合わせて変わるため。
+  - 各サービスの状態を一覧で表示するダッシュボードは置かない。ポータルは Nextcloud Hub にする。
 
 ### 未決(クラスタ内アプリ)
 
-- Homarr を外す時期。
 - 緊急用の `akadmin` を、外からのログインで拒否する方法。Authentik のログインは全員が同じ経路を通るため、経路では塞げない。`akadmin` の API トークン(`vault/authentik.yml`)も、外から Authentik の API に使える(MFA も試行回数の制限も通らない)。API のパスは画面も使うため、経路では塞げない。
 - 自宅LANからラボへの通信が NAT される場合の、ログインの失敗の制限。LAN の全員が同じ IP に見え、誰かの失敗で全員が拒否される。NAT を1段だけにする方針([network.md](network.md))で、自宅LANとラボの間が NAT なしのルーティングになれば、起きない。
 

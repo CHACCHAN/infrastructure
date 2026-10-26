@@ -17,7 +17,6 @@
     authentik_google_client_id: "{{ vault_authentik_google_client_id }}"
     authentik_google_client_secret: "{{ vault_authentik_google_client_secret }}"
     authentik_oidc_client_secrets:
-      homarr: "{{ vault_homarr_oidc_client_secret }}"
       openwebui: "{{ vault_openwebui_oidc_client_secret }}"
       nextcloud: "{{ vault_nextcloud_oidc_client_secret }}"
       litellm: "{{ vault_litellm_oidc_client_secret }}"
@@ -27,7 +26,6 @@
   vars_files:
     - "{{ playbook_dir }}/../../vault/k3s.yml"
     - "{{ playbook_dir }}/../../vault/authentik.yml"
-    - "{{ playbook_dir }}/../../vault/homarr.yml"
     - "{{ playbook_dir }}/../../vault/openwebui.yml"
     - "{{ playbook_dir }}/../../vault/nextcloud.yml"
     - "{{ playbook_dir }}/../../vault/litellm.yml"

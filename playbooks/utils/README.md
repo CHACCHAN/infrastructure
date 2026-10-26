@@ -10,7 +10,6 @@
 | --- | --- | --- |
 | `k3s_token.yml` | k3s に ServiceAccount(`cluster-admin`)と長期トークンを作り、トークンと認証局の証明書を `vault/k3s.yml` に暗号化して保存する | `ansible-playbook playbooks/utils/k3s_token.yml 2>&1 \| cat` |
 | `k3s_cluster_token.yml` | k3s のクラスタのトークン(サーバーの参加に使う)を `vault/k3s.yml` に保存する。クラスタが動いていれば先頭のホストのトークンを写し、無ければ新しく作る | `ansible-playbook playbooks/utils/k3s_cluster_token.yml 2>&1 \| cat` |
-| `homarr_admin.yml` | Homarr の緊急用の管理者(`admin`)を、無ければ作り、パスワードを `vault/homarr.yml` の値に設定する | `ansible-playbook playbooks/utils/homarr_admin.yml 2>&1 \| cat` |
 | `k3s_app_remove.yml` | クラスタからアプリを取り除く(Helm のリリースと namespace を消す) | `ansible-playbook playbooks/utils/k3s_app_remove.yml -e k3s_app_remove_namespace=<名前> -e k3s_app_remove_confirm=<名前> 2>&1 \| cat` |
 
 ## k3s_token.yml
@@ -26,13 +25,6 @@
 - クラスタがまだ無く、vault にも無ければ、秘密だけを新しく作る。クラスタを一から作るときは、これを実行し、`playbooks/vm/k3s.yml -l k3s01` で先頭のホストを構築してから、もう一度実行する(参加するホストが、認証局のハッシュで参加先を確かめられるようにするため)。
 - 平文は `/dev/shm` に一時的に置き、暗号化したあとに消す。
 - トークンは [vm_k3s](../../roles/vm_k3s/README.md) が使う。
-
-## homarr_admin.yml
-
-- Homarr はユーザーを宣言で作れないため、Pod の中で Homarr の CLI を実行する(`kubectl exec`。接続は `vault/k3s.yml` のトークン)。
-- 実行のたびにパスワードを設定し直し、そのユーザーのセッションを切る。パスワードを変えるときは、`vault/homarr.yml` を変えてから実行する。
-- 先に [playbooks/k3s/homarr.yml](../k3s/README.md) を適用しておく。ユーザーを作ったあと、初回の設定(管理者にする外部グループなど)は、このユーザーでログインして画面で行う。
-- パスワードは標準入力で Pod へ渡すが、Pod の中では CLI の引数になる。API のトークンは、実行中の `kubectl` の引数に載る(開発コンテナの中のプロセスから見える)。
 
 ## k3s_app_remove.yml
 
