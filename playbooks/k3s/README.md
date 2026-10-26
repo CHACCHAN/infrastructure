@@ -22,7 +22,7 @@ k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconf
 
 ## 実行の順序
 
-`metallb.yml` → `cert_manager.yml` → `longhorn.yml` → `cnpg.yml` → `authentik.yml` の順に実行する。そのあとの `homarr.yml`・`openwebui.yml`・`litellm.yml`・`cliproxy.yml` は、順不同。OIDC の client_secret は vault で決まっているため、アプリを `authentik.yml` より先に入れてもよい(ログインできるのは Authentik の起動後)。`cloudflared.yml` は、Tunnel を Cloudflare の画面で作ってから実行する([roles/k3s_cloudflared](../../roles/k3s_cloudflared/README.md))。公開するホスト名(`cloudflared_hosts`)を変えたときは、そのアプリの playbook を実行し、Cloudflare の画面の経路も合わせる。`lan_proxy.yml` は、`metallb.yml` と `cert_manager.yml` のあとなら、いつ実行してもよい。Longhorn の管理 UI と CLIProxyAPI の管理画面は、`authentik.yml` を実行するまで開けない(認証プロキシのミドルウェアが無いため)。Longhorn は、ノード側の前提(`vm_k3s` の `storage`)が先に要るので、`playbooks/vm/k3s.yml` を流してから実行する。
+`metallb.yml` → `cert_manager.yml` → `longhorn.yml` → `cnpg.yml` → `authentik.yml` の順に実行する。そのあとの `homarr.yml`・`openwebui.yml`・`litellm.yml`・`cliproxy.yml` は、順不同。OIDC の client_secret は vault で決まっているため、アプリを `authentik.yml` より先に入れてもよい(ログインできるのは Authentik の起動後)。`cloudflared.yml` は、Tunnel を Cloudflare の画面で作ってから実行する([roles/k3s_cloudflared](../../roles/k3s_cloudflared/README.md))。公開するホスト名(`cloudflared_hosts`)を変えたときは、そのアプリの playbook を実行し、Cloudflare の画面の経路も合わせる。`lan_proxy.yml` は、`metallb.yml` と `cert_manager.yml` のあとなら、いつ実行してもよい。アプリを足して `k3s_ingress_hosts`(クラスタ内から公開ホスト名を Traefik へ向ける CoreDNS の設定)を変えたときは、`playbooks/vm/k3s.yml` も流す。Longhorn の管理 UI と CLIProxyAPI の管理画面は、`authentik.yml` を実行するまで開けない(認証プロキシのミドルウェアが無いため)。Longhorn は、ノード側の前提(`vm_k3s` の `storage`)が先に要るので、`playbooks/vm/k3s.yml` を流してから実行する。
 
 ## 前提
 
@@ -33,4 +33,4 @@ k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconf
 
 ## アプリを足す
 
-`new-role` スキルに従い、`k3s_<app>` ロールを作る。ロールは [k3s](../../roles/k3s/README.md) を `include_role` で呼ぶだけにし、チャート・バージョン・values を `defaults/main.yml` に書く。playbook は `metallb.yml` と同じ形にする。
+`new-role` スキルに従い、`k3s_<app>` ロールを作る。ロールは [k3s](../../roles/k3s/README.md) を `include_role` で呼ぶだけにし、チャートとバージョンを `defaults/main.yml` に、values の基本値を `vars/main.yml` に書く。playbook は `metallb.yml` と同じ形にする。
