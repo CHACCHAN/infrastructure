@@ -28,3 +28,5 @@ values に秘密値を渡すアプリは、`helm_no_log: true` にする。
 `helm_ingress.tunnel: true` にすると、Traefik の Tunnel 専用の入口(`tunnel`。[k3s_metallb](../k3s_metallb/README.md) が作る)にも経路(`IngressRoute`)を作り、Cloudflare Tunnel を通る外部からの通信を受ける。`helm_ingress.tunnel_deny_paths` のパスは、この入口でだけ 404 にする(緊急用のパスワードのログインなど)。`tunnel` を false に戻すと、経路を消す。この経路にはミドルウェアが掛からないため、`middlewares` とは同時に指定できない。
 
 `helm_ingress.middlewares` で、Ingress に Traefik のミドルウェアを掛ける(Authentik の認証プロキシは `authentik-forward-auth@kubernetescrd`)。
+
+`helm_ingress.tunnel_deny_post_paths` は、Tunnel 専用の入口で POST だけを通さない完全一致のパスを指定する。大文字・小文字を区別せず、末尾のスラッシュは任意。指定値には末尾のスラッシュを付けない。ログイン画面の GET や、Login Flow v2 の子パスは通せる。

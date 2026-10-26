@@ -20,6 +20,12 @@ authentik_oidc_clients:
     slug: openwebui
     redirect_uris:
       - "https://{{ openwebui_host }}/oauth/oidc/callback"
+  - name: Nextcloud
+    slug: nextcloud
+    # pretty URL の有効・無効で生成されるコールバックが異なるため、両方を許可する
+    redirect_uris:
+      - "https://{{ nextcloud_host }}/apps/user_oidc/code"
+      - "https://{{ nextcloud_host }}/index.php/apps/user_oidc/code"
   - name: LiteLLM
     slug: litellm
     redirect_uris:

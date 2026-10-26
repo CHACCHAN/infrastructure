@@ -79,6 +79,10 @@ argument_specs:
             type: list
             elements: str
             description: "Tunnel 専用の入口でだけ通さないパス(前方一致。大文字・小文字を区別しない)"
+          tunnel_deny_post_paths:
+            type: list
+            elements: str
+            description: "Tunnel 専用の入口でだけ POST を通さないパス(完全一致。大文字・小文字を区別せず、末尾のスラッシュは任意。指定値には末尾のスラッシュを付けない)"
       helm_network_policy:
         type: bool
         description: "Pod が受ける通信を絞る NetworkPolicy を置く(同じ namespace、Traefik、helm_network_policies の namespace だけを通す)。false なら消す"

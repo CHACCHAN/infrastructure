@@ -27,10 +27,14 @@ __helm_ingress_manifests: >-
   {%- else -%}
   {{ [] }}
   {%- endif -%}
-# Tunnel 専用の入口の経路の条件。拒否するパス(大文字・小文字を区別しない前方一致)は、条件から外して経路を作らない(404 になる)
+# Tunnel 専用の入口の経路の条件。拒否するパス(大文字・小文字を区別しない前方一致)と、POST だけを拒否するパス(完全一致)は、
+# 条件から外して経路を作らない(404 になる)
 __helm_tunnel_match: >-
   {%- set deny = helm_ingress.tunnel_deny_paths | default([]) | map('regex_escape') | join('|') -%}
-  Host(`{{ helm_ingress.host | default('') }}`){{ ' && !PathRegexp(`(?i)^(' ~ deny ~ ')`)' if deny else '' }}
+  {%- set deny_post = helm_ingress.tunnel_deny_post_paths | default([]) | map('regex_escape') | join('|') -%}
+  Host(`{{ helm_ingress.host | default('') }}`)
+  {{- ' && !PathRegexp(`(?i)^(' ~ deny ~ ')`)' if deny else '' }}
+  {{- ' && !(Method(`POST`) && PathRegexp(`(?i)^(' ~ deny_post ~ ')/?$`))' if deny_post else '' }}
 # Tunnel 専用の入口(外部からの通信)の経路
 __helm_tunnel_manifest:
   apiVersion: traefik.io/v1alpha1

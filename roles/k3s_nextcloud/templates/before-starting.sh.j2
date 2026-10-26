@@ -1,0 +1,95 @@
+#!/bin/sh
+# Ansible(roles/k3s_nextcloud)が生成。手動編集は次回実行で上書きされる。
+set -eu
+cd /var/www/html
+# occ は web のユーザーで動かす
+test "$(id -u)" != 0
+occ() {
+    php /var/www/html/occ "$@"
+}
+
+# 検証済みのアーカイブだけを展開し、アプリのディレクトリ全体を入れ替える
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT HUP INT TERM
+install_app() {
+    name=$1
+    version=$2
+    url=$3
+    sha256=$4
+    installed=$(php -r '
+        $path = $argv[1] . "/appinfo/info.xml";
+        if (is_file($path)) {
+            $xml = simplexml_load_file($path);
+            if ($xml === false) { exit(1); }
+            echo (string)$xml->version;
+        }
+    ' "custom_apps/$name")
+    if [ "$installed" = "$version" ]; then
+        return
+    fi
+    curl --fail --silent --show-error --location --retry 3 --proto '=https' --proto-redir '=https' \
+        --output "$work/$name.tar.gz" "$url"
+    printf '%s  %s\n' "$sha256" "$work/$name.tar.gz" | sha256sum --check --status
+    mkdir "$work/$name"
+    tar -xzf "$work/$name.tar.gz" -C "$work/$name" --no-same-owner
+    php -r '
+        $xml = simplexml_load_file($argv[1] . "/appinfo/info.xml");
+        if ($xml === false || (string)$xml->id !== $argv[2] || (string)$xml->version !== $argv[3]) { exit(1); }
+    ' "$work/$name/$name" "$name" "$version"
+    # custom_apps は独立したマウントのため、その中で rename する
+    staged="custom_apps/.$name.next"
+    rm -rf "$staged"
+    mv "$work/$name/$name" "$staged"
+    rm -rf "custom_apps/$name"
+    mv "$staged" "custom_apps/$name"
+}
+{% for app in nextcloud_apps %}
+install_app {{ app.name | quote }} {{ app.version | quote }} {{ app.url | quote }} {{ app.sha256 | quote }}
+{% endfor %}
+
+# 中断した更新も再開し、DB のアプリの版を配置したファイルに合わせる
+occ upgrade --no-interaction
+{% for app in nextcloud_apps %}
+occ app:enable {{ app.name | quote }} --no-interaction
+{% endfor %}
+
+# 宣言したアプリ設定とバックグラウンド処理を合わせる
+occ background:cron
+occ config:app:set spreed start_calls --value=3
+occ config:app:set files default_quota --value={{ nextcloud_default_quota | quote }}
+
+# 画面で追加した例外を保ち、Pod のネットワークだけを重複なく追加する
+add_proxy_range() {
+    range=$1
+    occ config:list bruteForce > "$work/bruteForce.json"
+    next_id=$(php -r '
+        $config = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+        $maxId = 0;
+        foreach ($config["apps"]["bruteForce"] ?? [] as $key => $value) {
+            if (!preg_match("/^whitelist_([0-9]+)$/D", $key, $match)) {
+                continue;
+            }
+            if ($value === $argv[2]) {
+                exit(0);
+            }
+            $maxId = max($maxId, (int)$match[1]);
+        }
+        echo $maxId + 1;
+    ' "$work/bruteForce.json" "$range")
+    if [ -n "$next_id" ]; then
+        occ config:app:set bruteForce "whitelist_$next_id" --value="$range"
+        occ config:app:set bruteForce "whitelist_${next_id}_comment" \
+            --value='Ansible 管理の Pod ネットワーク' --lazy
+    fi
+}
+{% for range in nextcloud_trusted_proxies %}
+add_proxy_range {{ range | quote }}
+{% endfor %}
+
+# シークレットは環境変数から読み、起動のたびにプロバイダーを合わせる
+occ user_oidc:provider Authentik \
+    --clientid={{ nextcloud_oidc_client_id | quote }} \
+    --clientsecret-env=NEXTCLOUD_OIDC_CLIENT_SECRET \
+    --discoveryuri={{ ('https://' ~ authentik_host ~ '/application/o/' ~ nextcloud_oidc_client_id ~ '/.well-known/openid-configuration') | quote }} \
+    --scope='openid email profile' --mapping-groups=groups --group-provisioning=1 \
+    --group-whitelist-regex='/^(?!admin$).*$/' --no-interaction

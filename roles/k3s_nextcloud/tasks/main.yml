@@ -1,0 +1,6 @@
+---
+- name: Nextcloud の入力を確認する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: Nextcloud と専用の DB を適用する
+  ansible.builtin.import_tasks: install.yml

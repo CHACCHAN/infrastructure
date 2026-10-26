@@ -23,20 +23,23 @@ longhorn_host: "longhorn.{{ lab_domain }}"
 hermes_host: "hermes.{{ lab_domain }}"
 opnsense_host: "opnsense.{{ lab_domain }}"
 cliproxy_host: "cliproxy.{{ lab_domain }}"
+nextcloud_host: "nextcloud.{{ lab_domain }}"
 # クラスタ内から Traefik へ向ける公開ホスト名(Pod からの OIDC の通信などが、外の DNS に頼らないようにする)
 k3s_ingress_hosts:
   - "{{ authentik_host }}"
   - "{{ homarr_host }}"
   - "{{ openwebui_host }}"
   - "{{ litellm_host }}"
+  - "{{ nextcloud_host }}"
 # Cloudflare Tunnel で外部に公開するホスト名。ここに無いアプリは、LAN と VPN からだけ使う。
 cloudflared_hosts:
   - "{{ authentik_host }}"
   - "{{ homarr_host }}"
   - "{{ openwebui_host }}"
+  - "{{ nextcloud_host }}"
 # OpenWebUI の緊急用の管理者(ログイン名。SSO のユーザーのメールアドレスと重ねない。パスワードは vault/openwebui.yml)
 openwebui_admin_email: "admin@{{ lab_domain }}"
-# 重いワークロード(各アプリの PostgreSQL・Open WebUI・Authentik・LiteLLM)を、heavy_workloads のノードへ寄せる。寄せるだけで、そのノードが止まればほかのノードでも動く(docs/design/hardware.md)
+# 重いワークロード(各アプリの PostgreSQL・Open WebUI・Authentik・LiteLLM・Nextcloud Hub)を、heavy_workloads のノードへ寄せる。寄せるだけで、そのノードが止まればほかのノードでも動く(docs/design/hardware.md)
 heavy_workload_nodes: >-
   {{ groups['k3s'] | map('extract', hostvars) | selectattr('heavy_workloads', 'defined')
      | selectattr('heavy_workloads') | map(attribute='inventory_hostname') | list }}
@@ -53,6 +56,9 @@ postgresql_values:
     affinity:
       nodeAffinity: "{{ heavy_workload_node_affinity }}"
 openwebui_values:
+  affinity:
+    nodeAffinity: "{{ heavy_workload_node_affinity }}"
+nextcloud_values:
   affinity:
     nodeAffinity: "{{ heavy_workload_node_affinity }}"
 litellm_values:
@@ -91,6 +97,7 @@ helm_network_policies:
   authentik: []
   homarr: []
   open-webui: []
+  nextcloud: []
   # OpenWebUI が、クラスタ内の Service で LiteLLM を使う
   litellm:
     - open-webui
@@ -104,6 +111,9 @@ helm_network_policies:
   open-webui-db:
     - cnpg-system
     - open-webui
+  nextcloud-db:
+    - cnpg-system
+    - nextcloud
   litellm-db:
     - cnpg-system
     - litellm

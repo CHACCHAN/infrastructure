@@ -19,6 +19,7 @@
     authentik_oidc_client_secrets:
       homarr: "{{ vault_homarr_oidc_client_secret }}"
       openwebui: "{{ vault_openwebui_oidc_client_secret }}"
+      nextcloud: "{{ vault_nextcloud_oidc_client_secret }}"
       litellm: "{{ vault_litellm_oidc_client_secret }}"
       hermes: "{{ vault_hermes_oidc_client_secret }}"
       opnsense: "{{ vault_opnsense_oidc_client_secret }}"
@@ -28,6 +29,7 @@
     - "{{ playbook_dir }}/../../vault/authentik.yml"
     - "{{ playbook_dir }}/../../vault/homarr.yml"
     - "{{ playbook_dir }}/../../vault/openwebui.yml"
+    - "{{ playbook_dir }}/../../vault/nextcloud.yml"
     - "{{ playbook_dir }}/../../vault/litellm.yml"
     - "{{ playbook_dir }}/../../vault/hermes.yml"
     - "{{ playbook_dir }}/../../vault/opnsense.yml"
