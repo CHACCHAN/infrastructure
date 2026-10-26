@@ -9,7 +9,7 @@
 ```text
 .
 ├── AGENTS.md                AIエージェント向けの運用ガイド(安全規則・作法。docs/ を import)
-├── .agents/                 エージェント共通のスキル(new-host / new-role / validate)
+├── .agents/                 エージェント共通のスキル(new-host / new-role / validate / delegate)と、作業を任せる OpenCode のワーカーの設定
 ├── .claude/                 Claude Code 専用(設定・サブエージェント。skills は .agents/ へのリンク)
 ├── .devcontainer/           開発コンテナ(Ansible・kubectl・Helm・エージェントCLI)
 ├── ansible.cfg              共通設定(roles_path / inventory)

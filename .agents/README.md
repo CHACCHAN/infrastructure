@@ -4,7 +4,10 @@ Agent-neutral resources shared by every coding agent used in this repository (Cl
 
 ```text
 .agents/
+├── opencode/
+│   └── worker.json          OpenCode agent `worker`: the sandbox for delegated work (used by the delegate skill)
 └── skills/                  one directory per skill, each with a SKILL.md
+    ├── delegate/            hand work to sandboxed OpenCode workers on repository copies, review and apply their diffs
     ├── new-host/            add a host to the inventory (VLAN / ID / VMID / IP rules)
     ├── new-role/            scaffold a role that follows the repository conventions
     └── validate/            run the validation suite and report results honestly
@@ -14,7 +17,7 @@ Agent-neutral resources shared by every coding agent used in this repository (Cl
 
 | Path | Read by | Holds |
 | --- | --- | --- |
-| `.agents/` | every agent | skills (the source) |
+| `.agents/` | every agent | skills (the source), the OpenCode worker sandbox (`opencode/worker.json`, loaded only by the `delegate` skill's server) |
 | `.claude/` | Claude Code only | `settings.json` (model, effort, compaction), `agents/` (subagents, Claude frontmatter), `skills` (symlink) |
 
 ## Rules

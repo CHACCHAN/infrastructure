@@ -34,8 +34,9 @@ The environment is being redesigned for new hardware. **The tree is currently a 
 - Before working in a directory, read its `README.md` if it has one (usage, prerequisites, run order). READMEs describe usage only; design and undecided items live in `docs/design/`, and variable lists live in `defaults/main.yml` and `meta/argument_specs.yml`.
 - When the user describes a problem or asks a question, report findings first and change files only when asked.
 - When a design decision changes, update the matching file under `docs/` and the affected directory's `README.md` in the same change.
-- Skills for recurring work: `new-host`, `new-role`, `validate` (see [.agents/README.md](.agents/README.md)).
+- Skills for recurring work: `new-host`, `new-role`, `validate`, `delegate` (see [.agents/README.md](.agents/README.md)).
 - Delegate wide repository exploration to subagents when the agent supports them; keep the main context for decisions.
+- Hand self-contained work (implementation, research, drafting, second opinions) to sandboxed OpenCode workers with the `delegate` skill. The owner does not ration their use: split the work and run them in parallel. The orchestrating agent keeps the decisions, the review, the validation and anything that touches real infrastructure, and reads every worker diff before applying or validating it. OpenCode workers themselves do not delegate.
 - Claude Code subagents ([.claude/agents/](.claude/agents/)): `checker` runs the validation suite and reports the results verbatim; `reviewer` runs an independent read-only review. Run `checker` before reporting a change as done. Run `reviewer` only for non-trivial changes (design documents, new roles, anything spanning several files); weigh its findings, and the decision stays with the owner.
 
 ## Safety: this environment reaches production
