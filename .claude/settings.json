@@ -1,3 +1,19 @@
 {
-  "autoCompactWindow": 320000
+  "autoCompactWindow": 320000,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["-I", "${CLAUDE_PROJECT_DIR}/.claude/hooks/infra-guard.py"],
+            "timeout": 10,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ]
+  }
 }

@@ -18,7 +18,7 @@ Agent-neutral resources shared by every coding agent used in this repository (Cl
 | Path | Read by | Holds |
 | --- | --- | --- |
 | `.agents/` | every agent | skills (the source), the OpenCode worker sandbox (`opencode/worker.json`, loaded only by the `delegate` skill's server) |
-| `.claude/` | Claude Code only | `settings.json` (model, effort, compaction), `agents/` (subagents, Claude frontmatter), `skills` (symlink) |
+| `.claude/` | Claude Code only | `settings.json` (model, effort, compaction, hooks), `hooks/` (the PreToolUse guard that asks before mutating infrastructure commands), `agents/` (subagents, Claude frontmatter), `skills` (symlink) |
 
 ## Rules
 

@@ -45,6 +45,7 @@ The dev container mounts `~/.ssh` and the vault password, so it can reach the re
 
 - Anything that mutates infrastructure runs only when the user explicitly asks for that run in the current conversation, never "to investigate" or "to verify". That covers `playbooks/pve/*`, `playbooks/vm/*`, `playbooks/utils/*`, `playbooks/k3s/*` without `--check`, and write operations of `kubectl` / `helm`.
 - Always allowed (read-only): `ansible-lint`, `ansible-playbook --syntax-check`, `ansible-inventory --graph|--list`, `ansible-playbook playbooks/k3s/<name>.yml --check --diff`, and read-only `kubectl` (`get`, `describe`, `logs`).
+- In Claude Code, a PreToolUse hook ([.claude/hooks/infra-guard.py](.claude/hooks/infra-guard.py)) asks the owner before any other `ansible-playbook`, ad hoc `ansible`, or `kubectl` / `helm` command that is not read-only. It reads only the command text and misses what runs inside scripts or over `ssh` / `curl`, so it is a safety net under these rules, not a replacement. When it asks, the owner decides; never rephrase a command to get past it.
 - Destructive operations (deleting VMs, powering off, draining nodes) must require an explicit confirmation variable in the playbook. Never work around such a guard.
 - Changing a Proxmox host's NIC, VLAN or bridge settings can lock the node out. Do it only on explicit instruction and only after confirming console or out-of-band access.
 - Never print decrypted vault content into chat, logs or commits. Never commit plaintext tokens, passwords, private keys or kubeconfigs.
