@@ -2,7 +2,7 @@
 ---
 pve_vm_memory: 12288
 pve_vm_cores: 4
-pve_vm_disk_size: 256
+pve_vm_disk_size: 430
 # 各ノードの ssd01(docs/design/pve.md)
 pve_vm_storage: ssd01
 # 予約済みの ID(docs/design/network.md)。VIP は 172.16.<vlan>.<ID>

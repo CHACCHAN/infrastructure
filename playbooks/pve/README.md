@@ -12,6 +12,12 @@ Proxmox VE の API だけを使い、テンプレートと VM を宣言どおり
 
 `target` を渡し忘れると、どのホストにも一致せず何もしない。
 
+## ディスクを拡張する
+
+1. インベントリの `pve_vm_disk_size`(GiB)を大きくする。ディスクは縮められないため、置き先のストレージの空きを先に確かめる。
+2. `ansible-playbook playbooks/pve/provision.yml -e target=<グループ> -l <ホスト名> 2>&1 | cat` で、起動ディスク(`scsi0`)を広げる。VM は止まらない。
+3. `ansible-playbook playbooks/vm/<名前>.yml -l <ホスト名> 2>&1 | cat`(`<名前>` は `k3s` か `hermes`)で、VM の中のルートのパーティションと ext4 を広げる(`vm` ロール)。再起動は要らない。
+
 ## テンプレートの扱い
 
 OS のテンプレートは、`provision.yml` が必要なときに作り、残す。

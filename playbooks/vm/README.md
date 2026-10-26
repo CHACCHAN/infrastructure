@@ -17,6 +17,10 @@ VM の中を SSH で設定する。VM の作成は [playbooks/pve](../pve/README
 - 開発マシンから VM へ、SSH(22)で届く(VLAN をまたぐ経路がルータで通っている)。
 - `vault/ssh.yml` に秘密鍵があり、対の公開鍵が `inventory/group_vars/all/ssh.yml` にある([vault/README.md](../../vault/README.md))。
 
+## ディスクを拡張する
+
+手順は [playbooks/pve/README.md](../pve/README.md#ディスクを拡張する)。Proxmox 側でディスクを広げたあとにこの playbook を流すと、`vm` ロールがルートのパーティションと ext4 を広げる。広げる余地が無ければ変更しない。
+
 ## SSH 鍵の扱い
 
 秘密鍵は、開発マシンの `~/.ssh` ではなく vault から取り出す。実行の間だけ `/dev/shm` に 0600 で書き出し、終わると消す。消せなかった場合は、次の実行の初めに消す。

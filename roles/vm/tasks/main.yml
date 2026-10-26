@@ -5,6 +5,9 @@
 - name: パッケージと定期処理を設定する
   ansible.builtin.import_tasks: install.yml
 
+- name: ルートパーティションとファイルシステムを拡張する
+  ansible.builtin.import_tasks: grow_root.yml
+
 - name: ZRAM の swap を設定する
   ansible.builtin.import_tasks: zram.yml
   when: vm_zram_percent > 0

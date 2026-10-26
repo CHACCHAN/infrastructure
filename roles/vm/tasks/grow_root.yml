@@ -1,0 +1,82 @@
+# ルートのパーティションと ext4 を、ディスクの末尾まで再起動せずに広げる(Proxmox 側でディスクを広げたあとに使う)。
+---
+- name: パーティションを広げる growpart を入れる
+  ansible.builtin.apt:
+    name: cloud-guest-utils
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: ルートのマウント元とファイルシステムを調べる
+  ansible.builtin.command:
+    argv: [findmnt, --json, --evaluate, --canonicalize, --mountpoint, /, --output, "SOURCE,FSTYPE"]
+  register: __vm_root_mount_info
+  changed_when: false
+  check_mode: false
+
+- name: ルートのパーティションの情報を調べる
+  ansible.builtin.command:
+    argv:
+      - lsblk
+      - --json
+      - --nodeps
+      - --output
+      - PATH,KNAME,PKNAME,TYPE
+      - "{{ (__vm_root_mount_info.stdout | from_json).filesystems[0].source }}"
+  register: __vm_root_block_info
+  changed_when: false
+  check_mode: false
+
+- name: ルートのマウントとパーティションの情報を取り出す
+  ansible.builtin.set_fact:
+    __vm_root_mount: "{{ (__vm_root_mount_info.stdout | from_json).filesystems[0] }}"
+    __vm_root_block: "{{ (__vm_root_block_info.stdout | from_json).blockdevices[0] }}"
+
+- name: ルートがディスク上の通常のパーティションの ext4 であることを確かめる
+  ansible.builtin.assert:
+    that:
+      - __vm_root_mount.fstype == 'ext4'
+      - __vm_root_block.type == 'part'
+      - __vm_root_block.pkname | default('', true) is match('^[a-zA-Z0-9_-]+$')
+      - __vm_root_block.kname is match('^[a-zA-Z0-9_-]+$')
+    fail_msg: ルートを広げるには、ディスク上の通常のパーティションの ext4 が必要です(LVM や暗号化には対応しない)。
+
+- name: ルートのパーティション番号を読む
+  ansible.builtin.slurp:
+    src: "/sys/class/block/{{ __vm_root_block.kname }}/partition"
+  register: __vm_root_partition_info
+
+- name: ディスクの再走査の入口を確かめる
+  ansible.builtin.stat:
+    path: "/sys/class/block/{{ __vm_root_block.pkname }}/device/rescan"
+  register: __vm_root_rescan
+
+# 容量の変更の通知が届いていなくても、growpart が今のディスクの大きさを使えるようにする。
+- name: ディスクの容量を読み直させる
+  ansible.builtin.command:
+    argv: [tee, "/sys/class/block/{{ __vm_root_block.pkname }}/device/rescan"]
+    stdin: "1"
+  changed_when: false
+  when: __vm_root_rescan.stat.exists
+
+# growpart は、広げる余地が無いとき NOCHANGE を出して終了コード1で終わる。
+- name: ルートのパーティションをディスクの末尾まで広げる
+  ansible.builtin.command:
+    argv:
+      - growpart
+      - --update=on
+      - "/dev/{{ __vm_root_block.pkname }}"
+      - "{{ __vm_root_partition_info.content | b64decode | trim }}"
+  register: __vm_root_grow
+  changed_when: __vm_root_grow.rc == 0 and 'CHANGED:' in __vm_root_grow.stdout
+  failed_when: __vm_root_grow.rc != 0 and 'NOCHANGE:' not in __vm_root_grow.stdout
+
+# community.general.filesystem は、ブロック(4KiB)に満たないパーティションの端数も伸びしろとみなし、毎回変更を報告するため、
+# resize2fs の「Nothing to do」で変更の有無を判断する。
+- name: マウントしたままのルートの ext4 を、パーティションの大きさまで広げる
+  ansible.builtin.command:
+    argv: [resize2fs, "{{ __vm_root_block.path }}"]
+  environment:
+    LC_ALL: C
+  register: __vm_root_resize
+  changed_when: "'Nothing to do' not in (__vm_root_resize.stdout ~ __vm_root_resize.stderr)"

@@ -14,7 +14,8 @@ VM の OS(Debian 13)の共通設定(第3層の土台)。サービスごとの設
 
 1. `ready.yml`: cloud-init の完了を待つ。
 2. `install.yml`: 共通のパッケージ(`vm_packages`)と qemu-guest-agent を入れ、`fstrim.timer` を有効にする。
-3. `zram.yml`: `vm_zram_percent` が 1 以上のとき、ZRAM の swap(zram-tools)を設定し、swap が有効になったことを確かめる。
+3. `grow_root.yml`: ルートのパーティションと ext4 を、ディスクの末尾まで再起動せずに広げる(`cloud-guest-utils` の growpart)。広げる余地が無ければ変更しない。ルートがディスク上のパーティションの ext4 であることが前提で、違えば止まる(LVM や暗号化には対応しない)。Proxmox 側でディスクを広げたあとに使う([playbooks/pve/README.md](../../playbooks/pve/README.md#ディスクを拡張する))。
+4. `zram.yml`: `vm_zram_percent` が 1 以上のとき、ZRAM の swap(zram-tools)を設定し、swap が有効になったことを確かめる。
 
 ## ZRAM
 

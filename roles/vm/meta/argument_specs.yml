@@ -4,6 +4,7 @@ argument_specs:
     short_description: VM の OS(Debian 13)の共通設定
     description:
       - cloud-init の完了を待ち、共通のパッケージと qemu-guest-agent を入れ、fstrim の定期実行を有効にする。
+      - ルートのパーティションと ext4 を、ディスクの末尾まで再起動せずに広げる。
       - vm_zram_percent が 1 以上なら、ZRAM の swap を設定する。
     options:
       vm_cloud_init_timeout:
