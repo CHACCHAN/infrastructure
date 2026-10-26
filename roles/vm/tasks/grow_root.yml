@@ -46,9 +46,13 @@
     src: "/sys/class/block/{{ __vm_root_block.kname }}/partition"
   register: __vm_root_partition_info
 
+# 入口は書き込み専用のため、中身(チェックサムなど)は読まない。
 - name: ディスクの再走査の入口を確かめる
   ansible.builtin.stat:
     path: "/sys/class/block/{{ __vm_root_block.pkname }}/device/rescan"
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
   register: __vm_root_rescan
 
 # 容量の変更の通知が届いていなくても、growpart が今のディスクの大きさを使えるようにする。
