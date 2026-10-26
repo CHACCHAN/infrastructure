@@ -49,13 +49,13 @@ __nextcloud_values:
         limits:
           cpu: 500m
           memory: 768Mi
-  # 初期化・アプリの取得・occ upgrade が済むまで、liveness probe による再起動を待つ
+  # 初期化と、イメージが新しいときにエントリーポイントが行う occ upgrade が済むまで、liveness probe による再起動を待つ
   startupProbe:
     enabled: true
     failureThreshold: 180
   # Secret が変わったら、Pod を入れ替えて環境変数を読み直す
   podAnnotations:
-    checksum/secrets: "{{ [nextcloud_db_password, nextcloud_oidc_client_secret, nextcloud_admin_password] | to_json | hash('sha256') }}"
+    checksum/secrets: "{{ [nextcloud_db_password, nextcloud_admin_password] | to_json | hash('sha256') }}"
   nextcloud:
     host: "{{ nextcloud_host }}"
     # 指標(/metrics)は、Nextcloud の既定どおりループバックからだけ読める。Tunnel を通る通信は Pod の IP に見えるため、
@@ -74,17 +74,11 @@ __nextcloud_values:
       # イメージの更新で .htaccess が置き換わっても、pretty URL の書き換えを戻す
       - name: NEXTCLOUD_INIT_HTACCESS
         value: "true"
-      - name: NEXTCLOUD_OIDC_CLIENT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: nextcloud-oidc
-            key: client-secret
     configs:
       lab.config.php: |
         <?php
         // Ansible(roles/k3s_nextcloud)が生成。手動編集は次回実行で上書きされる。
         $CONFIG = [
-          'appstoreenabled' => false,
           'token_auth_enforced' => true,
           // クラスタ内の Authentik(プライベートの IP に解決する)へ、OIDC の問い合わせを届ける
           'allow_local_remote_servers' => true,

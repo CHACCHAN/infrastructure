@@ -40,6 +40,7 @@
   - 構成(VM、k3s、Helm のリリース、values、Secret)は、コードから再現する。
   - 設定のコード化は、宣言できるものを宣言する。アプリの OIDC クライアントは、Authentik の Blueprint で宣言する。client_id と client_secret は vault で決め、Authentik と各アプリに同じ値を渡す(Authentik を先に完成させる必要がない)。
   - 状態(ユーザー、パスワード、チャット、ボード、DB の中身)は、Ansible では管理しない。バックアップで守る(現在はバックアップなし)。例外は、各アプリの緊急用の管理者だけ。
+  - アプリの中で足す拡張(Nextcloud のアプリ、CLIProxyAPI のプラグイン)も状態にする。Ansible が再現するのは、素のアプリ(インストール直後の状態)と、ほかの決定のために要る設定まで。
 - Authentik は k3s で運用する。旧構成からは移さず、新規に構築する。OIDC クライアント、認証プロキシ、ログインの失敗の制限、MFA の必須化、Google でのログインは Blueprint で宣言し、ユーザー・グループ・グループの所属・アプリケーションを使えるグループの結びつけ・それ以外のフローは手動で設定する。
 - Rancher、AWX、Portainer は使わない。k3s の Web UI は置かない(一時的なコンテナは、開発VMの Docker で動かす)。
 
@@ -180,17 +181,15 @@ kubectl・Ansible
   - 管理画面のファイルは、CLIProxyAPI が GitHub の最新のリリースから取得する(バージョンを固定する規則の例外)。CLIProxyAPI に、取得するバージョンを指定する方法がないため。
 - Nextcloud Hub を、ポータル(マニュアル・チャット・ファイル・予定の共有)として置き、LAN と Cloudflare Tunnel に公開する。公開ホスト名は `nextcloud.<lab_domain>`。
   - 使う機能は、Talk(チャットだけ)・ファイル・Collectives(マニュアル)・カレンダーと連絡先・Deck・External sites。
-  - Talk は、通話を誰も始められないようにする(`start_calls`)。Ansible は最初のインストールでだけこの初期値を設定し、その後の Nextcloud の画面での変更は保つ(状態)。通話用のサーバー(TURN・High-performance backend)は置かない。そのため、チャットの「入力中」の表示は出ない。
-  - 既定で入っているアプリ(Dashboard など)は、Nextcloud の初期の状態のままにし、有効・無効を変えない。Ansible が入れて有効にするのは、使う機能のうち既定で入っていないアプリと、SSO のアプリ(`user_oidc`)だけ。
-  - 画面からはアプリを足さない。アプリはプラグインと同じく構成の一部で、素の状態からコードだけで再現するため。アプリストアは切る(画面からも `occ` からもアプリを足せず、Nextcloud の更新でアプリの版が上がらないため)。
-  - アプリの版は、リリースのアーカイブの版と SHA-256 で固定し(`defaults/main.yml`)、Ansible が `custom_apps` に置いて有効にする。アーカイブは Nextcloud の署名の検証を通らないため、版を上げるときにチェックサムを確かめる。Nextcloud を上げるときは、アプリの版も合わせて上げる。
+  - Talk は、通話を誰も始められないようにする。Talk を入れたあと、Talk の管理画面で通話の権限を設定する(状態)。通話用のサーバー(TURN・High-performance backend)は置かない。そのため、チャットの「入力中」の表示は出ない。
+  - アプリは、既定で入っているものも含め、アプリストアを使える画面で追加・更新・有効化・無効化する(CLIProxyAPI のプラグインと同じく状態)。アプリとその版はボリュームの `custom_apps` と DB に保持し、バックアップで守る。Ansible が再現するのは、素の Nextcloud(インストール直後)と、ほかの決定のために要る設定だけ。
   - チャートは、コミュニティの `nextcloud/helm` で、公式の Docker イメージ(Apache 版)を使う。チャートに同梱の Bitnami のチャート(PostgreSQL・MariaDB・Redis)は使わない(Bitnami の無料のイメージは更新されないため)。DB は、ほかのアプリと同じく専用の PostgreSQL(`k3s_postgresql`)にする。
   - キャッシュは APCu だけにし、ファイルのロックは DB で行う(Redis は置かない)。使う人が少なく、部品を増やさないため。遅さが出たら、公式のイメージの Redis を足す。
   - バックグラウンドの処理(cron)は、チャートのサイドカー(同じ Pod の中のコンテナ)で動かす。別の CronJob にすると、別のノードで動いたときに Longhorn のボリューム(RWO)を付けられないため。
   - データは Longhorn のボリューム1つ(Pod は1つ)に置く。初期の容量は 50Gi で、使用量が7割を超えたら広げる(Longhorn のボリュームは付けたまま広げられるが、縮められない)。ユーザーごとの容量の上限は、既定で 10GB にする(`default_quota`)。Ansible は最初のインストールでだけこの初期値を設定し、その後の Nextcloud の画面での変更は保つ(状態)。
   - メモリを多く使うため、`heavy_workloads` のノードに寄せる([hardware.md](hardware.md))。
   - 設定は、Nextcloud の初期の値(インストール直後の値)のままにする。変えるのは、ほかの決定のために要るものだけ(以下)。
-  - ログインは、`user_oidc` で Authentik の SSO にする。Authentik の OIDC クライアント `nextcloud`(シークレットは `vault/nextcloud.yml`)と、Nextcloud 側の接続先は、Ansible で設定する。グループは、Authentik が渡すグループ(`groups`)を写す。管理者は Nextcloud の画面で付け、写す対象に含めない(ログインのたびに外されないため)。Nextcloud がクラスタ内の Authentik(プライベートの IP)へ届くよう、ローカルのアドレスへの通信を許す(`allow_local_remote_servers`。Nextcloud の既定では拒む)。そのため、ユーザーが指定する URL(カレンダーの購読、リンクのプレビューなど)でも、Nextcloud から LAN とクラスタ内へ届く。届く先は、ルータと NetworkPolicy で絞る。
+  - ログインは、`user_oidc` で Authentik の SSO にする。Nextcloud 本体は OIDC を持たないため、OPNsense と同じく、Ansible は Authentik の OIDC クライアント `nextcloud`(シークレットは `vault/nextcloud.yml`)だけを置く。`user_oidc` の導入と接続先の設定は、Nextcloud の画面で行う(状態。入力する値は [ロールの README](../../roles/k3s_nextcloud/README.md) に書く)。グループは、Authentik が渡すグループ(`groups`)を写し、グループのプロビジョニングを有効にする。管理者は Nextcloud の画面で付け、`admin` グループは写す対象に含めない(ホワイトリストの正規表現 `/^(?!admin$).*$/`。ログインのたびに外されないため)。画面で設定したプロバイダーが、公開ホスト名でクラスタ内の Authentik(プライベートの IP に解決する)へ届くよう、ローカルのアドレスへの通信を許す(`allow_local_remote_servers`。Nextcloud の既定では拒む)。そのため、ユーザーが指定する URL(カレンダーの購読、リンクのプレビューなど)でも、Nextcloud から LAN とクラスタ内へ届く。届く先は、ルータと NetworkPolicy で絞る。
   - 緊急用の `admin` は、最初のインストールのときに、チャートが vault のパスワードで作る。`admin` にはアプリパスワードを作らない(外からも使えるため)。
   - クライアント(同期・カレンダー・連絡先)には、アプリパスワードだけを使わせる(`token_auth_enforced`)。外からのクライアントは、ブラウザで Authentik にログインして、端末ごとのアプリパスワードを受け取る(Login Flow v2)。Tunnel 専用の入口で塞ぐのは、パスワードを受け取るパスだけで、このログインの流れは通す。
   - ログインの失敗の制限(IP ごと)は、Authentik と同じく、Pod のネットワークからの通信には掛けない(Tunnel を通る通信は、すべて `cloudflared` の Pod の IP に見えるため)。LAN からは、クライアントの実 IP で数える。外からの試行回数は Cloudflare のレート制限で絞り、対象に Nextcloud のログインと、同期・カレンダーのパス(`/remote.php` など)を含める。

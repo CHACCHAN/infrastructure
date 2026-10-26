@@ -35,13 +35,6 @@
         data:
           username: "{{ nextcloud_db_name | b64encode }}"
           password: "{{ nextcloud_db_password | b64encode }}"
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: nextcloud-oidc
-          namespace: "{{ nextcloud_namespace }}"
-        data:
-          client-secret: "{{ nextcloud_oidc_client_secret | b64encode }}"
     helm_ingress:
       host: "{{ nextcloud_host }}"
       service_port: 8080

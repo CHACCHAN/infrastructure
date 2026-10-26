@@ -1,5 +1,5 @@
-# Nextcloud Hub を Helm で入れ、Authentik の OIDC でログインするロールの既定値。
-# 秘密情報と、公開ホスト名(nextcloud_host、authentik_host)は、既定値を持たない。
+# Nextcloud Hub と専用の DB を入れるロールの既定値。
+# 秘密情報と、公開ホスト名(nextcloud_host)は、既定値を持たない。
 ---
 nextcloud_chart_version: "9.4.1"
 nextcloud_chart_repo_url: https://nextcloud.github.io/helm/
@@ -10,7 +10,6 @@ nextcloud_db_host: "{{ nextcloud_db_namespace }}-rw.{{ nextcloud_db_namespace }}
 nextcloud_db_name: nextcloud
 nextcloud_storage_size: 50Gi
 nextcloud_admin_user: admin
-nextcloud_oidc_client_id: nextcloud
 # ユーザーごとの既定の容量の上限。最初のインストールでだけ適用する
 nextcloud_default_quota: "10 GB"
 # ログインの失敗の制限を掛けない送信元(Pod のネットワーク。Cloudflare Tunnel を通るログインは、cloudflared の Pod の IP に見える)。
@@ -18,33 +17,3 @@ nextcloud_default_quota: "10 GB"
 nextcloud_trusted_proxies:
   - 10.42.0.0/16
 nextcloud_values: {}
-# アプリストアの署名を検証したアーカイブだけを配置する
-nextcloud_apps:
-  - name: spreed
-    version: "25.0.6"
-    url: https://github.com/nextcloud-releases/spreed/releases/download/v25.0.6/spreed-v25.0.6.tar.gz
-    sha256: 2b3e3eae42d9bf8ba8da2ab244d16347a3cfacbb8bff346bd99cf32cd6f9c65e
-  - name: collectives
-    version: "4.7.1"
-    url: https://github.com/nextcloud/collectives/releases/download/v4.7.1/collectives-4.7.1.tar.gz
-    sha256: 6aef84674527393edbfc2915d58014e4ef72bfb27f3ca606b7c1faf985ae0879
-  - name: calendar
-    version: "6.6.3"
-    url: https://github.com/nextcloud-releases/calendar/releases/download/v6.6.3/calendar-v6.6.3.tar.gz
-    sha256: bda8f38c609b2182533887f67eacb543edf437066d0356912ac6324c94743080
-  - name: contacts
-    version: "8.9.2"
-    url: https://github.com/nextcloud-releases/contacts/releases/download/v8.9.2/contacts-v8.9.2.tar.gz
-    sha256: 92f7c79c411273045ed6346f6988c05af673c3170a3adaba91a15066b8dce7c5
-  - name: deck
-    version: "1.19.1"
-    url: https://github.com/nextcloud-releases/deck/releases/download/v1.19.1/deck-v1.19.1.tar.gz
-    sha256: 382e11139ee399444bdfa17f018aa9109376928f9bd36090ead8ea340b4d3f0e
-  - name: external
-    version: "10.0.0"
-    url: https://github.com/nextcloud-releases/external/releases/download/v10.0.0/external-v10.0.0.tar.gz
-    sha256: 908f5eb6db55d4f336674f5b5a64ee6d470cb29d39232dde1b488dbdeb997627
-  - name: user_oidc
-    version: "8.11.0"
-    url: https://github.com/nextcloud-releases/user_oidc/releases/download/v8.11.0/user_oidc-v8.11.0.tar.gz
-    sha256: 887920504c2f0e0d055abd66225ee7b66d756f50fe5a3739779d6b2ce108633f

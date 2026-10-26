@@ -15,7 +15,7 @@ Ansible Vault で暗号化した秘密情報。規則は [docs/conventions.md](.
 | `openwebui.yml` | `vault_openwebui_db_password`(専用の PostgreSQL の、DB の所有者のロールのパスワード)、`vault_openwebui_oidc_client_secret`、`vault_openwebui_secret_key`、`vault_openwebui_admin_password`(緊急用の管理者) | `playbooks/k3s/openwebui.yml`、`authentik.yml` |
 | `litellm.yml` | `vault_litellm_db_password`(専用の PostgreSQL の、DB の所有者のロールのパスワード)、`vault_litellm_master_key`(API の鍵)、`vault_litellm_salt_key`(DB に保存する認証情報の暗号化キー)、`vault_litellm_oidc_client_secret`、`vault_litellm_ui_password`(緊急用の `admin`)、`vault_litellm_provider_keys`(プロバイダーの API キーの辞書) | `playbooks/k3s/litellm.yml`、`authentik.yml` |
 | `cliproxy.yml` | `vault_cliproxy_management_password`(管理画面と管理 API の管理キー)、`vault_cliproxy_api_keys`(API のクライアントの鍵の初期値。設定ファイルが無いときだけ使われる) | `playbooks/k3s/cliproxy.yml` |
-| `nextcloud.yml` | `vault_nextcloud_db_password`(専用の PostgreSQL の、DB の所有者のロールのパスワード)、`vault_nextcloud_oidc_client_secret`、`vault_nextcloud_admin_password`(緊急用の `admin`) | `playbooks/k3s/nextcloud.yml`、`authentik.yml` |
+| `nextcloud.yml` | `vault_nextcloud_db_password`(専用の PostgreSQL の、DB の所有者のロールのパスワード)、`vault_nextcloud_oidc_client_secret`(Nextcloud の OIDC クライアントのシークレット。Nextcloud の画面の `user_oidc` の設定にも同じ値を入れる)、`vault_nextcloud_admin_password`(緊急用の `admin`) | `playbooks/k3s/nextcloud.yml`、`authentik.yml` |
 | `hermes.yml` | `vault_hermes_oidc_client_secret`(Hermes の管理画面の OIDC クライアントのシークレット。Hermes 側の設定にも同じ値を入れる) | `playbooks/k3s/authentik.yml` |
 | `opnsense.yml` | `vault_opnsense_oidc_client_secret`(OPNsense の管理画面の OIDC クライアントのシークレット。OPNsense 側の設定にも同じ値を入れる) | `playbooks/k3s/authentik.yml` |
 | `ssh.yml` | `vault_ssh_private_key`(ラボ専用の SSH 秘密鍵。対の公開鍵は `inventory/group_vars/all/ssh.yml`) | `playbooks/vm/`、`playbooks/utils/k3s_token.yml` |

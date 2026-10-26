@@ -1,4 +1,4 @@
-# Nextcloud Hub を Helm で入れ、Authentik の OIDC でログインできるようにする。
+# Nextcloud Hub と専用の PostgreSQL を入れる。
 # 実行例: ansible-playbook playbooks/k3s/nextcloud.yml [--check --diff] 2>&1 | cat
 ---
 - name: Nextcloud Hub を適用する
@@ -11,7 +11,6 @@
     helm_api_token: "{{ vault_k3s_api_token }}"
     helm_ca_cert: "{{ vault_k3s_ca_cert }}"
     nextcloud_db_password: "{{ vault_nextcloud_db_password }}"
-    nextcloud_oidc_client_secret: "{{ vault_nextcloud_oidc_client_secret }}"
     nextcloud_admin_password: "{{ vault_nextcloud_admin_password }}"
   vars_files:
     - "{{ playbook_dir }}/../../vault/k3s.yml"

@@ -1,7 +1,7 @@
 ---
 argument_specs:
   main:
-    short_description: Nextcloud Hub を Helm で入れ、Authentik の OIDC でログインできるようにする
+    short_description: Nextcloud Hub と専用の DB を入れる
     options:
       nextcloud_chart_version:
         type: str
@@ -19,10 +19,6 @@ argument_specs:
         type: str
         required: true
         description: Nextcloud の公開ホスト名
-      authentik_host:
-        type: str
-        required: true
-        description: Authentik の公開ホスト名
       nextcloud_db_namespace:
         type: str
         description: 専用の PostgreSQL の namespace
@@ -45,14 +41,6 @@ argument_specs:
         required: true
         no_log: true
         description: 緊急用の管理者の初期パスワード(vault/nextcloud.yml)
-      nextcloud_oidc_client_id:
-        type: str
-        description: Authentik の OIDC クライアントの slug
-      nextcloud_oidc_client_secret:
-        type: str
-        required: true
-        no_log: true
-        description: OIDC の client_secret(vault/nextcloud.yml)
       nextcloud_storage_size:
         type: str
         description: Longhorn のボリュームの大きさ
@@ -66,24 +54,3 @@ argument_specs:
       nextcloud_values:
         type: dict
         description: Helm values の上書き(基本値へ再帰的に合成する)
-      nextcloud_apps:
-        type: list
-        elements: dict
-        description: 署名の検証済みのアプリのアーカイブ
-        options:
-          name:
-            type: str
-            required: true
-            description: アプリの ID
-          version:
-            type: str
-            required: true
-            description: アプリのバージョン
-          url:
-            type: str
-            required: true
-            description: リリースのアーカイブの URL
-          sha256:
-            type: str
-            required: true
-            description: アーカイブの SHA-256
