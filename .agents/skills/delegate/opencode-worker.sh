@@ -45,9 +45,11 @@ ask() {
   local ws=$1 brief=$2
   shift 2
   server_alive || { echo "no server for this DELEGATE_DIR; run start first" >&2; exit 1; }
+  # opencode run reads a non-terminal stdin until EOF and appends it to the message; an inherited stdin that
+  # never closes (an agent's shell) stalls the run, so the brief is the only input.
   (cd "$ws/repo" && OPENCODE_PASSWORD="$(cat "$DELEGATE_DIR/password")" \
     timeout "${DELEGATE_TIMEOUT:-7200}" opencode run --server "$URL" --agent worker --format json "$@" -- "$(cat "$brief")") \
-    >> "$ws/run.jsonl" 2>> "$ws/run.err" || echo "opencode run exited with $?" >> "$ws/run.err"
+    < /dev/null >> "$ws/run.jsonl" 2>> "$ws/run.err" || echo "opencode run exited with $?" >> "$ws/run.err"
 }
 
 show_result() {
