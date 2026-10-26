@@ -18,13 +18,12 @@ Agent-neutral resources shared by every coding agent used in this repository (Cl
 | Path | Read by | Holds |
 | --- | --- | --- |
 | `.agents/` | every agent | skills (the source), the OpenCode worker sandbox (`opencode/worker.json`, loaded only by the `delegate` skill's server) |
-| `.claude/` | Claude Code only | `settings.json` (model, effort, compaction, hooks), `hooks/` (the PreToolUse guard that asks before mutating infrastructure commands), `agents/` (subagents, Claude frontmatter), `skills` (symlink) |
+| `.claude/` | Claude Code only | `settings.json` (model, effort, compaction, hooks), `hooks/` (the PreToolUse guard that asks before mutating infrastructure commands), `skills` (symlink) |
 
 ## Rules
 
 - `.agents/skills/` is the single source. Claude Code reads skills only from `.claude/skills/`, a symlink to `../.agents/skills`; never put real files there.
-- Subagents are Claude Code files and live in `.claude/agents/` as real files. Their model and effort are set in each file's frontmatter, per duty; do not repeat them elsewhere.
 - Keep skills agent-neutral: plain Markdown, frontmatter limited to `name` and `description`, no agent-specific tool names.
 - A skill states a procedure and points to [docs/](../docs/) for rules. It never copies decisions; when a decision changes, only the document under `docs/` changes.
-- Skills and subagents are written in English (agent-facing). Files they create for humans (docs, comments, task names) follow the Japanese convention in AGENTS.md.
+- Skills are written in English (agent-facing). Files they create for humans (docs, comments, task names) follow the Japanese convention in AGENTS.md.
 - Add a skill only for work that recurs. One-off knowledge belongs in AGENTS.md or `docs/design/`.

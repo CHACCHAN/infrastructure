@@ -6,7 +6,7 @@
 
 - ドキュメント・コメント・タスク名・コミットメッセージは日本語で書く。
 - 製品名は公式の表記に合わせる(cert-manager、k3s、Longhorn など)。
-- 英語で書くのは [AGENTS.md](../AGENTS.md)、`.agents/`、`.claude/agents/` だけ(エージェント向けの指示のため)。
+- 英語で書くのは [AGENTS.md](../AGENTS.md) と `.agents/` だけ(エージェント向けの指示のため)。
 
 ## 構成
 

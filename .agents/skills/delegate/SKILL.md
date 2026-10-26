@@ -33,7 +33,7 @@ Run the script from the repository root. `DELEGATE_DIR` is a scratch directory o
 - Name the documents to read: `AGENTS.md`, `docs/conventions.md`, the relevant `docs/design/*.md` and the directory's `README.md`. Workers do not expand the `@docs/...` imports.
 - Workers cannot run the validation suite. Ask them to check their work by reading (conventions, links, variable names against `defaults/main.yml` and `meta/argument_specs.yml`), and run the suite yourself in step 7.
 - Documentation, comments and task names are Japanese (`docs/conventions.md`); the brief itself may be English.
-- For research or review, say "do not edit files" and ask for findings with `file:line`.
+- For research or review, say "do not edit files" and ask for findings with `file:line`. Start a review from [review-brief.md](review-brief.md).
 - Ask for a short final report: what changed, what was checked, and open questions.
 - For an independent second opinion, give the same brief to several models and compare the answers yourself.
 - Never put decrypted vault content, tokens or keys in a brief.
