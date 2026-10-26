@@ -72,7 +72,7 @@ IP   = 172.16.<VLAN>.<ID>
 
 - リモートアクセスは `cloudflared` を使う。
 - 管理UI(Proxmox・PBS・TrueNAS・OPNsense)は LAN 内だけで使う。Cloudflare Tunnel には載せない。
-- k3s のクラスタ内アプリのうち、Authentik・Homarr・OpenWebUI を Cloudflare Tunnel で公開する。LiteLLM・CLIProxyAPI と Longhorn の管理 UI は載せない。詳細と未決は [k3s.md](k3s.md)。
+- k3s のクラスタ内アプリのうち、Authentik・Homarr・OpenWebUI・Nextcloud Hub を Cloudflare Tunnel で公開する。LiteLLM・CLIProxyAPI と Longhorn の管理 UI は載せない。詳細と未決は [k3s.md](k3s.md)。
 
 ## 未決
 

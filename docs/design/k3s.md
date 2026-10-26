@@ -30,7 +30,7 @@
 ### アプリ
 
 - PostgreSQL は k3s で運用する。CloudNativePG(オペレーターの `cloudnative-pg` と、DB 本体を作る `cluster` の2つのチャート)を使う。PostgreSQL を使うアプリ(Authentik・OpenWebUI・LiteLLM)ごとに専用のクラスタを置き、アプリ同士で共有しない(1つのアプリの DB の障害・更新・削除を、ほかのアプリに及ぼさないため)。インスタンスは1つで、ボリュームは Longhorn(複製数2)に置く。
-- 次のアプリを、旧構成から引き継いで k3s で動かす: Authentik、PostgreSQL、Homarr、OpenWebUI。LiteLLM Proxy と CLIProxyAPI を新しく足す。CLIProxyAPI 以外は、Helm のチャートで入れる。
+- 次のアプリを、旧構成から引き継いで k3s で動かす: Authentik、PostgreSQL、Homarr、OpenWebUI。LiteLLM Proxy・CLIProxyAPI・Nextcloud Hub を新しく足す。CLIProxyAPI 以外は、Helm のチャートで入れる。Homarr は、Nextcloud Hub に置き換えて外す(後述)。
 - 証明書は cert-manager で自動取得する。
 - NAS ができるまで、データ保護の暫定策は設けない(オーナーの判断)。
 - リモートアクセスの VPN(WireGuard)と DDNS は、ルータ(OPNsense)が担う予定。k3s では動かさない。
@@ -39,7 +39,7 @@
   - 設定のコード化は、宣言できるものを宣言する。アプリの OIDC クライアントは、Authentik の Blueprint で宣言する。client_id と client_secret は vault で決め、Authentik と各アプリに同じ値を渡す(Authentik を先に完成させる必要がない)。
   - 状態(ユーザー、パスワード、チャット、ボード、DB の中身)は、Ansible では管理しない。バックアップで守る(現在はバックアップなし)。例外は、各アプリの緊急用の管理者だけ。
 - Authentik は k3s で運用する。旧構成からは移さず、新規に構築する。OIDC クライアント、認証プロキシ、ログインの失敗の制限、MFA の必須化、Google でのログインは Blueprint で宣言し、ユーザー・グループ・グループの所属・アプリケーションを使えるグループの結びつけ・それ以外のフローは手動で設定する。
-- Rancher、AWX、Nextcloud、Portainer は使わない。k3s の Web UI は置かない(一時的なコンテナは、開発VMの Docker で動かす)。
+- Rancher、AWX、Portainer は使わない。k3s の Web UI は置かない(一時的なコンテナは、開発VMの Docker で動かす)。
 
 ### k3s の構築
 
@@ -146,7 +146,7 @@ kubectl・Ansible
 - アプリの Pod が受ける通信は、NetworkPolicy で絞る。通すのは、同じ namespace、Traefik、名前を挙げた namespace だけ(各アプリの PostgreSQL は、オペレーターとそのアプリ。LiteLLM は OpenWebUI。CLIProxyAPI は LiteLLM)。対象は `authentik`・`homarr`・`open-webui`・`litellm`・`cliproxy`・`cloudflared` と各アプリの DB(`<アプリの namespace>-db`)の namespace と、Longhorn の管理 UI の Pod(Longhorn 本体の API は、Longhorn のチャートが置く NetworkPolicy が、Longhorn の Pod だけに絞っている)。外向きの通信は絞らない(LLM の API、Google、Let's Encrypt などへ出るため)。クラスタの基盤(`kube-system`、MetalLB、cert-manager、CloudNativePG のオペレーター、Longhorn の本体)には掛けない。
   - NetworkPolicy を置く namespace と、追加で通す namespace は、インベントリ(`inventory/group_vars/k3s.yml`)の表 `helm_network_policies` に1か所で宣言する。各アプリのロールは、自分の namespace が表に無ければ止まる(宣言を忘れて NetworkPolicy が消えないため)。
   - 送信元の IP による受け入れの制限(Traefik の許可リストなど)は、クラスタ内では設定しない。どこから届くかは、上流のルータ(OPNsense)で一律に管理する。
-- 外部への公開は Cloudflare Tunnel で行う。公開するのは Authentik・Homarr・OpenWebUI。LiteLLM・CLIProxyAPI(プロバイダーの認証情報を持ち、API が課金や利用枠につながる)と Longhorn の管理 UI は公開せず、LAN と VPN から使う(CLIProxyAPI は管理画面だけ。API はクラスタ内からだけ)。
+- 外部への公開は Cloudflare Tunnel で行う。公開するのは Authentik・Homarr・OpenWebUI・Nextcloud Hub。LiteLLM・CLIProxyAPI(プロバイダーの認証情報を持ち、API が課金や利用枠につながる)と Longhorn の管理 UI は公開せず、LAN と VPN から使う(CLIProxyAPI は管理画面だけ。API はクラスタ内からだけ)。
   - 公開するホスト名は、インベントリ(`inventory/group_vars/k3s.yml`)の `cloudflared_hosts` に宣言する。ここに無いアプリは、LAN と VPN からだけ使う。
   - `cloudflared` を k3s で動かし、Traefik の Tunnel 専用の入口(クラスタ内だけで開く)につなぐ。公開するアプリだけを、この入口に載せる。LAN 用の入口(`172.16.12.5`)とは別にし、外から届く経路を入口で絞れるようにする。
   - Tunnel・経路表(ホスト名から向け先への対応)・DNS は、Cloudflare の画面で管理する(状態)。Ansible が持つのは、`cloudflared` のコネクタ(トークンは `vault/cloudflared.yml`)と、Traefik の Tunnel 専用の入口に載せるアプリ(`cloudflared_hosts`)。
@@ -177,9 +177,15 @@ kubectl・Ansible
   - プラグインは有効にする(設定の初期値)。入れるのは、管理画面から公式ストアのもの(第三者の作者のものを含む)だけで、公式以外のストア(`plugins.store-sources`)は足さない。プラグインは CLIProxyAPI のプロセスの中で動き、認証情報に触れられるため、入れるものは人が選ぶ。
   - 入れたプラグインも、同じボリュームに置く。コンテナの中に置くと、Pod を作り直すたびに消えるため。
   - 管理画面のファイルは、CLIProxyAPI が GitHub の最新のリリースから取得する(バージョンを固定する規則の例外)。CLIProxyAPI に、取得するバージョンを指定する方法がないため。
+- Nextcloud Hub を、ポータル(マニュアル・チャット・ファイル・予定の共有)として置き、LAN と Cloudflare Tunnel に公開する。
+  - 使う機能は、Talk(チャットだけ)・ファイル・Collectives(マニュアル)・カレンダーと連絡先・Deck・External sites。Talk の通話は使わないため、通話用のサーバー(TURN など)は置かない。
+  - 入れるアプリは、既定で入っているアプリ(Dashboard など)の有効・無効も含めて、Ansible で宣言する。画面からはアプリを足さない。アプリはプラグインと同じく構成の一部で、素の状態からコードだけで再現するため。
+  - データは Longhorn のボリュームに置く。
+  - Homarr は、Nextcloud Hub に置き換えて外す(外す時期は未決)。外したあとは、各サービスの状態の表示が無くなる。
 
 ### 未決(クラスタ内アプリ)
 
+- Nextcloud Hub の詳細。ほかに入れる機能、アプリの版の固定(`occ app:install` は、互換のある最新版を入れ、版を指定できない)、使うチャート、DB とキャッシュ(Redis)、バックグラウンドの処理(cron)、メモリと配置(`heavy_workloads` に寄せるか)、公開ホスト名、ボリュームの容量とユーザーごとの上限、SSO の設定(`user_oidc` を Ansible で設定するか、画面で設定するか)、緊急用の管理者(名前・作り方・外からのパスワードのログインの止め方)と同期クライアントの扱い、Cloudflare Tunnel の1リクエストの上限(100MB)に合わせたアップロードの分割、Homarr を外す時期。
 - 緊急用の `akadmin` を、外からのログインで拒否する方法。Authentik のログインは全員が同じ経路を通るため、経路では塞げない。`akadmin` の API トークン(`vault/authentik.yml`)も、外から Authentik の API に使える(MFA も試行回数の制限も通らない)。API のパスは画面も使うため、経路では塞げない。
 - 自宅LANからラボへの通信が NAT される場合の、ログインの失敗の制限。LAN の全員が同じ IP に見え、誰かの失敗で全員が拒否される。NAT を1段だけにする方針([network.md](network.md))で、自宅LANとラボの間が NAT なしのルーティングになれば、起きない。
 

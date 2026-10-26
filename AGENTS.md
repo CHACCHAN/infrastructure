@@ -24,7 +24,7 @@ The environment is being redesigned for new hardware. **The tree is currently a 
 | utils | none | `playbooks/utils/` | One-shot tools (REST APIs, SSH) |
 
 - `inventory/hosts/` has one file per VLAN; `inventory/group_vars/all/` holds values shared by every host. `vault/` holds encrypted secrets.
-- `legacy/` is the previous configuration, kept as **read-only reference**: never edit it, never lint it, never run its playbooks. The old environment has been removed; port ideas, not values: its addresses (the new plan reuses `172.16.0.0/16` with a different VLAN layout), node-encoded VMIDs, AWX/EE, Rancher, WG-Easy and Nextcloud are obsolete.
+- `legacy/` is the previous configuration, kept as **read-only reference**: never edit it, never lint it, never run its playbooks. The old environment has been removed; port ideas, not values: its addresses (the new plan reuses `172.16.0.0/16` with a different VLAN layout), node-encoded VMIDs, AWX/EE, Rancher, WG-Easy and the old Nextcloud are obsolete (Nextcloud Hub is designed afresh in [docs/design/k3s.md](docs/design/k3s.md)).
 - Language: documentation, comments, task names and commit messages are Japanese. Only this file, `.agents/` and `.claude/agents/` are English.
 
 ## Working agreements
