@@ -2,7 +2,7 @@
 # 秘密情報(authentik_secret_key など)と、公開ホスト名(authentik_host など)は、既定値を持たない。
 ---
 # チャートのバージョン
-authentik_chart_version: "2026.8.3"
+authentik_chart_version: "2026.8.5"
 authentik_chart_repo_url: https://charts.goauthentik.io
 authentik_release_name: authentik
 authentik_namespace: authentik

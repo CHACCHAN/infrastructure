@@ -2,7 +2,7 @@
 # 秘密情報と、公開ホスト名(cliproxy_host)は、既定値を持たない。
 ---
 # イメージのタグ(公式の docker-compose.yml が使うイメージ)
-cliproxy_version: "v8.0.38"
+cliproxy_version: "v8.0.44"
 cliproxy_image: docker.io/eceasy/cli-proxy-api
 cliproxy_release_name: cliproxy
 cliproxy_namespace: cliproxy

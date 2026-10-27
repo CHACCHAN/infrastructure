@@ -5,7 +5,7 @@
 cloudflared_chart_version: "0.1.2"
 cloudflared_chart_repo_url: https://cloudflare.github.io/helm-charts
 # cloudflared のバージョン(イメージのタグ)
-cloudflared_version: "2026.10.0"
+cloudflared_version: "2026.10.4"
 cloudflared_release_name: cloudflared
 cloudflared_namespace: cloudflared
 # コネクタの Pod の数
