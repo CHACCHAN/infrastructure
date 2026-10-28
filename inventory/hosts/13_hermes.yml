@@ -10,7 +10,7 @@ hermes:
       pve_vm_description: 受付
       # qemu-guest-agent が入っている VM だけ有効にする(docs/design/pve.md)
       pve_vm_agent: 1
-      # 依頼を通すだけで、ブラウザを使わない(メモリは、導入に要る既定のまま)
+      # 依頼を通すだけで、コンテナで重い処理を動かさない(メモリは、導入に要る既定のまま)
       pve_vm_cores: 2
       pve_vm_disk_size: 32
     hermes02:
@@ -38,7 +38,11 @@ hermes:
       node: pve01
       pve_vm_description: 社内サービス会社
       pve_vm_agent: 1
-      # Android エミュレータを動かす(VM の中の KVM を使う)
+      # Android エミュレータをコンテナで動かす(VM の /dev/kvm をコンテナに渡す)
       pve_vm_cores: 8
       pve_vm_memory: 8192
       pve_vm_disk_size: 128
+    hermes07:
+      id: 7
+      node: pve01
+      pve_vm_description: Nextcloud Hub の管理

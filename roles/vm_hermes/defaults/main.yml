@@ -20,9 +20,9 @@ hermes_packages:
   - libatomic1
 # 公式のインストーラ
 hermes_installer_url: https://hermes-agent.nousresearch.com/install.sh
-# ブラウザの自動操作(Chromium)を入れない。入れるときは、Hermes のユーザーで `hermes pm install agent-browser` を実行する
+# ブラウザの自動操作(Chromium)を VM に入れない。要るときは、Hermes がコンテナで動かす(docs/design/hermes.md)
 hermes_skip_browser: true
-# Computer Use のドライバを入れない。入れるときは、Hermes のユーザーで `hermes pm install cua-driver` を実行する
+# Computer Use のドライバを VM に入れない。要るときは、Hermes がコンテナで動かす
 hermes_skip_computer_use: true
 # インストーラの完了を待つ時間(秒)
 hermes_install_timeout: 3600

@@ -1,4 +1,4 @@
-# Hermes Agent の VM に共通する値(ロールの既定値との差分)。サイズの既定は、ブラウザ(Chromium)を使う組織に合わせる(docs/design/hermes.md)
+# Hermes Agent の VM に共通する値(ロールの既定値との差分)。サイズの既定は、Hermes と、Hermes がコンテナで動かす隔離環境や道具(ブラウザなど)に合わせる(docs/design/hermes.md)
 ---
 # Debian の cloud イメージが作る、sudo できる既定のユーザー
 ansible_user: debian

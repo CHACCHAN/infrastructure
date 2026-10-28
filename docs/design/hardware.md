@@ -45,7 +45,7 @@ SYS 以外の SSD(ssd01〜)は、すべてVM用のストレージにし、通常
 
 | ノード | 載せるもの | 理由 |
 | --- | --- | --- |
-| pve01 | k3s01、開発VM、Hermes Agent(3台) | RAM・CPUに余裕がある汎用ノード |
+| pve01 | k3s01、開発VM、Hermes Agent(4台) | RAM・CPUに余裕がある汎用ノード |
 | pve02 | k3s02、Hermes Agent(3台) | 32GB のうち12GB を k3s02 に使い、残りを Hermes に回す |
 | pve03 | k3s03 | 32GB のうち12GB を k3s03 に使う |
 - 3台のk3sは同じ性能ではない。重いワークロードは、`nodeAffinity` で k3s01・k3s02 に寄せる。k3s03 は etcd の定数、Longhorn の複製、軽いワークロードを受け持つ。
