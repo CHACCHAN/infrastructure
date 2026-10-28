@@ -40,7 +40,7 @@ hermes:
       pve_vm_agent: 1
       # Android エミュレータをコンテナで動かす(VM の /dev/kvm をコンテナに渡す)
       pve_vm_cores: 8
-      pve_vm_memory: 8192
+      pve_vm_memory: 16384
       pve_vm_disk_size: 128
     hermes07:
       id: 7
