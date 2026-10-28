@@ -46,3 +46,4 @@ hermes:
       id: 7
       node: pve01
       pve_vm_description: Nextcloud Hub の管理
+      pve_vm_agent: 1
