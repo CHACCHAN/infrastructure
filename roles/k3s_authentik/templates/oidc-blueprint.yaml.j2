@@ -16,7 +16,7 @@ entries:
       grant_types:
         - authorization_code
       client_id: {{ client.slug }}
-      client_secret: !Env {{ 'OIDC_' ~ (client.slug | upper) ~ '_SECRET' }}
+      client_secret: !Env {{ 'OIDC_' ~ (client.slug | upper | replace('-', '_')) ~ '_SECRET' }}
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       redirect_uris:
 {% for uri in client.redirect_uris %}

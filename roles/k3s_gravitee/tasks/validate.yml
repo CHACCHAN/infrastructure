@@ -1,0 +1,23 @@
+---
+- name: 公開と認証の前提を確認する
+  ansible.builtin.assert:
+    that:
+      - gravitee_namespace in helm_network_policies
+      - gravitee_db_namespace in helm_network_policies
+      - gravitee_admin_group is match('^[A-Za-z0-9_-]+$')
+      - gravitee_oidc_server_url is match('^https://')
+    fail_msg: "NetworkPolicy の表、管理者グループ、AM の HTTPS URL を確認してください"
+    quiet: true
+
+- name: 秘密情報の形式を確認する
+  ansible.builtin.assert:
+    that:
+      - gravitee_admin_password is match('^[A-Za-z0-9]{24,32}$')
+      - gravitee_jwt_secret | length >= 32
+      - gravitee_properties_encryption_secret is match('^[A-Za-z0-9]{32}$')
+      - gravitee_user_reference_secret is match('^[A-Za-z0-9]{32}$')
+      - gravitee_oidc_client_secret | length >= 24
+      - gravitee_db_password | length >= 24
+    fail_msg: "vault/gravitee.yml の秘密情報の形式を確認してください"
+    quiet: true
+  no_log: true

@@ -1,0 +1,364 @@
+# Secret は環境変数で注入し、ConfigMap と Helm values に秘密値を入れない。
+---
+__gravitee_jdbc_url: "jdbc:postgresql://{{ gravitee_db_host }}:5432/{{ gravitee_db_name }}"
+__gravitee_shared_secret_data:
+  # Repository の scope 名(management)と、repositories を持つ設定の両方を指定する。
+  GRAVITEE_MANAGEMENT_JDBC_PASSWORD: "{{ gravitee_db_password }}"
+  GRAVITEE_REPOSITORIES_MANAGEMENT_JDBC_PASSWORD: "{{ gravitee_db_password }}"
+  GRAVITEE_API_PROPERTIES_ENCRYPTION_SECRET: "{{ gravitee_properties_encryption_secret }}"
+__gravitee_api_secret_data: >-
+  {{ __gravitee_shared_secret_data | combine({
+    'GRAVITEE_JWT_SECRET': gravitee_jwt_secret,
+    'GRAVITEE_USER_REFERENCE_SECRET': gravitee_user_reference_secret,
+    'GRAVITEE_SECURITY_PROVIDERS_0_CLIENTSECRET': gravitee_oidc_client_secret,
+    'GRAVITEE_SECURITY_PROVIDERS_1_USERS_0_PASSWORD': gravitee_admin_password}) }}
+__gravitee_gateway_secret_data: >-
+  {{ __gravitee_shared_secret_data | combine({
+    'GRAVITEE_RATELIMIT_JDBC_PASSWORD': gravitee_db_password,
+    'GRAVITEE_REPOSITORIES_RATELIMIT_JDBC_PASSWORD': gravitee_db_password}) }}
+__gravitee_secrets: >-
+  {%- set objects = [] -%}
+  {%- for component, values in {'api': __gravitee_api_secret_data, 'gateway': __gravitee_gateway_secret_data}.items() -%}
+  {%- set data = {} -%}
+  {%- for key, value in values.items() -%}
+  {%- set _ = data.update({key: value | b64encode}) -%}
+  {%- endfor -%}
+  {%- set _ = objects.append({'apiVersion': 'v1', 'kind': 'Secret',
+    'metadata': {'name': gravitee_release_name ~ '-' ~ component ~ '-env', 'namespace': gravitee_namespace},
+    'type': 'Opaque', 'data': data}) -%}
+  {%- endfor -%}
+  {{ objects }}
+__gravitee_public: "{{ gravitee_host in (cloudflared_hosts | default([])) }}"
+# Portal API は Cookie だけで使うため、Tunnel では Authorization を持つ要求を通さない。
+# Portal API は、Authorization の Basic でのパスワード(緊急用の admin)と Bearer のトークンを、どのエンドポイントでも受けるため
+__gravitee_ingress:
+  host: "{{ gravitee_host }}"
+  routes:
+    - path: /
+      service_name: "{{ gravitee_release_name }}-portal"
+      service_port: 8003
+      tunnel: "{{ __gravitee_public }}"
+    - path: /portal
+      service_name: "{{ gravitee_release_name }}-api"
+      service_port: 83
+      tunnel: "{{ __gravitee_public }}"
+      tunnel_deny_headers:
+        - Authorization
+    - path: /gateway
+      service_name: "{{ gravitee_release_name }}-gateway"
+      service_port: 82
+      strip_prefix: true
+      tunnel: "{{ __gravitee_public }}"
+    - path: /console
+      host: "{{ gravitee_console_host }}"
+      service_name: "{{ gravitee_release_name }}-ui"
+      service_port: 8002
+      strip_prefix: true
+      middlewares:
+        - "{{ gravitee_console_ingress_middleware }}"
+    - path: /management
+      host: "{{ gravitee_console_host }}"
+      service_name: "{{ gravitee_release_name }}-api"
+      service_port: 83
+      middlewares:
+        - "{{ gravitee_console_ingress_middleware }}"
+    # Authentik のログイン後にブラウザが戻る /outpost.goauthentik.io/callback で、ミドルウェアを動かす(アウトポストが自分で応答し、バックエンドには届かない)。コンソールのホストには / の経路が無いため、この経路で受ける
+    - path: /outpost.goauthentik.io
+      host: "{{ gravitee_console_host }}"
+      service_name: "{{ gravitee_release_name }}-ui"
+      service_port: 8002
+      middlewares:
+        - "{{ gravitee_console_ingress_middleware }}"
+__gravitee_values:
+  fullnameOverride: "{{ gravitee_release_name }}"
+  apim:
+    # Secret の自動探索は使わず、Pod が読む Secret を明示する。
+    managedServiceAccount: false
+  mongodb:
+    enabled: false
+  elasticsearch:
+    enabled: false
+  es:
+    enabled: false
+  redis:
+    download: false
+  alerts:
+    enabled: false
+  cockpit:
+    enabled: false
+  cloud:
+    enabled: false
+  gamma:
+    enabled: false
+  gammaUi:
+    enabled: false
+  kafkaConsole:
+    enabled: false
+  management:
+    type: jdbc
+  ratelimit:
+    type: jdbc
+  jdbc:
+    url: "{{ __gravitee_jdbc_url }}"
+    driverSource: auto
+    username: "{{ gravitee_db_name }}"
+    password: ""
+    pool:
+      minIdle: 1
+      maxPoolSize: 5
+  # 空の ConfigMap 値を Secret の GRAVITEE_JWT_SECRET で置き換える。
+  jwtSecret: ""
+  jwt:
+    cookie:
+      path: /
+      # Domain を付けない(ホスト限定)。コンソールのホストとポータルのホストの両方で、同じ API がログインの Cookie を発行するため
+      domain: ""
+      secure: true
+  adminAccountEnable: false
+  extraInMemoryUsers: ""
+  inMemoryAuth:
+    enabled: false
+  graviteeRepoAuth:
+    enabled: false
+  oidcAuth:
+    enabled: false
+  ldap:
+    enabled: false
+  security:
+    trustAll: false
+    providers:
+      - type: graviteeio_am
+        id: gravitee-am
+        clientId: "{{ gravitee_oidc_client_id }}"
+        # clientSecret は Secret だけに存在させ、indexed property の競合を作らない。
+        serverURL: "{{ gravitee_oidc_server_url }}"
+        domain: "{{ gravitee_oidc_domain }}"
+        syncMappings: true
+        activations:
+          - "{{ gravitee_organization_id }}"
+          - "{{ gravitee_organization_id }}:{{ gravitee_environment_id }}"
+        # AM の userinfo は、full_profile があるときだけ Authentik から受けた groups を返す
+        scopes:
+          - openid
+          - profile
+          - email
+          - full_profile
+        userMapping:
+          id: sub
+          email: email
+          lastname: family_name
+          firstname: given_name
+          picture: picture
+        # {# は Jinja のコメントの開始になるため、文字列として出す
+        roleMapping:
+          - condition: "{{ '{#' }}jsonPath(#profile, '$.groups').contains('{{ gravitee_admin_group }}')}"
+            roles:
+              - ORGANIZATION:ADMIN
+              - "ENVIRONMENT:{{ gravitee_environment_id }}:ADMIN"
+          - condition: "{!#jsonPath(#profile, '$.groups').contains('{{ gravitee_admin_group }}')}"
+            roles:
+              - ORGANIZATION:USER
+              - "ENVIRONMENT:{{ gravitee_environment_id }}:USER"
+      # 緊急用の admin。パスワードは vault の値を Secret から平文で渡す(ハッシュを vault と揃える手間をなくすため)
+      - type: memory
+        password-encoding-algo: none
+        allow-email-in-search-results: false
+        users:
+          # user は値のないマーカー。password は Secret にだけ存在する。
+          - user: ""
+            username: admin
+            roles: "ORGANIZATION:ADMIN,ENVIRONMENT:ADMIN"
+  installation:
+    type: standalone
+    api:
+      url: "https://{{ gravitee_console_host }}"
+      console:
+        url: "https://{{ gravitee_console_host }}"
+      portal:
+        url: "https://{{ gravitee_host }}"
+    standalone:
+      console:
+        urls:
+          - orgId: "{{ gravitee_organization_id }}"
+            url: "https://{{ gravitee_console_host }}/console/"
+      portal:
+        urls:
+          - envId: "{{ gravitee_environment_id }}"
+            url: "https://{{ gravitee_host }}/"
+  smtp:
+    enabled: false
+  notifiers:
+    smtp:
+      enabled: false
+  api:
+    replicaCount: 1
+    image:
+      pullPolicy: IfNotPresent
+    autoscaling:
+      enabled: false
+    analytics:
+      type: none
+    otelTraces:
+      type: none
+    portalURL: "https://{{ gravitee_host }}/"
+    http:
+      services:
+        core:
+          http:
+            enabled: false
+    federation:
+      enabled: false
+    deployment:
+      envFrom:
+        - secretRef:
+            name: "{{ gravitee_release_name }}-api-env"
+    podAnnotations:
+      checksum/secret-env: "{{ __gravitee_api_secret_data | to_json | hash('sha256') }}"
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    ingress:
+      management:
+        enabled: false
+      portal:
+        enabled: false
+      automation:
+        enabled: false
+    env:
+      - name: GIO_MIN_MEM
+        value: 256m
+      - name: GIO_MAX_MEM
+        value: 1024m
+      - name: GRAVITEE_PORTAL_ENTRYPOINT
+        value: "https://{{ gravitee_host }}/gateway"
+      - name: GRAVITEE_PORTAL_AUTHENTICATION_FORCELOGIN_ENABLED
+        value: "true"
+      - name: GRAVITEE_PORTAL_USERCREATION_ENABLED
+        value: "false"
+      - name: GRAVITEE_CONSOLE_USERCREATION_ENABLED
+        value: "false"
+      - name: GRAVITEE_HTTP_API_PORTAL_CORS_ALLOWORIGIN
+        value: "https://{{ gravitee_host }}"
+      - name: GRAVITEE_HTTP_API_MANAGEMENT_CORS_ALLOWORIGIN
+        value: "https://{{ gravitee_console_host }}"
+      - name: GRAVITEE_HTTP_API_GAMMA_ENABLED
+        value: "false"
+  gateway:
+    replicaCount: 1
+    image:
+      pullPolicy: IfNotPresent
+    autoscaling:
+      enabled: false
+    ingress:
+      enabled: false
+    services:
+      core:
+        http:
+          enabled: false
+    distributedSync:
+      enabled: false
+    kafka:
+      enabled: false
+    edge:
+      enabled: false
+    reporters:
+      elasticsearch:
+        enabled: false
+      file:
+        enabled: false
+      tcp:
+        enabled: false
+      cloud:
+        enabled: false
+      otel:
+        enabled: false
+    # チャートのプローブは技術 API(無効にしている)を使うため、本体のポートで確かめる
+    deployment:
+      envFrom:
+        - secretRef:
+            name: "{{ gravitee_release_name }}-gateway-env"
+      livenessProbe:
+        enabled: false
+      readinessProbe:
+        enabled: false
+      startupProbe:
+        enabled: false
+      customLivenessProbe:
+        tcpSocket:
+          port: 8082
+        periodSeconds: 15
+        failureThreshold: 3
+      customReadinessProbe:
+        tcpSocket:
+          port: 8082
+        periodSeconds: 10
+        failureThreshold: 2
+      customStartupProbe:
+        tcpSocket:
+          port: 8082
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        failureThreshold: 30
+    podAnnotations:
+      checksum/secret-env: "{{ __gravitee_gateway_secret_data | to_json | hash('sha256') }}"
+    env:
+      - name: GIO_MIN_MEM
+        value: 256m
+      - name: GIO_MAX_MEM
+        value: 768m
+    resources:
+      requests:
+        cpu: 200m
+        memory: 768Mi
+      limits:
+        cpu: 1000m
+        memory: 1536Mi
+  ui:
+    replicaCount: 1
+    image:
+      pullPolicy: IfNotPresent
+    autoscaling:
+      enabled: false
+    ingress:
+      enabled: false
+    baseURL: "https://{{ gravitee_console_host }}/management/"
+    analytics:
+      pendo:
+        enabled: false
+    # 管理 API の URL は baseURL(チャートがマウントする constants.json)で決まる
+    env:
+      - name: CONSOLE_BASE_HREF
+        value: /console/
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+  portal:
+    replicaCount: 1
+    image:
+      pullPolicy: IfNotPresent
+    autoscaling:
+      enabled: false
+    ingress:
+      enabled: false
+    defaultPortal: classic
+    enforceEnvironmentId: "{{ gravitee_environment_id }}"
+    baseURL: "https://{{ gravitee_host }}/portal/"
+    # Portal API の URL は baseURL(チャートがマウントする config.json)で決まる
+    env:
+      - name: PORTAL_BASE_HREF
+        value: /
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi

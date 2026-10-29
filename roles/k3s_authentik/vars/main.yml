@@ -12,7 +12,7 @@ __authentik_secret_data: >-
     'AUTHENTIK_ERROR_REPORTING__ENABLED': 'false' | b64encode} -%}
   {%- for client in authentik_oidc_clients -%}
   {%- set _ = out.update({
-    'OIDC_' ~ (client.slug | upper) ~ '_SECRET': authentik_oidc_client_secrets[client.slug] | b64encode}) -%}
+    'OIDC_' ~ (client.slug | upper | replace('-', '_')) ~ '_SECRET': authentik_oidc_client_secrets[client.slug] | b64encode}) -%}
   {%- endfor -%}
   {%- if authentik_google_client_id | length > 0 -%}
   {%- set _ = out.update({

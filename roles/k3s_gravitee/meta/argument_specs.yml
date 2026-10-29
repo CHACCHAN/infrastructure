@@ -1,0 +1,94 @@
+---
+argument_specs:
+  main:
+    short_description: Gravitee APIM と専用の PostgreSQL を入れる
+    description:
+      - Helm、Secret、Ingress、NetworkPolicy は k3s ロールで適用する。
+      - SSO は Gravitee AM を経由し、groups をログインごとに権限へ写す。
+    options:
+      gravitee_chart_version:
+        type: str
+        description: チャートのバージョン
+      gravitee_chart:
+        type: str
+        description: チャート名
+      gravitee_chart_repo_url:
+        type: str
+        description: チャートの配布元
+      gravitee_release_name:
+        type: str
+        description: Helm のリリース名と Service 名の接頭辞
+      gravitee_namespace:
+        type: str
+        description: APIM の namespace
+      gravitee_host:
+        type: str
+        required: true
+        description: APIM の公開ホスト名
+      gravitee_console_host:
+        type: str
+        required: true
+        description: APIM コンソールの公開ホスト名
+      gravitee_console_ingress_middleware:
+        type: str
+        description: コンソールと管理 API に掛ける Traefik の認証プロキシ
+      gravitee_db_namespace:
+        type: str
+        description: 専用の PostgreSQL の namespace
+      gravitee_db_host:
+        type: str
+        description: PostgreSQL のホスト名
+      gravitee_db_name:
+        type: str
+        description: DB と所有者のロールの名前
+      gravitee_db_password:
+        type: str
+        required: true
+        no_log: true
+        description: DB パスワード(vault/gravitee.yml、24文字以上)
+      gravitee_admin_password:
+        type: str
+        required: true
+        no_log: true
+        description: 緊急用の admin のパスワード(vault。英数字 24〜32 文字)
+      gravitee_jwt_secret:
+        type: str
+        required: true
+        no_log: true
+        description: JWT と CSRF の署名鍵(32文字以上のランダム英数字)
+      gravitee_properties_encryption_secret:
+        type: str
+        required: true
+        no_log: true
+        description: API プロパティの暗号化鍵(API と Gateway 共通、32文字のランダム英数字)
+      gravitee_user_reference_secret:
+        type: str
+        required: true
+        no_log: true
+        description: ユーザー参照の秘密鍵(32文字のランダム英数字)
+      gravitee_oidc_server_url:
+        type: str
+        description: AM Gateway の HTTPS URL(/auth を含む)
+      gravitee_oidc_domain:
+        type: str
+        description: AM のセキュリティドメイン
+      gravitee_oidc_client_id:
+        type: str
+        description: AM に登録する APIM の client_id
+      gravitee_oidc_client_secret:
+        type: str
+        required: true
+        no_log: true
+        description: AM にも同じ値を登録する client_secret(24文字以上)
+      gravitee_admin_group:
+        type: str
+        description: APIM の管理者にする Authentik グループ(英数字、ハイフン、アンダースコア)
+      gravitee_organization_id:
+        type: str
+        description: SSO を有効にする organization ID
+      gravitee_environment_id:
+        type: str
+        description: SSO を有効にする environment ID
+      gravitee_values:
+        type: dict
+        description: Helm values の上書き。認証・公開・Secret の変更は安全性を再確認する

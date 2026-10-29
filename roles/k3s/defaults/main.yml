@@ -20,7 +20,8 @@ helm_secrets: []
 helm_manifests: []
 # Helm の実行結果(values を含む)をログに出さない。values に秘密値を渡すアプリで true にする
 helm_no_log: false
-# 公開する Ingress(host、service_port、省略可の service_name と middlewares)。空なら作らない。TLS は Traefik の既定の証明書を使う
+# 公開する Ingress(host と service_port、または host と routes)。空なら作らない。TLS は Traefik の既定の証明書を使う
+# routes はパスごとに Service・ミドルウェア・Tunnel の公開を指定する
 # tunnel を true にすると、Traefik の Tunnel 専用の入口(外部からの通信)にも経路を作る。tunnel_deny_paths は、その入口でだけ通さないパス。tunnel を false にすると、経路を消す
 helm_ingress: {}
 # namespace の Pod が受ける通信を絞る NetworkPolicy を置く。通すのは、同じ namespace、Traefik(helm_ingress があるとき)、helm_network_policies の namespace だけ。false なら置かず、置いてあれば消す

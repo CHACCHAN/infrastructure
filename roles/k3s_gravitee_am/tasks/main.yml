@@ -1,0 +1,77 @@
+---
+# 短い署名鍵や、緊急用のパスワードの規則から外れた値で動かさない
+- name: 緊急用のパスワードと署名鍵の形式を確認する
+  ansible.builtin.assert:
+    that:
+      - gravitee_am_admin_password is match('^[A-Za-z0-9]{24,32}$')
+      - gravitee_am_jwt_secret is match('^[A-Za-z0-9]{32,}$')
+      - gravitee_am_csrf_secret is match('^[A-Za-z0-9]{32,}$')
+      - gravitee_am_technical_password is match('^[A-Za-z0-9]{24,}$')
+      - gravitee_am_certificate_key_password is match('^[A-Za-z0-9]{24,}$')
+      - gravitee_am_certificate_store_password is match('^[A-Za-z0-9]{24,}$')
+      - gravitee_am_db_password | length >= 24
+    quiet: true
+  no_log: true
+
+- name: 専用の PostgreSQL を適用する
+  ansible.builtin.include_role:
+    name: k3s_postgresql
+  vars:
+    postgresql_namespace: "{{ gravitee_am_db_namespace }}"
+    postgresql_database: "{{ gravitee_am_db_name }}"
+    postgresql_password: "{{ gravitee_am_db_password }}"
+
+- name: Gravitee Access Management を適用する
+  ansible.builtin.include_role:
+    name: k3s
+  vars:
+    helm_release_name: "{{ gravitee_am_release_name }}"
+    helm_chart: am
+    helm_chart_repo_url: "{{ gravitee_am_chart_repo_url }}"
+    helm_chart_version: "{{ gravitee_am_chart_version }}"
+    helm_namespace: "{{ gravitee_am_namespace }}"
+    helm_timeout: 20m
+    helm_values: "{{ __gravitee_am_values | combine(gravitee_am_values, recursive=True) }}"
+    helm_secrets: "{{ __gravitee_am_secrets }}"
+    helm_ingress:
+      host: "{{ gravitee_am_host }}"
+      routes:
+        - path: /auth
+          host: "{{ gravitee_host }}"
+          service_name: "{{ gravitee_am_release_name }}-gateway"
+          service_port: 82
+          # AM は X-Forwarded-Prefix を公開 URL に加える
+          strip_prefix: true
+          tunnel: "{{ gravitee_host in cloudflared_hosts | default([]) }}"
+          tunnel_deny_paths:
+            - /auth/apim/register
+            - /auth/apim/confirmRegistration
+            - /auth/apim/verifyRegistration
+            - /auth/apim/forgotPassword
+            - /auth/apim/resetPassword
+            - /auth/apim/passwordHistory
+            - /auth/apim/passwordValidation
+            - /auth/apim/login/identifier
+            - /auth/apim/login/SSO/SPNEGO
+            - /auth/apim/webauthn
+            - /auth/apim/account
+            - /auth/apim/scim
+            - /auth/apim/oidc/register
+          # GET /login は Authentik への転送に使う。/login/callback の POST は通す
+          tunnel_deny_post_paths:
+            - /auth/apim/login
+        - path: /management
+          service_name: "{{ gravitee_am_release_name }}-management-api"
+          service_port: 83
+          strip_prefix: false
+          tunnel: false
+          middlewares:
+            - "{{ gravitee_am_ingress_middleware }}"
+        - path: /
+          service_name: "{{ gravitee_am_release_name }}-management-ui"
+          service_port: 8002
+          strip_prefix: false
+          tunnel: false
+          middlewares:
+            - "{{ gravitee_am_ingress_middleware }}"
+    helm_network_policy: true

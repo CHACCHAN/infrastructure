@@ -1,0 +1,228 @@
+# Secret の環境変数は gravitee.yml より優先される。配列の添字も _0_ で指定する。
+---
+# PostgreSQL の JDBC と R2DBC のドライバーの取得元
+__gravitee_am_maven: https://repo1.maven.org/maven2/org/postgresql
+__gravitee_am_common_secret_data:
+  gravitee_jwt_secret: "{{ gravitee_am_jwt_secret | b64encode }}"
+  gravitee_repositories_management_jdbc_password: "{{ gravitee_am_db_password | b64encode }}"
+  gravitee_repositories_oauth2_jdbc_password: "{{ gravitee_am_db_password | b64encode }}"
+  gravitee_repositories_gateway_jdbc_password: "{{ gravitee_am_db_password | b64encode }}"
+  gravitee_repositories_ratelimit_jdbc_password: "{{ gravitee_am_db_password | b64encode }}"
+  gravitee_dataPlanes_0_jdbc_password: "{{ gravitee_am_db_password | b64encode }}"
+  gravitee_services_core_http_authentication_users_admin: "{{ gravitee_am_technical_password | b64encode }}"
+__gravitee_am_api_secret_data: >-
+  {{ __gravitee_am_common_secret_data | combine({
+       'gravitee_security_providers_0_users_0_password': gravitee_am_admin_password | b64encode,
+       'gravitee_domains_certificates_default_keypass': gravitee_am_certificate_key_password | b64encode,
+       'gravitee_domains_certificates_default_storepass': gravitee_am_certificate_store_password | b64encode}) }}
+__gravitee_am_gateway_secret_data: >-
+  {{ __gravitee_am_common_secret_data | combine({
+       'gravitee_http_csrf_secret': gravitee_am_csrf_secret | b64encode}) }}
+__gravitee_am_secrets:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: gravitee-am-api
+      namespace: "{{ gravitee_am_namespace }}"
+    type: Opaque
+    data: "{{ __gravitee_am_api_secret_data }}"
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: gravitee-am-gateway
+      namespace: "{{ gravitee_am_namespace }}"
+    type: Opaque
+    data: "{{ __gravitee_am_gateway_secret_data }}"
+__gravitee_am_values:
+  mongodb-replicaset:
+    enabled: false
+  cockpit:
+    enabled: false
+  cloud:
+    enabled: false
+  alerts:
+    enabled: false
+  smtp:
+    enabled: false
+  management:
+    type: jdbc
+  oauth2:
+    type: jdbc
+  jdbc:
+    driver: postgresql
+    host: "{{ gravitee_am_db_host }}"
+    port: 5432
+    database: "{{ gravitee_am_db_name }}"
+    username: "{{ gravitee_am_db_name }}"
+    drivers:
+      - "{{ __gravitee_am_maven }}/postgresql/{{ gravitee_am_jdbc_postgresql_version }}/postgresql-{{ gravitee_am_jdbc_postgresql_version }}.jar"
+      - "{{ __gravitee_am_maven }}/r2dbc-postgresql/{{ gravitee_am_r2dbc_postgresql_version }}/r2dbc-postgresql-{{ gravitee_am_r2dbc_postgresql_version }}.jar"
+    pool:
+      initialSize: 0
+      maxSize: 10
+  initContainers:
+    image: "{{ gravitee_am_init_image }}:{{ gravitee_am_init_version }}"
+    imagePullPolicy: IfNotPresent
+  console:
+    ui:
+      url: "https://{{ gravitee_am_host }}/"
+    api:
+      url: "https://{{ gravitee_am_host }}/management"
+  api:
+    enabled: true
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+    ingress:
+      enabled: false
+      hosts:
+        - "{{ gravitee_am_host }}"
+      path: /management
+    gateway:
+      url: "https://{{ gravitee_host }}/auth"
+    http:
+      api:
+        entrypoint: /management
+        automation:
+          enabled: false
+      services:
+        core:
+          http:
+            # プローブは本体のポートを使うため、技術 API は Pod の中だけで開く
+            host: localhost
+            authentication:
+              # 認証の値は Secret の環境変数で渡す
+              password: ""
+          ingress:
+            enabled: false
+          service:
+            enabled: false
+    security:
+      defaultAdmin: false
+      providers:
+        - type: memory
+          enabled: true
+          name: Emergency admin
+          password-encoding-algo: none
+          users:
+            - username: admin
+              firstname: Administrator
+              lastname: Administrator
+              role: ORGANIZATION_PRIMARY_OWNER
+    domains:
+      certificates:
+        default:
+          keypass: ""
+          storepass: ""
+    jwt:
+      secret: ""
+      issuer: "https://{{ gravitee_am_host }}"
+      cookie:
+        secure: true
+        path: /
+    deployment:
+      envFrom:
+        - secretRef:
+            name: gravitee-am-api
+    podAnnotations:
+      checksum/secrets: "{{ __gravitee_am_api_secret_data | to_json | hash('sha256') }}"
+    env:
+      - name: GIO_MIN_MEM
+        value: 512m
+      - name: GIO_MAX_MEM
+        value: 512m
+    # probe の HTTP ヘッダーへ秘密を埋め込まず、アプリの待受けを確認する
+    livenessProbe:
+      tcpSocket:
+        port: 8093
+    readinessProbe:
+      tcpSocket:
+        port: 8093
+    startupProbe:
+      tcpSocket:
+        port: 8093
+      failureThreshold: 90
+    resources:
+      requests:
+        cpu: 200m
+        memory: 768Mi
+      limits:
+        cpu: 1000m
+        memory: 1536Mi
+  gateway:
+    enabled: true
+    type: jdbc
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+    ingress:
+      enabled: false
+      hosts:
+        - "{{ gravitee_am_host }}"
+      path: /auth
+    http:
+      cookie:
+        secure: true
+        sameSite: Lax
+    services:
+      core:
+        http:
+          host: localhost
+          authentication:
+            password: ""
+        ingress:
+          enabled: false
+        service:
+          enabled: false
+    jwt:
+      secret: ""
+      issuer: "https://{{ gravitee_am_host }}"
+      cookie:
+        secure: true
+        path: /auth
+    deployment:
+      envFrom:
+        - secretRef:
+            name: gravitee-am-gateway
+    podAnnotations:
+      checksum/secrets: "{{ __gravitee_am_gateway_secret_data | to_json | hash('sha256') }}"
+    env:
+      - name: GIO_MIN_MEM
+        value: 512m
+      - name: GIO_MAX_MEM
+        value: 512m
+    livenessProbe:
+      tcpSocket:
+        port: 8092
+    readinessProbe:
+      tcpSocket:
+        port: 8092
+    startupProbe:
+      tcpSocket:
+        port: 8092
+      failureThreshold: 90
+    resources:
+      requests:
+        cpu: 200m
+        memory: 768Mi
+      limits:
+        cpu: 1000m
+        memory: 1536Mi
+  ui:
+    enabled: true
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+    ingress:
+      enabled: false
+      hosts:
+        - "{{ gravitee_am_host }}"
+      path: /
+    baseURL: "https://{{ gravitee_am_host }}/management"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi

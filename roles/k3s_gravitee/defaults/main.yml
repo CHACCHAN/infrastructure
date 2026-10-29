@@ -1,0 +1,22 @@
+# Gravitee APIM の既定値。秘密情報と公開ホスト名は playbook / inventory から渡す。
+---
+gravitee_chart_version: "4.13.1"
+gravitee_chart: apim
+gravitee_chart_repo_url: https://helm.gravitee.io
+gravitee_release_name: gravitee
+gravitee_namespace: gravitee
+gravitee_db_namespace: gravitee-db
+gravitee_db_host: "{{ gravitee_db_namespace }}-rw.{{ gravitee_db_namespace }}.svc.cluster.local"
+gravitee_db_name: gravitee
+# AM が Authentik を仲介する。APIM 側は gravitee_oidc_* に統一する。
+gravitee_oidc_server_url: "https://{{ gravitee_host }}/auth"
+gravitee_oidc_domain: apim
+gravitee_oidc_client_id: gravitee
+gravitee_admin_group: admins
+# コンソールと管理 API に掛ける認証プロキシ
+gravitee_console_ingress_middleware: authentik-forward-auth@kubernetescrd
+# システムの既定の organization / environment。変更時は AM のコールバックも合わせる。
+gravitee_organization_id: DEFAULT
+gravitee_environment_id: DEFAULT
+# Helm values の基本値へ再帰的に合成する。認証・公開・Secret の変更は安全性の再確認が必要。
+gravitee_values: {}

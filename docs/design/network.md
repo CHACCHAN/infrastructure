@@ -65,6 +65,7 @@ IP   = 172.16.<VLAN>.<ID>
 ### 名前解決
 
 - 名前解決は Cloudflare の DNS を使う。
+- OPNsense でスプリット DNS は使わない(オーナーの判断)。Tunnel に載せたホスト名は Cloudflare に個別の DNS レコードを持ち、ワイルドカード(`*.cc-chacchan.com` → `172.16.12.5`)より優先されるため、LAN のクライアントも Cloudflare を経由して届く。LAN と VPN だけで使う画面は、Tunnel に載せないホスト名に置く。
 - OPNsense の DNS(Unbound)は、DNS リバインド対策でプライベート IP を返す応答を捨てる。`cc-chacchan.com` は Private Domains に登録し、この対策の対象から外す(ラボの公開ホスト名が `172.16.12.5` を返すため)。
 - ルータの構成が固まってから、詳細を設計する。
 
@@ -72,7 +73,7 @@ IP   = 172.16.<VLAN>.<ID>
 
 - リモートアクセスは `cloudflared` を使う。
 - 管理UI(Proxmox・PBS・TrueNAS・OPNsense)は LAN 内だけで使う。Cloudflare Tunnel には載せない。
-- k3s のクラスタ内アプリのうち、Authentik・OpenWebUI・Nextcloud Hub を Cloudflare Tunnel で公開する。LiteLLM・CLIProxyAPI と Longhorn の管理 UI は載せない。詳細と未決は [k3s.md](k3s.md)。
+- k3s のクラスタ内アプリのうち、Authentik・OpenWebUI・Nextcloud Hub を Cloudflare Tunnel で公開する。Gravitee API Management のポータル・ゲートウェイと Gravitee Access Management のログイン中継も公開する。Gravitee API Management のコンソール・管理 API と Gravitee Access Management の管理 UI・管理 API は LAN と VPN からだけ使う。LiteLLM・CLIProxyAPI と Longhorn の管理 UI は載せない。詳細と未決は [k3s.md](k3s.md)。
 
 ## 未決
 
@@ -84,4 +85,4 @@ IP   = 172.16.<VLAN>.<ID>
 - OPNsense と SWHUB のトランクが1本なので、VLAN間の通信はこの1本を通る。帯域が足りなければ、リンクアグリゲーションか L3 スイッチを検討する。
 - 自宅LANからラボへの到達性。管理UIとTraefik(`172.16.12.5`)を自宅のPCから使うかどうかで決まる。
 - 追加のVLAN(DMZ、テンプレート/一時用)。
-- 名前解決の細部(LAN内クライアントの問い合わせ先、ノード同士の名前解決)。Cloudflare Tunnel を入れたあと、LAN から公開アプリへ直接届かせるか(OPNsense でのスプリット DNS)。
+- 名前解決の細部(LAN内クライアントの問い合わせ先、ノード同士の名前解決)。

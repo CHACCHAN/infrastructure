@@ -1,0 +1,21 @@
+# Gravitee Access Management と専用の PostgreSQL を入れるロールの既定値。
+# 公開ホスト名と秘密情報は、インベントリと vault から playbook が渡す。
+---
+gravitee_am_chart_version: "4.13.1"
+gravitee_am_chart_repo_url: https://helm.gravitee.io
+gravitee_am_release_name: gravitee-am
+gravitee_am_namespace: gravitee-am
+# AM の pom.xml で使う PostgreSQL ドライバーの版
+gravitee_am_jdbc_postgresql_version: "42.2.25"
+gravitee_am_r2dbc_postgresql_version: "1.0.7.RELEASE"
+# ドライバー取得用の initContainer
+gravitee_am_init_image: alpine
+gravitee_am_init_version: "3.22.2"
+# 専用の PostgreSQL。所有者のロールは DB と同じ名前
+gravitee_am_db_namespace: gravitee-am-db
+gravitee_am_db_host: "{{ gravitee_am_db_namespace }}-rw.{{ gravitee_am_db_namespace }}.svc.cluster.local"
+gravitee_am_db_name: gravitee_am
+# 管理 UI と management API に掛ける認証プロキシ
+gravitee_am_ingress_middleware: authentik-forward-auth@kubernetescrd
+# Helm values の上書き(基本値へ再帰的に合成する)。秘密値は指定しない
+gravitee_am_values: {}

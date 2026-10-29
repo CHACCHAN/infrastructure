@@ -6,6 +6,32 @@
     fail_msg: "helm_ingress.tunnel と helm_ingress.middlewares は、同時に指定できません"
     quiet: true
 
+- name: 各経路の公開条件を確認する
+  ansible.builtin.assert:
+    that:
+      - item.path is match('^/[A-Za-z0-9._~/-]*$')
+      - item.path == '/' or not item.path.endswith('/')
+      - not (item.path == '/' and item.strip_prefix | default(false) | bool)
+      - not (item.tunnel | default(false) | bool and item.middlewares | default([]) | length > 0)
+      - item.tunnel_deny_headers | default([]) | reject('match', '^[A-Za-z0-9-]+$') | list | length == 0
+      - item.host is not defined or (item.host is string and item.host is match('^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'))
+    fail_msg: "経路のパスと host と Tunnel の公開条件を確認してください(host は小文字のドメイン名)"
+    quiet: true
+  loop: "{{ __helm_routes }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+# 経路ごとの Ingress の名前はパスから作るため、名前が重なるパスを並べない
+- name: 経路が重複せず、単一経路の指定と混ざっていないことを確認する
+  ansible.builtin.assert:
+    that:
+      - __helm_routes | length > 0
+      - __helm_route_names.values() | unique | list | length == __helm_routes | length
+      - helm_ingress.keys() | difference(['host', 'routes']) | length == 0
+    fail_msg: "routes には、パスの英数字が重ならない経路を1つ以上指定し、host と routes 以外を helm_ingress に書かないでください"
+    quiet: true
+  when: helm_ingress.routes is defined
+
 # 通信を通す namespace は、インベントリの表に1か所で宣言する
 - name: NetworkPolicy を置く namespace が、インベントリの表にあることを確認する
   ansible.builtin.assert:
@@ -132,7 +158,7 @@
         - name: Tunnel 専用の入口の経路を適用する
           kubernetes.core.k8s:
             definition: "{{ __helm_tunnel_manifest }}"
-            state: "{{ 'present' if helm_ingress.tunnel | default(false) | bool else 'absent' }}"
+            state: "{{ 'present' if __helm_tunnel_routes | length > 0 else 'absent' }}"
           when:
             - helm_ingress | length > 0
             - not (ansible_check_mode and (__helm_release is changed or __helm_namespace is changed))

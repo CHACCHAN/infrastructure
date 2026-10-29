@@ -16,7 +16,7 @@ OpenWebUI を Helm で入れ、Authentik の OIDC でログインできるよう
 - 緊急用の管理者(`openwebui_admin_email`、パスワードは `vault/openwebui.yml`)は、ユーザーが1人もいない初回の起動時にだけ作られる。あとから vault の値を変えても、パスワードは変わらない(画面で変える)。既にユーザーがいる DB に入れたときは作られないので、管理画面で同じメールアドレスと vault のパスワードの管理者を作る。
 - Authentik のグループから権限を決める対応づけは、Ansible では設定しない。緊急用の管理者でログインし、管理画面の OAuth の設定で行う(`ENABLE_OAUTH_PERSISTENT_CONFIG` で、画面からの変更を許している)。設定するまで、SSO で新しく入ったユーザーは、OpenWebUI の既定の役割(管理画面の設定)になる。
 - 管理画面で OAuth の設定を保存すると、その値は DB に残り、環境変数より優先される。接続先や client_secret を画面で保存したあとは、Ansible で変えても反映されないので、画面でも直す。
-- 外部(Cloudflare Tunnel)に公開するのは、インベントリの `cloudflared_hosts` に `openwebui_host` があるとき。外からは、このアプリのパスワードのログイン(緊急用の管理者)を通さない。
+- 外部(Cloudflare Tunnel)に公開するのは、インベントリの `cloudflared_hosts` に `openwebui_host` があるとき。外からは、このアプリのパスワードのログイン(緊急用の管理者)を通さない。公開ホスト名は LAN からも Tunnel を通るため、緊急用の管理者でログインするときは、使う端末の hosts ファイルで `<openwebui_host>` を `172.16.12.5` に向けてから開く。
 - Pod が受ける通信を、同じ namespace と Traefik に絞る(NetworkPolicy)。
 - パスワードでの新規登録は受け付けない。
 - SSO でのアカウント作成とメールでの統合を有効にしている。Authentik では、ユーザーが自分でメールアドレスを変えられないようにする。

@@ -4,8 +4,57 @@ __helm_ingress_annotations: >-
   {{ {'traefik.ingress.kubernetes.io/router.entrypoints': 'websecure'}
      | combine({'traefik.ingress.kubernetes.io/router.middlewares': helm_ingress.middlewares | default([]) | join(',')}
                if helm_ingress.middlewares | default([]) | length > 0 else {}) }}
+__helm_routes: "{{ helm_ingress.routes | default([]) }}"
+# 経路ごとの Ingress と Middleware の名前(<リリース名>-<パスの英数字>。/ は root)。パスから作るため、ホストが違っても、リリースの中でパスを重ねない
+__helm_route_names: >-
+  {%- set names = {} -%}
+  {%- for route in __helm_routes -%}
+  {%- set slug = route.path | lower | regex_replace('[^a-z0-9]+', '-') | regex_replace('^-+|-+$', '') -%}
+  {%- set _ = names.update({route.path: helm_release_name ~ '-' ~ (slug or 'root')}) -%}
+  {%- endfor -%}
+  {{ names }}
+# 経路ごとの Ingress と、接頭辞を除く Middleware。ホストは経路の host、なければ helm_ingress.host。
+# Traefik の既定の優先度は条件の長さのため、パスの長さで優先度を明示する
+__helm_route_manifests: >-
+  {%- set objects = [] -%}
+  {%- for route in __helm_routes -%}
+  {%- set name = __helm_route_names[route.path] -%}
+  {%- set route_host = route.host | default(helm_ingress.host) -%}
+  {%- set strip = route.strip_prefix | default(false) | bool -%}
+  {%- set middlewares = route.middlewares | default([])
+        + ([helm_namespace ~ '-' ~ name ~ '-strip@kubernetescrd'] if strip else []) -%}
+  {%- if strip -%}
+  {%- set _ = objects.append({
+        'apiVersion': 'traefik.io/v1alpha1',
+        'kind': 'Middleware',
+        'metadata': {'name': name ~ '-strip', 'namespace': helm_namespace},
+        'spec': {'stripPrefix': {'prefixes': [route.path]}}}) -%}
+  {%- endif -%}
+  {%- set annotations = {
+        'traefik.ingress.kubernetes.io/router.entrypoints': 'websecure',
+        'traefik.ingress.kubernetes.io/router.priority': (route.path | length + 1) | string} -%}
+  {%- if middlewares | length > 0 -%}
+  {%- set _ = annotations.update({'traefik.ingress.kubernetes.io/router.middlewares': middlewares | join(',')}) -%}
+  {%- endif -%}
+  {%- set _ = objects.append({
+        'apiVersion': 'networking.k8s.io/v1',
+        'kind': 'Ingress',
+        'metadata': {'name': name, 'namespace': helm_namespace, 'annotations': annotations},
+        'spec': {
+          'ingressClassName': 'traefik',
+          'tls': [{'hosts': [route_host]}],
+          'rules': [{
+            'host': route_host,
+            'http': {'paths': [{
+              'path': route.path,
+              'pathType': 'Prefix',
+              'backend': {'service': {'name': route.service_name, 'port': {'number': route.service_port | int}}}}]}}]}}) -%}
+  {%- endfor -%}
+  {{ objects }}
 __helm_ingress_manifests: >-
-  {%- if helm_ingress | length > 0 -%}
+  {%- if helm_ingress.routes is defined -%}
+  {{ __helm_route_manifests }}
+  {%- elif helm_ingress | length > 0 -%}
   {{ [{
     'apiVersion': 'networking.k8s.io/v1',
     'kind': 'Ingress',
@@ -28,13 +77,59 @@ __helm_ingress_manifests: >-
   {{ [] }}
   {%- endif -%}
 # Tunnel 専用の入口の経路の条件。拒否するパス(大文字・小文字を区別しない前方一致)と、POST だけを拒否するパス(完全一致)は、
-# 条件から外して経路を作らない(404 になる)
+# 条件から外す(同じホストにほかのリリースの経路が無ければ 404 になる)
 __helm_tunnel_match: >-
   {%- set deny = helm_ingress.tunnel_deny_paths | default([]) | map('regex_escape') | join('|') -%}
   {%- set deny_post = helm_ingress.tunnel_deny_post_paths | default([]) | map('regex_escape') | join('|') -%}
   Host(`{{ helm_ingress.host | default('') }}`)
   {{- ' && !PathRegexp(`(?i)^(' ~ deny ~ ')`)' if deny else '' }}
   {{- ' && !(Method(`POST`) && PathRegexp(`(?i)^(' ~ deny_post ~ ')/?$`))' if deny_post else '' }}
+# Tunnel 専用の入口の経路。tunnel を指定しなければ空で、IngressRoute を消す。
+# routes では、ホストは経路の host、なければ helm_ingress.host。同じホストの経路の間で、長いパスの経路を短いパスの経路の条件から外し、
+# 拒否した通信が短いパスの経路へ流れないようにする(別のホストの経路は、パスが重なっても互いに影響しない)。
+# 経路のパスは / の区切りで一致させる(StripPrefix は文字列の前方一致で外すため、/auth の拒否を /authX ですり抜けさせない)。
+# 長いパスを外す条件は文字列の前方一致のままにし、どちらにも当たらないパスは、このリリースの経路に載せない。
+# tunnel_deny_headers のヘッダーを持つ要求は、値によらず経路から外す
+__helm_tunnel_routes: >-
+  {%- set entries = [] -%}
+  {%- if helm_ingress.routes is defined -%}
+  {%- for route in __helm_routes if route.tunnel | default(false) | bool -%}
+  {%- set deny = route.tunnel_deny_paths | default([]) | map('regex_escape') | join('|') -%}
+  {%- set deny_post = route.tunnel_deny_post_paths | default([]) | map('regex_escape') | join('|') -%}
+  {%- set path_match = 'PathPrefix(`/`)' if route.path == '/'
+        else '(Path(`' ~ route.path ~ '`) || PathPrefix(`' ~ route.path ~ '/`))' -%}
+  {%- set route_host = route.host | default(helm_ingress.host) -%}
+  {%- set match = ['Host(`' ~ route_host ~ '`)', path_match] -%}
+  {%- for other in __helm_routes if other.path | length > route.path | length and other.path.startswith(route.path)
+        and other.host | default(helm_ingress.host) == route_host -%}
+  {%- set _ = match.append('!PathPrefix(`' ~ other.path ~ '`)') -%}
+  {%- endfor -%}
+  {%- if deny -%}
+  {%- set _ = match.append('!PathRegexp(`(?i)^(' ~ deny ~ ')`)') -%}
+  {%- endif -%}
+  {%- if deny_post -%}
+  {%- set _ = match.append('!(Method(`POST`) && PathRegexp(`(?i)^(' ~ deny_post ~ ')/?$`))') -%}
+  {%- endif -%}
+  {%- for header in route.tunnel_deny_headers | default([]) -%}
+  {%- set _ = match.append('!HeaderRegexp(`' ~ header ~ '`, `.*`)') -%}
+  {%- endfor -%}
+  {%- set entry = {
+        'kind': 'Rule',
+        'match': match | join(' && '),
+        'priority': route.path | length + 1,
+        'services': [{'name': route.service_name, 'port': route.service_port | int}]} -%}
+  {%- if route.strip_prefix | default(false) | bool -%}
+  {%- set _ = entry.update({'middlewares': [{'name': __helm_route_names[route.path] ~ '-strip', 'namespace': helm_namespace}]}) -%}
+  {%- endif -%}
+  {%- set _ = entries.append(entry) -%}
+  {%- endfor -%}
+  {%- elif helm_ingress.tunnel | default(false) | bool -%}
+  {%- set _ = entries.append({
+        'kind': 'Rule',
+        'match': __helm_tunnel_match,
+        'services': [{'name': helm_ingress.service_name | default(helm_release_name), 'port': helm_ingress.service_port | int}]}) -%}
+  {%- endif -%}
+  {{ entries }}
 # Tunnel 専用の入口(外部からの通信)の経路
 __helm_tunnel_manifest:
   apiVersion: traefik.io/v1alpha1
@@ -45,12 +140,7 @@ __helm_tunnel_manifest:
   spec:
     entryPoints:
       - tunnel
-    routes:
-      - kind: Rule
-        match: "{{ __helm_tunnel_match }}"
-        services:
-          - name: "{{ helm_ingress.service_name | default(helm_release_name) }}"
-            port: "{{ helm_ingress.service_port | default(0) | int }}"
+    routes: "{{ __helm_tunnel_routes }}"
     tls: {}
 # k3s 内蔵の Traefik の Pod
 __helm_traefik_peer:

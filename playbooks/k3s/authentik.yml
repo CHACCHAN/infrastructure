@@ -23,6 +23,7 @@
       hermes: "{{ vault_hermes_oidc_client_secret }}"
       opnsense: "{{ vault_opnsense_oidc_client_secret }}"
       proxmox: "{{ vault_proxmox_oidc_client_secret }}"
+      gravitee-am: "{{ vault_gravitee_am_oidc_client_secret }}"
   vars_files:
     - "{{ playbook_dir }}/../../vault/k3s.yml"
     - "{{ playbook_dir }}/../../vault/authentik.yml"
@@ -32,5 +33,6 @@
     - "{{ playbook_dir }}/../../vault/hermes.yml"
     - "{{ playbook_dir }}/../../vault/opnsense.yml"
     - "{{ playbook_dir }}/../../vault/proxmox_oidc.yml"
+    - "{{ playbook_dir }}/../../vault/gravitee_am.yml"
   roles:
     - k3s_authentik

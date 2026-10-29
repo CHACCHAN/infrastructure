@@ -1,0 +1,90 @@
+---
+argument_specs:
+  main:
+    short_description: Gravitee Access Management を Helm で入れる
+    description:
+      - 専用の PostgreSQL は k3s_postgresql、接続とリリースの適用は k3s ロール(helm_*)に任せる。
+      - セキュリティドメインと Authentik への接続は、AM の画面で設定する(README)。
+    options:
+      gravitee_am_chart_version:
+        type: str
+        description: "チャート(am)のバージョン。イメージのタグは、チャートの appVersion"
+      gravitee_am_chart_repo_url:
+        type: str
+        description: "チャートのリポジトリ"
+      gravitee_am_release_name:
+        type: str
+        description: "Helm のリリース名"
+      gravitee_am_namespace:
+        type: str
+        description: "リリースの namespace"
+      gravitee_am_jdbc_postgresql_version:
+        type: str
+        description: "起動時に取得する PostgreSQL の JDBC ドライバーの版"
+      gravitee_am_r2dbc_postgresql_version:
+        type: str
+        description: "起動時に取得する PostgreSQL の R2DBC ドライバーの版"
+      gravitee_am_init_image:
+        type: str
+        description: "ドライバーを取得する initContainer のイメージ"
+      gravitee_am_init_version:
+        type: str
+        description: "ドライバーを取得する initContainer のイメージのタグ"
+      gravitee_am_db_namespace:
+        type: str
+        description: "専用の PostgreSQL の namespace"
+      gravitee_am_db_host:
+        type: str
+        description: "専用の PostgreSQL の接続先"
+      gravitee_am_db_name:
+        type: str
+        description: "DB の名前(所有者のロールも同じ名前)"
+      gravitee_am_ingress_middleware:
+        type: str
+        description: "管理 UI と管理 API に掛ける認証プロキシのミドルウェア"
+      gravitee_am_values:
+        type: dict
+        description: "Helm values の上書き(基本値へ再帰的に合成する)。秘密値は入れない"
+      gravitee_host:
+        type: str
+        required: true
+        description: "AM のログイン中継の公開ホスト名(インベントリで宣言する)"
+      gravitee_am_host:
+        type: str
+        required: true
+        description: "AM の公開ホスト名(インベントリで宣言する)"
+      gravitee_am_db_password:
+        type: str
+        required: true
+        no_log: true
+        description: "DB の所有者のパスワード(vault)"
+      gravitee_am_admin_password:
+        type: str
+        required: true
+        no_log: true
+        description: "緊急用の組織の管理者 admin のパスワード(vault。英数字 24〜32 文字)"
+      gravitee_am_jwt_secret:
+        type: str
+        required: true
+        no_log: true
+        description: "AM が発行する JWT の署名鍵(vault。英数字 32 文字以上)"
+      gravitee_am_csrf_secret:
+        type: str
+        required: true
+        no_log: true
+        description: "ゲートウェイの CSRF トークンの署名鍵(vault。英数字 32 文字以上)"
+      gravitee_am_technical_password:
+        type: str
+        required: true
+        no_log: true
+        description: "Pod の中だけで開く技術 API の admin のパスワード(vault)"
+      gravitee_am_certificate_key_password:
+        type: str
+        required: true
+        no_log: true
+        description: "ドメインの既定の証明書の鍵のパスワード(vault。最初のドメイン作成のあとは変えない)"
+      gravitee_am_certificate_store_password:
+        type: str
+        required: true
+        no_log: true
+        description: "ドメインの既定の証明書のキーストアのパスワード(vault。最初のドメイン作成のあとは変えない)"

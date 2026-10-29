@@ -33,7 +33,7 @@ Tunnel は新しく作る。旧構成の Tunnel が Cloudflare に残ってい�
 
 - 向け先は、必ず Traefik の Tunnel 専用の入口にする。ほかの向け先(LAN 用の入口、公開ホスト名、LAN の機器の IP)は、NetworkPolicy が通さない。
 - 画面にホスト名を足しても、`cloudflared_hosts` に無いアプリには届かない(Tunnel 専用の入口に経路が無く、404 になる)。
-- `auth` を足す前に、ログインへのレート制限(WAF)を設定する。外からのログインには、Authentik の試行回数の制限が掛からない。
+- `auth` を足す前に、ログインへのレート制限(WAF)を設定する。Tunnel を通るログイン(LAN から公開ホスト名で開いたものを含む)には、Authentik の試行回数の制限が掛からない。
 
 ## 注意
 

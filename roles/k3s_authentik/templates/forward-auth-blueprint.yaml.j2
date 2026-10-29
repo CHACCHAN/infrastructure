@@ -3,7 +3,7 @@ version: 1
 metadata:
   name: forward-auth
 entries:
-  # 守る画面は権限を分けられないため、使えるユーザーをグループで絞る。グループが無い間は、誰も通さない
+  # 守る画面の多くは権限を分けられず、APIM のコンソールは利用者もログインできるため、使えるユーザーをグループで絞る。グループが無い間は、誰も通さない
   - model: authentik_policies_expression.expressionpolicy
     id: access-policy
     identifiers:

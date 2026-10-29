@@ -1,0 +1,6 @@
+---
+- name: Gravitee の入力と公開条件を確認する
+  ansible.builtin.import_tasks: validate.yml
+
+- name: Gravitee と PostgreSQL を適用する
+  ansible.builtin.import_tasks: install.yml

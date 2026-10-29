@@ -57,11 +57,55 @@ argument_specs:
         description: "Helm の実行結果(values を含む)をログに出さない"
       helm_ingress:
         type: dict
-        description: "公開する Ingress(Traefik)。空なら作らない。作るときは host と service_port が要る"
+        description: "公開する Ingress(Traefik)。空なら作らない。host と、単一経路の service_port または routes が要る"
         options:
           host:
             type: str
-            description: "ホスト名"
+            description: "ホスト名(routes の経路が host を省略したときのホスト名)"
+          routes:
+            type: list
+            elements: dict
+            description: "公開する重複しない経路(パスはホストが違っても重ねない)。1つ以上指定する"
+            options:
+              host:
+                type: str
+                description: "この経路のホスト名。省略時は helm_ingress.host"
+              path:
+                type: str
+                required: true
+                description: "Prefix のパス。/ 以外は末尾の / を付けない"
+              service_name:
+                type: str
+                required: true
+                description: "Service の名前"
+              service_port:
+                type: int
+                required: true
+                description: "Service のポート番号"
+              strip_prefix:
+                type: bool
+                default: false
+                description: "転送前にパスの接頭辞を除く。/ には指定できない"
+              middlewares:
+                type: list
+                elements: str
+                description: "Ingress に掛けるミドルウェア(<namespace>-<名前>@kubernetescrd)"
+              tunnel:
+                type: bool
+                default: false
+                description: "Tunnel 専用の入口にも経路を作る。middlewares と同時に指定できない"
+              tunnel_deny_paths:
+                type: list
+                elements: str
+                description: "Tunnel で拒否する元のパス(大文字・小文字を区別しない前方一致)"
+              tunnel_deny_post_paths:
+                type: list
+                elements: str
+                description: "Tunnel で POST を拒否する元のパス(大文字・小文字を区別しない完全一致、末尾の / は任意)"
+              tunnel_deny_headers:
+                type: list
+                elements: str
+                description: "Tunnel で拒否する要求のヘッダーの名前(英数字と -)。値によらず、そのヘッダーがあれば通さない"
           service_port:
             type: int
             description: "Service のポート番号"

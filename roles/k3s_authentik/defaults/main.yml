@@ -41,6 +41,10 @@ authentik_oidc_clients:
     slug: proxmox
     redirect_uris: []
     redirect_uri_regex: "^https://({{ groups['pve'] | default([]) | map('regex_escape') | join('|') }})\\.{{ lab_domain | regex_escape }}/?$"
+  - name: Gravitee AM
+    slug: gravitee-am
+    redirect_uris:
+      - "https://{{ gravitee_host }}/auth/apim/login/callback"
 # 認証プロキシ(forward auth)で守るアプリケーション。自前のログインを持たない画面(と、ログインが共有の鍵だけの画面)を、Traefik のミドルウェア(authentik_forward_auth_middleware)で守る
 authentik_proxy_apps:
   - name: Longhorn
@@ -50,6 +54,13 @@ authentik_proxy_apps:
   - name: CLIProxyAPI
     slug: cliproxy
     host: "{{ cliproxy_host }}"
+  - name: Gravitee AM Admin
+    slug: gravitee-am-admin
+    host: "{{ gravitee_am_host }}"
+  # ポータルと同じ SSO を使うコンソールと管理 API を管理者に限る
+  - name: Gravitee Console
+    slug: gravitee-console
+    host: "{{ gravitee_console_host }}"
 # 認証プロキシで守る画面を使える Authentik のグループ(グループ自体と所属は、Authentik の画面で作る)
 authentik_proxy_access_group: admins
 # 認証プロキシのミドルウェアの名前。Ingress からは <namespace>-<名前>@kubernetescrd で参照する
