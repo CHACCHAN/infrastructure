@@ -6,7 +6,7 @@
 | --- | --- | --- | --- | --- |
 | pve01 | Core i7-6950X(10C/20T) | DDR4 64GB | SYS 256GB(NVMe、OS と local-lvm)、ssd01 480GB、ssd02 960GB、ssd03 960GB | 汎用、k3s、Hermes Agent |
 | pve02 | Ryzen 9 5950X(16C/32T) | DDR4 32GB | SYS 128GB(NVMe、OS と local-lvm)、ssd01 960GB、ssd02 480GB、ssd03 960GB | Hermes Agent、k3s |
-| pve03 | Xeon E3-1241 v3(4C/8T) | DDR3 32GB | SYS 128GB(OS と local-lvm)、ssd01 960GB、ssd02 960GB | k3s |
+| pve03 | Xeon E3-1241 v3(4C/8T) | DDR3 32GB | SYS 128GB(OS と local-lvm)、ssd01 960GB、ssd02 960GB | k3s、Hermes Agent |
 
 Proxmox ノードは3台で、クラスタ(`PveCluster`)を組んでいる。
 
@@ -47,7 +47,7 @@ SYS 以外の SSD(ssd01〜)は、すべてVM用のストレージにし、通常
 | --- | --- | --- |
 | pve01 | k3s01、開発VM、Hermes Agent(4台) | RAM・CPUに余裕がある汎用ノード |
 | pve02 | k3s02、Hermes Agent(3台) | 32GB のうち12GB を k3s02 に使い、残りを Hermes に回す |
-| pve03 | k3s03 | 32GB のうち12GB を k3s03 に使う |
+| pve03 | k3s03、Hermes Agent(1台) | 32GB のうち12GB を k3s03 に使い、4GB を Hermes に回す |
 - 3台のk3sは同じ性能ではない。重いワークロードは、`nodeAffinity` で k3s01・k3s02 に寄せる。k3s03 は etcd の定数、Longhorn の複製、軽いワークロードを受け持つ。
   - 寄せるのは、メモリを多く使う Open WebUI・Authentik・LiteLLM・Nextcloud Hub と、それぞれの PostgreSQL。cloudflared は寄せない。
   - 寄せ先はインベントリの `heavy_workloads` のノードで、条件は優先(preferred)にする。寄せ先が止まっても、k3s03 で動き続けるため。
