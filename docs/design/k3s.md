@@ -191,6 +191,7 @@ kubectl・Ansible
   - 設定は、Nextcloud の初期の値(インストール直後の値)のままにする。変えるのは、ほかの決定のために要るものだけ(以下)。
   - ログインは、`user_oidc` で Authentik の SSO にする。Nextcloud 本体は OIDC を持たないため、OPNsense と同じく、Ansible は Authentik の OIDC クライアント `nextcloud`(シークレットは `vault/nextcloud.yml`)だけを置く。`user_oidc` の導入と接続先の設定は、Nextcloud の画面で行う(状態。入力する値は [ロールの README](../../roles/k3s_nextcloud/README.md) に書く)。グループは、Authentik が渡すグループ(`groups`)を写し、グループのプロビジョニングを有効にする。管理者は Nextcloud の画面で付け、`admin` グループは写す対象に含めない(ホワイトリストの正規表現 `/^(?!admin$).*$/`。ログインのたびに外されないため)。画面で設定したプロバイダーが、公開ホスト名でクラスタ内の Authentik(プライベートの IP に解決する)へ届くよう、ローカルのアドレスへの通信を許す(`allow_local_remote_servers`。Nextcloud の既定では拒む)。そのため、ユーザーが指定する URL(カレンダーの購読、リンクのプレビューなど)でも、Nextcloud から LAN とクラスタ内へ届く。届く先は、ルータと NetworkPolicy で絞る。
   - 緊急用の `admin` は、最初のインストールのときに、チャートが vault のパスワードで作る。`admin` にはアプリパスワードを作らない(外からも使えるため)。
+  - Hermes Agent が MCP で使う専用のユーザー `hermes-agent` は、SSO を使わないローカルのユーザーで、アプリパスワードだけで使う(状態。[hermes.md](hermes.md))。
   - クライアント(同期・カレンダー・連絡先)には、アプリパスワードだけを使わせる(`token_auth_enforced`)。外からのクライアントは、ブラウザで Authentik にログインして、端末ごとのアプリパスワードを受け取る(Login Flow v2)。Tunnel 専用の入口で塞ぐのは、パスワードを受け取るパスだけで、このログインの流れは通す。
   - ログインの失敗の制限(IP ごと)は、Authentik と同じく、Pod のネットワークからの通信には掛けない(Tunnel を通る通信は、すべて `cloudflared` の Pod の IP に見えるため)。LAN からは、クライアントの実 IP で数える。外からの試行回数は Cloudflare のレート制限で絞り、対象に Nextcloud のログインと、同期・カレンダーのパス(`/remote.php` など)を含める。
   - 分割アップロードの大きさは 20MiB にする(`files.chunked_upload.max_size`)。Cloudflare の1リクエストの上限(100MB)を超えないため。分割に対応しないクライアントで 100MB を超えるファイルは、LAN か VPN から送る。iOS のアプリのバックグラウンドのアップロードが分割に従うかは、実機で確かめる。

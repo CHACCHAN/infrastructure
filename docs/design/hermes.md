@@ -63,6 +63,13 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
   - 「ホームの外は Ansible が再現する」は、導入した時点の状態を指す。Hermes は、Docker を通せばホームの外も書き換えられる。sudo を渡さないのは、誤って OS を書き換えるのを防ぐためで、権限の境界にはならない。
   - VM の中に、ラボの秘密情報(vault の中身、ほかの機器の認証情報)を置かない。置くのは、その組織が自分で使う認証情報だけにする。
 
+### Nextcloud Hub の管理(hermes07)
+
+- Nextcloud の専用のユーザー `hermes-agent`(表示名 `HermesAgent`)で、MCP for Cloud(Nextcloud のアプリ `mcp`)から Nextcloud を操作する。Authentik の SSO を使わない、Nextcloud のローカルのユーザーにする([k3s.md](k3s.md) の SSO の例外)。緊急用の `admin` は渡さず、`admin` グループにも入れない(Nextcloud の管理者は、アプリを入れて k3s の中の Nextcloud の Pod でコードを動かせるため)。
+- 認証は、`hermes-agent` のアプリパスワードでの Basic 認証にする(Nextcloud はクライアントにアプリパスワードだけを許す。[k3s.md](k3s.md))。`hermes-agent:<アプリパスワード>` を base64 にした値は、hermes07 の組織が自分で使う認証情報として、Hermes の側の MCP の設定に入れる(「コンテナ」の、VM に置いてよい認証情報)。控えは `vault/nextcloud_hermes.yml` に置き、どの playbook も読まない。ログインのパスワードも同じファイルに置き、Hermes には渡さない。漏れたときは、アプリパスワードを取り消して作り直す。
+- MCP for Cloud の権限は、すべての操作を許す(削除・共有・公開リンク・Talk の会話の作成を含む)。サーバーのログは管理者用のため付けない。Nextcloud の中での権限は普通のユーザーと同じで、管理させるもの(Deck のボード、カレンダー、フォルダなど)は人が `hermes-agent` に共有する。
+- ユーザー・アプリパスワード・MCP for Cloud の導入と権限は、Nextcloud の状態で、Ansible では管理しない。
+
 ### OS
 
 - Debian 13 の cloud イメージ(k3s ノードと同じテンプレート)。
@@ -85,7 +92,7 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 ## 未決
 
 - インフラ(このリポジトリ、Proxmox、k3s)を操作させる組織を作るか。
-- Nextcloud Hub の管理の組織(hermes07)に渡す、Nextcloud の権限(管理者にするか、普通のユーザーにとどめるか)。Nextcloud の管理者はアプリストアからアプリを入れられ、そのコードは k3s の中の Nextcloud の Pod で動く([k3s.md](k3s.md))。Nextcloud へ届く経路(LAN 用の入口の `172.16.12.5` を VLAN 間の FW で通すか、Cloudflare Tunnel か)も合わせて決める。
+- Nextcloud Hub の管理の組織(hermes07)が Nextcloud へ届く経路(LAN 用の入口の `172.16.12.5` を VLAN 間の FW で通すか、Cloudflare Tunnel か)。
 - VM が動いていることの監視(Hermes 同士の監視とは別に、インフラの側で持つか)。
 - LLM の接続先(LiteLLM の `hermes_llm`。[k3s.md](k3s.md))と、組織ごとに仮想キーと予算を分けるか。VM に置いた鍵は、その組織が自由に使えるものとして扱うことになる(共通の鍵を置くと、全組織に同じ鍵を渡すことになる)。
 - OS のパッケージの更新。VM を作り直さないため、更新の方法(自動更新か、playbook か)を決める。
