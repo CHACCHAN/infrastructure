@@ -20,6 +20,7 @@
         {"action": "doom_loop", "resource": "*", "effect": "deny"},
         {"action": "question", "resource": "*", "effect": "deny"},
         {"action": "subagent", "resource": "*", "effect": "deny"},
+        {"action": "execute", "resource": "*", "effect": "deny"},
         {"action": "shell", "resource": "*", "effect": "deny"},
         {"action": "shell", "resource": "git status", "effect": "allow"},
         {"action": "shell", "resource": "git status *", "effect": "allow"},

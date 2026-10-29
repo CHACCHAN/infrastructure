@@ -1,6 +1,6 @@
 ---
 name: delegate
-description: Hand implementation, research and drafting to sandboxed OpenCode workers (GPT models) running on throwaway copies of this repository, many in parallel, then review, apply and validate their diffs. Use for any task that can be written as a self-contained brief.
+description: Hand implementation, research and drafting to sandboxed OpenCode workers (models `cc` and `cc-max`) running on throwaway copies of this repository, many in parallel, then review, apply and validate their diffs. Use for any task that can be written as a self-contained brief.
 ---
 
 # delegate
@@ -9,10 +9,11 @@ The orchestrating agent keeps the decisions, the review, the validation, and eve
 
 ## Workers
 
-- OpenCode agent `worker`, defined in [.agents/opencode/worker.json](../../opencode/worker.json). Inside its copy it can read and edit files, run read-only `git` (`status`, `diff`, `log`, `show`) and `ansible-doc`, and fetch web pages. It cannot read or write outside the copy, start subagents, or edit dotfiles and dot-directories, `*.py`, `*.sh`, `opencode.json`, `ansible.cfg`, `AGENTS.md`, `CLAUDE.md`, `collections/`, `legacy/` or `vault/`. Shell redirections, absolute paths, `..`, `~` and `$` in commands are rejected.
+- OpenCode agent `worker`, defined in [.agents/opencode/worker.json](../../opencode/worker.json). Inside its copy it can read and edit files, run read-only `git` (`status`, `diff`, `log`, `show`) and `ansible-doc`, and fetch web pages. It cannot read or write outside the copy, start subagents, use Code Mode (`execute`, whose `fetch` can send any HTTP request), or edit dotfiles and dot-directories, `*.py`, `*.sh`, `opencode.json`, `ansible.cfg`, `AGENTS.md`, `CLAUDE.md`, `collections/`, `legacy/` or `vault/`. Shell redirections, absolute paths, `..`, `~` and `$` in commands are rejected.
 - Workers do not run `ansible-lint`, `ansible-playbook` or `ansible-inventory`. These tools evaluate Jinja lookups while parsing files (for example `lookup('pipe', ...)` in an `import_tasks` name or in a `constructed` inventory source), so a worker could run any command with your SSH keys and vault password.
 - The server runs as your user with a minimal environment (no vault password file, SSH agent or tokens), ignores the copy's own `opencode.json` and `.opencode/` (whose plugins would run as you), and has the built-in agents disabled. This is a permission sandbox, not an OS boundary.
-- Models (provider `litellm`): `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6-luna`. Usage is not rationed: run as many workers in parallel as the work splits into.
+- Requires OpenCode 2 (`opencode upgrade --major`); OpenCode 1 rejects the permission format of `worker.json`.
+- Models (provider `litellm`): `cc` for everyday work (implementation, research, drafting), `cc-max` for final reviews and work that needs deep thinking. Usage is not rationed: run as many workers in parallel as the work splits into.
 
 ## Procedure
 

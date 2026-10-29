@@ -1,6 +1,6 @@
 # Review brief (template)
 
-Copy everything below the line into a brief file, fill in the angle brackets, and run it with `gpt-6-astra`. For two independent opinions, give the same brief to a second model and compare the answers yourself.
+Copy everything below the line into a brief file, fill in the angle brackets, and run it with `cc-max`. For two independent opinions, give the same brief to a second model and compare the answers yourself.
 
 ---
 

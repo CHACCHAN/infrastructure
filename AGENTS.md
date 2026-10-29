@@ -38,7 +38,7 @@ The environment is being redesigned for new hardware. **The tree is currently a 
 - Hand self-contained work (implementation, research, wide repository exploration, drafting, reviews, second opinions) to sandboxed OpenCode workers with the `delegate` skill; keep the main context for decisions. The owner does not ration their use: split the work and run them in parallel. The orchestrating agent keeps the decisions, the review, the validation and anything that touches real infrastructure, and reads every worker diff before applying or validating it. OpenCode workers themselves do not delegate.
 - Do not hand work to other models of your own agent (for example Claude Code subagents); the owner wants the work on the OpenCode workers and the orchestrating agent on decisions.
 - Validate every change yourself with the `validate` skill before reporting it as done. Validation never goes to a worker: Ansible evaluates Jinja lookups while parsing, so running its tools on unreviewed files runs their code with your SSH keys and vault password.
-- For non-trivial changes (design documents, new roles, anything spanning several files), get an independent read-only review from a worker (`gpt-6-astra`) with the delegate skill's [review brief](.agents/skills/delegate/review-brief.md). Weigh its findings; the decision stays with the owner.
+- For non-trivial changes (design documents, new roles, anything spanning several files), get an independent read-only review from a worker (`cc-max`) with the delegate skill's [review brief](.agents/skills/delegate/review-brief.md). Weigh its findings; the decision stays with the owner.
 
 ## Safety: this environment reaches production
 
