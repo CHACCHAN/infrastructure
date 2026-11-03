@@ -172,6 +172,7 @@ kubectl・Ansible
 - LiteLLM は、チャートの PostgreSQL を使わず、専用の PostgreSQL(`k3s_postgresql`)に接続する。モデルとプロバイダーの認証情報は、管理画面で登録する(`store_model_in_db` を有効にする。OAuth を使うプロバイダーは宣言できないため)。登録した内容と仮想キーは DB に保存される状態で、バックアップの対象になる。認証情報は `LITELLM_SALT_KEY`(`vault/litellm.yml`)で暗号化される。Hermes Agent が使うモデルの名前は `hermes_llm` にする。
 - 汎用 API ゲートウェイとして Gravitee API Management(APIM) Community Edition と Gravitee Access Management(AM) Community Edition を置く。利用者は開発者ポータルで購読と API キーの発行を行い、ゲートウェイから LiteLLM やほかの API を使う(LiteLLM へログインする必要をなくすため)。
   - ブラウザのログインは Authentik → AM → APIM の SSO にする。APIM Community Edition は汎用の外部 OIDC プロバイダーである Authentik に直接接続できない(汎用 OpenID Connect は有料の Enterprise Edition の機能)。無料で使える LDAP はユーザーの初回作成時にしかロールを設定しないため、ログインのたびにロールの対応づけを再適用できる Gravitee AM を使う。AM は `full_profile` の userinfo で Authentik の `groups` を APIM に渡す。コンソールでは、ユーザーにロールを手で付けない。手で付けたロールは再同期で消えず、その範囲ではグループからの対応づけより優先されるため(グループから外しても権限が残る)。
+  - 利用者が使う API の鍵は、すべて Gravitee のポータルで発行する(オーナーの判断)。クラスタ内のサービス同士は Gravitee を通さず、クラスタ内の DNS(`<Service>.<namespace>.svc.cluster.local`)で直接つなぐ。OpenWebUI は、利用者へ連絡してから止める。
   - Authentik のアプリケーションには `admins` と `externals` を画面で結びつける(状態)。APIM は `admins` に `ORGANIZATION:ADMIN` と `ENVIRONMENT:ADMIN`、それ以外のログイン可能なユーザーに `ORGANIZATION:USER` と `ENVIRONMENT:USER` を対応づける。API の登録は `admins` だけ、`externals` は購読・キー発行・呼び出しだけにし、発行者用のグループは設けない。
   - `gravitee.<lab_domain>` に APIM のポータル UI(`/`)・ポータル API(`/portal`)・ゲートウェイ(`/gateway`)と AM のログイン中継(`/auth`)を置き、Tunnel に載せる。APIM のコンソール(`/console`)・管理 API(`/management`)は `gravitee-console.<lab_domain>`、AM の管理 UI・管理 API は `gravitee-am.<lab_domain>` に置き、LAN と VPN だけにする。Tunnel に載せたホスト名には LAN からも Cloudflare を経由して届く(スプリット DNS を使わない。[network.md](network.md))ため、LAN と VPN だけで使う画面は、Tunnel に載せないホスト名に分ける。AM の管理 UI はベースパスを指定できず、ワイルドカード証明書は1階層だけを覆うため、別のホスト名は `<名前>.<lab_domain>` の形にする。
   - AM の管理 UI・管理 API と APIM のコンソール・管理 API は Authentik の forward auth で `admins` に限る。AM の管理ログインは組織ごとの単一のローカルアカウントで SSO を持たず、APIM はポータルの利用者と同じ SSO を使うため。
@@ -213,6 +214,7 @@ kubectl・Ansible
 
 ### 未決(クラスタ内アプリ)
 
+- OpenWebUI を止める時期と手順(利用者への連絡のあと)。
 - 緊急用の `akadmin` を、外からのログインで拒否する方法。Authentik のログインは全員が同じ経路を通るため、経路では塞げない。`akadmin` の API トークン(`vault/authentik.yml`)も、外から Authentik の API に使える(MFA も試行回数の制限も通らない)。API のパスは画面も使うため、経路では塞げない。
 - LAN からのログインと、Cloudflare のレート制限。LAN のクライアントは、Cloudflare からは NAT の外側の IP に見え、誰かの失敗で LAN の全員が拒否される。
 
