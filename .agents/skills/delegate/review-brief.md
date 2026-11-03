@@ -1,10 +1,10 @@
 # Review brief (template)
 
-Copy everything below the line into a brief file, fill in the angle brackets, and run it with `cc-max`. For two independent opinions, give the same brief to a second model and compare the answers yourself.
+Copy everything below the line, fill in the angle brackets, and give it to a Claude Code subagent on Opus 5.5 at high effort (`model: opus`, `effort: high`), run in the background. Never use `cc-max`. The subagent is not sandboxed, so keep the first paragraph's restrictions.
 
 ---
 
-You review a change you did not write. You have no stake in it. Do not edit any file.
+You review a change you did not write. You have no stake in it. Do not edit any file. Do not run `ansible-playbook`, `ansible`, `ansible-inventory`, `ansible-lint`, `kubectl`, `helm`, `ssh` or `curl`: Ansible evaluates Jinja while parsing, and this environment reaches production. Read files and use read-only `git` only.
 
 ## The change
 

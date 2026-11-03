@@ -20,6 +20,13 @@
       api_token_secret: "{{ vault_proxmox_token_secret }}"
       validate_certs: "{{ pve_validate_certs | default(true) }}"
   tasks:
+    # 物理機(node が無いホスト)へ、Proxmox の API の認証情報を向けない
+    - name: 対象が VM(node を宣言したホスト)であることを確認する
+      ansible.builtin.assert:
+        that: node is defined
+        fail_msg: "{{ inventory_hostname }} は node を宣言していないため、VM として扱えません"
+        quiet: true
+
     - name: 作成済みの VM を検索する
       community.proxmox.proxmox_vm_info:
         vmid: "{{ vmid }}"

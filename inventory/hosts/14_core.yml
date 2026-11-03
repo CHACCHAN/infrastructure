@@ -1,0 +1,8 @@
+# VLAN14 172.16.14.0/24: 基幹システム(TrueNAS・PBS)。物理マシンのため node と VMID は無い
+---
+core:
+  vars:
+    vlan: 14
+  hosts:
+    truenas01:
+      id: 1

@@ -1,6 +1,6 @@
 ---
 name: delegate
-description: Hand implementation, research and drafting to sandboxed OpenCode workers (models `cc` and `cc-max`) running on throwaway copies of this repository, many in parallel, then review, apply and validate their diffs. Use for any task that can be written as a self-contained brief.
+description: Hand implementation, research and drafting to sandboxed OpenCode workers (model `cc`) running on throwaway copies of this repository, many in parallel, then review, apply and validate their diffs. Use for any task that can be written as a self-contained brief.
 ---
 
 # delegate
@@ -13,7 +13,7 @@ The orchestrating agent keeps the decisions, the review, the validation, and eve
 - Workers do not run `ansible-lint`, `ansible-playbook` or `ansible-inventory`. These tools evaluate Jinja lookups while parsing files (for example `lookup('pipe', ...)` in an `import_tasks` name or in a `constructed` inventory source), so a worker could run any command with your SSH keys and vault password.
 - The server runs as your user with a minimal environment (no vault password file, SSH agent or tokens), ignores the copy's own `opencode.json` and `.opencode/` (whose plugins would run as you), and has the built-in agents disabled. This is a permission sandbox, not an OS boundary.
 - Requires OpenCode 2 (`opencode upgrade --major`); OpenCode 1 rejects the permission format of `worker.json`.
-- Models (provider `litellm`): `cc` for everyday work (implementation, research, drafting), `cc-max` for final reviews and work that needs deep thinking. Usage is not rationed: run as many workers in parallel as the work splits into.
+- Model (provider `litellm`): `cc` for all worker tasks (implementation, research, drafting). Never use `cc-max` (the owner forbids it). Independent reviews go to a Claude Code subagent instead ([review-brief.md](review-brief.md)). Usage is not rationed: run as many workers in parallel as the work splits into.
 
 ## Procedure
 

@@ -13,8 +13,7 @@
 | 11 | `172.16.11.0/24` | Private(開発専用機など) |
 | 12 | `172.16.12.0/24` | k3s ノード |
 | 13 | `172.16.13.0/24` | Hermes Agent(AI専用) |
-
-基幹システム(物理PBS、TrueNAS)の VLAN は、まだ割り当てていない(未決)。
+| 14 | `172.16.14.0/24` | 基幹システム(TrueNAS・PBS) |
 
 ### ID・VMID・IP
 
@@ -40,12 +39,13 @@ IP   = 172.16.<VLAN>.<ID>
 ### 物理構成
 
 - Proxmox ノードは、各ノードに 1GbE のNICがある。NIC1(LAN)・NIC2(クラスタ)は役割の名前で、物理のインターフェース(`nic0` など)との対応はノードごとに違う([hardware.md](hardware.md))。
-- 構成: `WAN → OPNsense → SWHUB → Proxmox ノード(NIC1)`、`SWHUB2 → Proxmox ノード(NIC2)`。SWHUB は 802.1Q のタグVLANに対応している。SWHUB2 は NIC2 側の機器(Proxmox ノード。PBS、TrueNAS は接続したとき)だけをつなぎ、OPNsense や SWHUB にはつながない。
+- 構成: `WAN → OPNsense → SWHUB → Proxmox ノード(NIC1)`、`SWHUB2 → Proxmox ノード(NIC2)`。SWHUB は 802.1Q のタグVLANに対応している。SWHUB2 は NIC2 側の機器(Proxmox ノード、TrueNAS。PBS は接続したとき)だけをつなぎ、OPNsense や SWHUB にはつながない。
 - NIC1: SWHUB(VLAN対応)につなぐ。Linux の VLAN サブインターフェースでVLANを分け、VLANごとに `vmbr` を作ってVMへ渡す。
-- NIC2: VLAN非対応の SWHUB2 へつなぐ。PBS と TrueNAS も、接続するときは同じスイッチにつなぐ。クラスタ・バックアップ・ストレージの通信用で、ゲートウェイはなく、ルーティングしない。SWHUB2 はVLAN非対応なので、NIC2側のVLAN分離は各ホストの設定によるもので、スイッチは強制しない。
+- NIC2: VLAN非対応の SWHUB2 へつなぐ。TrueNAS も同じスイッチにつなぐ。PBS も、接続するときは同じスイッチにつなぐ。クラスタ・バックアップ・ストレージの通信用で、ゲートウェイはなく、ルーティングしない。SWHUB2 はVLAN非対応なので、NIC2側のVLAN分離は各ホストの設定によるもので、スイッチは強制しない。
 - NIC2 側は、すべてタグ付きの VLAN にする。アドレスは `10.10.<VLAN>.0/24`(`10.0.0.0/8` の中)。
 - NIC2 側の Proxmox クラスタ用ネットワークは `10.10.10.0/24`(VLAN10 のタグ付き。ブリッジの名前は [pve.md](pve.md))。ノードの第4オクテットは、`.1` から順に振る(pve01 は `10.10.10.1`)。
-- PBS は物理マシンに直接入れる(基幹システムの VLAN)。Proxmox ノードではなく、PBS 専用機にする。接続の時期は未決。
+- NIC2 側のバックアップ・ストレージ用ネットワークは `10.10.14.0/24`(VLAN14 のタグ付き。オーナーの判断)。Proxmox ノード・PBS・TrueNAS が載り、クラスタ用の `10.10.10.0/24` と分ける(スイッチは強制しない)。各ホストの第4オクテットは未決。
+- PBS は物理マシンに直接入れる(基幹システムの VLAN)。Proxmox ノードではなく、PBS 専用機にする。接続の時期は未決。TrueNAS を、PBS のバックアップの保存先にする(オーナーの判断)。
 - ルータは OPNsense。WAN につながり、ラボを LAN 側に置く。VLANのタグ付け、VLAN間ルーティング、FW、NAT を担う。リモートアクセスの VPN(WireGuard)と DDNS も担う予定。TP-Link ER605 は使わない。
 - NAT は1段だけにする(二重 NAT にしない)。
 - リアルタイム通信は Cloudflare のサービスを使う。外部からの直接UDPの受け口は要らない。
@@ -54,12 +54,12 @@ IP   = 172.16.<VLAN>.<ID>
 
 - Proxmox の HA は使わない。k3s が自力で冗長化するため。corosync が落ちても、動作中のVMは止まらない。
 - corosync は2リンクにする。第1リンクを NIC2、第2リンクを NIC1(VLAN10)にして、どちらかが落ちても knet が切り替える。
-- NIC2 には、接続するときに PBS・TrueNAS もつなぐ。そのときは、バックアップの転送に帯域の上限(`bwlimit`)を設け、corosync のレイテンシを守る。
+- Proxmox ノードと PBS の間のバックアップ・リストアの転送は、corosync と同じ物理の NIC2(1GbE)を通るため、帯域の上限(`bwlimit`)を設け、corosync のレイテンシを守る。
 
 ### 移行
 
 - 旧構成からの移行は済み、旧構成は撤去した(`legacy/` は参照用のコードだけが残る)。
-- TrueNAS と PBS は、接続するまで設計・実装の対象に含めない。
+- TrueNAS は接続済み(接続の状態は [hardware.md](hardware.md))。PBS は、接続するまで設計・実装の対象に含めない。
 - 新構成は、pve01 と k3s01 だけで先に構築する。そのあとで、旧構成の物理マシンを Proxmox ノードとして参加させ、k3s02・k3s03 を作る。
 
 ### 名前解決
@@ -77,11 +77,10 @@ IP   = 172.16.<VLAN>.<ID>
 
 ## 未決
 
-- NIC2側の分割。クラスタ/バックアップ用と、ストレージ用に VLAN を分けるか(VLAN 番号も未決)。k3s ノードは NIC2 に載せない([k3s.md](k3s.md))。
-- 基幹システム(PBS・TrueNAS)の VLAN 番号。
+- NIC2 側の VLAN14(`10.10.14.0/24`)の各ホストの第4オクテット。PBS が TrueNAS を保存先にする方式(NFS など)と、PBS の HDD との役割分担(データストアをどちらに置くか、TrueNAS に置くのはデータストアか複製か)。PBS は NIC1 側の VLAN14 と NIC2 側の両方に載るため NIC が2つ要る(NIC の数は未確認。足りないときの扱い)。Proxmox ノードが TrueNAS をストレージとして使うか、使うときに corosync の帯域をどう守るか。k3s ノードは NIC2 に載せない([k3s.md](k3s.md))。
 - タグなしの `172.16.5.0/24` の用途。自宅LAN(以前は `192.168.68.0/24`)がどこにあるか。
 - OPNsense での VPN と DDNS の構成。
-- VLAN間のFWポリシー(特にHermes帯域の隔離、ラボから自宅LANへの通信の遮断)。OPNsense のルールで行う。
+- VLAN間のFWポリシー(特にHermes帯域の隔離、ラボから自宅LANへの通信の遮断)。OPNsense のルールで行う。管理画面(Proxmox・OPNsense・TrueNAS)は Ingress の VIP(`172.16.12.5`)を経由するため、宛先の VLAN を塞いでも、VIP に届く端末からは画面に届く。
 - OPNsense と SWHUB のトランクが1本なので、VLAN間の通信はこの1本を通る。帯域が足りなければ、リンクアグリゲーションか L3 スイッチを検討する。
 - 自宅LANからラボへの到達性。管理UIとTraefik(`172.16.12.5`)を自宅のPCから使うかどうかで決まる。
 - 追加のVLAN(DMZ、テンプレート/一時用)。

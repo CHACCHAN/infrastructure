@@ -26,6 +26,7 @@ nextcloud_host: "nextcloud.{{ lab_domain }}"
 gravitee_host: "gravitee.{{ lab_domain }}"
 gravitee_console_host: "gravitee-console.{{ lab_domain }}"
 gravitee_am_host: "gravitee-am.{{ lab_domain }}"
+truenas_host: "truenas.{{ lab_domain }}"
 # クラスタ内から Traefik へ向ける公開ホスト名(Pod からの OIDC の通信などが、外の DNS に頼らないようにする)
 k3s_ingress_hosts:
   - "{{ authentik_host }}"
@@ -107,6 +108,13 @@ lan_proxy_extra_services:
   - name: opnsense
     host: "{{ opnsense_host }}"
     address: 172.16.5.254
+    port: 443
+    scheme: https
+    insecure_skip_verify: true
+  # TrueNAS(truenas01)の管理画面。証明書は自己署名のため検証しない。ログインは TrueNAS 自身のもの
+  - name: truenas
+    host: "{{ truenas_host }}"
+    address: "{{ hostvars['truenas01'].ansible_host }}"
     port: 443
     scheme: https
     insecure_skip_verify: true

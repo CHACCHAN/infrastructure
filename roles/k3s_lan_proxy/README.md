@@ -22,6 +22,6 @@
 
 ## 注意
 
-- 認証プロキシ(Authentik)は掛けない。宛先は、自前のログインを持つ画面だけにする(Proxmox の管理 UI、Hermes の管理画面は Hermes 側の OIDC)。
+- 認証プロキシ(Authentik)は掛けない。宛先は、自前のログインを持つ画面だけにする(Proxmox の管理 UI、TrueNAS の管理画面、Hermes の管理画面は Hermes 側の OIDC)。
 - 外部(Cloudflare Tunnel)には公開しない。LAN と VPN からだけ使う。
 - リストからサービスを外しても、置いたリソースは消えない。消すときは、namespace ごと消して入れ直す([playbooks/utils](../../playbooks/utils/README.md) の `k3s_app_remove.yml` に `-e k3s_app_remove_no_release=true` を付ける)。

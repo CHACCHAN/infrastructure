@@ -20,9 +20,9 @@ Proxmox ノードは3台で、クラスタ(`PveCluster`)を組んでいる。
 
 ## 物理マシン(Proxmox ではないもの)
 
-- PBS: 専用の物理マシン(基幹システムの VLAN)。未接続。Core i3-3110M(2C/4T)、8GB、SYS 128GB(SATA、OS専用)、バックアップ専用の HDD 1TB(USB-SATA)。
-- TrueNAS: 専用の物理マシン(基幹システムの VLAN)。未接続。
-- 接続の時期と方法は未決。スペックは未確認。
+- PBS: 専用の物理マシン(基幹システムの VLAN)。未接続。Core i3-3110M(2C/4T)、8GB、SYS 128GB(SATA、OS専用)、バックアップ専用の HDD 1TB(USB-SATA。TrueNAS との役割分担は未決。[network.md](network.md))。
+- TrueNAS: 専用の物理マシン(基幹システムの VLAN14、`truenas01`、`172.16.14.1`)。VLAN14 に接続済み。NIC2(SWHUB2)にもつないでいる(IP は未設定)。PBS のバックアップの保存先にする。スペックは未確認。
+- PBS の接続の時期と方法は未決。
 
 ## ルータ
 
@@ -35,7 +35,7 @@ SYS 以外の SSD(ssd01〜)は、すべてVM用のストレージにし、通常
 ### 未確認の事項
 
 - NICの型番。
-- PBS のNICの数。TrueNAS のスペックとNICの数。
+- PBS のNICの数(VLAN14 と NIC2 側の両方に載るため2つ要る)。TrueNAS のスペック(NIC は SWHUB と SWHUB2 につなぐ2つ以上。型番は未確認)。
 
 ### CPU の世代
 
