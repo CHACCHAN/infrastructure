@@ -60,10 +60,25 @@ def litellm_model_plan(desired, current):
     return {"changes": changes, "summary": summary}
 
 
+def litellm_resolve_keys(desired, material):
+    """宣言と秘密の台帳を結びつけ、同じキーへの重複した更新を拒否する。"""
+    _index(desired, lambda row: row["name"])
+    resolved = []
+    for record in desired:
+        secret = _current(material, record["name"])
+        settings = {**record["settings"], **secret.get("settings", {})}
+        if "alias_suffix" in secret and "key_alias" in settings:
+            settings["key_alias"] = settings["key_alias"] + "-" + secret["alias_suffix"]
+        resolved.append({"name": record["name"], "key": secret["hash"], "settings": settings})
+    _index(resolved, lambda row: row["key"])
+    return resolved
+
+
 def litellm_key_plan(desired, current):
     """キーのハッシュと設定値を表示用の情報から分離する。"""
     existing = _index(current, lambda row: row["token"])
     _index(desired, lambda row: row["name"])
+    _index(desired, lambda row: row["key"])
     changes, summary = [], []
     for record in desired:
         before = _current(existing, record["key"])
@@ -102,6 +117,7 @@ class FilterModule:
     def filters(self):
         return {
             "litellm_model_plan": litellm_model_plan,
+            "litellm_resolve_keys": litellm_resolve_keys,
             "litellm_key_plan": litellm_key_plan,
             "authentik_application_plan": authentik_application_plan,
         }

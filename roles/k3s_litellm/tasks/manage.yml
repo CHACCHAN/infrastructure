@@ -46,17 +46,7 @@
 
 - name: キーの宣言と秘密の識別子を組み合わせる
   ansible.builtin.set_fact:
-    __litellm_resolved_keys: >-
-      {%- set ns = namespace(keys=[]) -%}
-      {%- for declaration in litellm_managed_keys -%}
-      {%- set material = litellm_key_material[declaration.name] -%}
-      {%- set settings = declaration.settings | combine(material.settings | default({})) -%}
-      {%- if material.alias_suffix is defined and settings.key_alias is defined -%}
-      {%- set settings = settings | combine({'key_alias': settings.key_alias ~ '-' ~ material.alias_suffix}) -%}
-      {%- endif -%}
-      {%- set ns.keys = ns.keys + [{'name': declaration.name, 'key': material.hash, 'settings': settings}] -%}
-      {%- endfor -%}
-      {{ ns.keys }}
+    __litellm_resolved_keys: "{{ litellm_managed_keys | litellm_resolve_keys(litellm_key_material) }}"
   no_log: true
 
 - name: 管理 API の現在の設定を取得する

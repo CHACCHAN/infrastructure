@@ -263,6 +263,18 @@ class ApiTaskTests(unittest.TestCase):
         self.assertFalse(self.key_file.exists())
         self.assertFalse(Path(str(self.key_file) + ".lock").exists())
 
+    def test_manage_rejects_duplicate_key_hash_before_api_access(self):
+        output = self.run_role("k3s_litellm", "manage", {
+            "litellm_master_key": "sk-fake-master-for-local-tests", "litellm_management_url": self.url,
+            "litellm_managed_models": [], "litellm_managed_keys": [
+                {"name": "first", "settings": {"rpm_limit": 10}},
+                {"name": "second", "settings": {"rpm_limit": 20}}],
+            "litellm_key_material": {"first": {"hash": "a" * 64}, "second": {"hash": "a" * 64}},
+        }, success=False)
+        self.assertEqual(self.state["reads"], [])
+        self.assertEqual(self.state["writes"], [])
+        self.assertNotIn("a" * 64, output)
+
     def test_export_refuses_to_overwrite_key_registry(self):
         self.lifecycle("create")
         encrypted_before = self.key_file.read_bytes()

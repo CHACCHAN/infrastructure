@@ -36,6 +36,41 @@ class ApiManagementTests(unittest.TestCase):
         self.assertNotIn("private-new-name", json.dumps(result["summary"]))
         self.assertTrue(result["changes"][0]["litellm_params"]["use_litellm_proxy"])
 
+    def test_resolve_keys_preserves_precedence_alias_and_inputs(self):
+        desired = [
+            {"name": "client", "settings": {"key_alias": "client", "models": ["model"]}},
+            {"name": "other", "settings": {"rpm_limit": 10}},
+        ]
+        material = {
+            "client": {"hash": "a" * 64, "alias_suffix": "a" * 12,
+                       "settings": {"metadata": {"private": "secret"}}},
+            "other": {"hash": "b" * 64, "settings": {"rpm_limit": 20}},
+        }
+        original = copy.deepcopy((desired, material))
+        result = API.litellm_resolve_keys(desired, material)
+        self.assertEqual(result, [
+            {"name": "client", "key": "a" * 64, "settings": {
+                "key_alias": "client-" + "a" * 12, "models": ["model"], "metadata": {"private": "secret"}}},
+            {"name": "other", "key": "b" * 64, "settings": {"rpm_limit": 20}},
+        ])
+        self.assertEqual((desired, material), original)
+        self.assertEqual(API.litellm_resolve_keys([], material), [])
+
+    def test_resolve_keys_rejects_duplicate_hash_and_missing_material_without_values(self):
+        desired = [{"name": name, "settings": {}} for name in ("private-client", "private-other")]
+        material = {name: {"hash": "a" * 64} for name in ("private-client", "private-other")}
+        for registry in (material, {}):
+            with self.assertRaises(API.AnsibleFilterError) as caught:
+                API.litellm_resolve_keys(desired, registry)
+            for private in ("private-client", "private-other", "a" * 64):
+                self.assertNotIn(private, str(caught.exception))
+
+    def test_key_plan_rejects_multiple_declarations_for_same_hash(self):
+        desired = [{"name": name, "key": "a" * 64, "settings": {"rpm_limit": limit}}
+                   for name, limit in (("first", 10), ("second", 20))]
+        with self.assertRaises(API.AnsibleFilterError):
+            API.litellm_key_plan(desired, [{"token": "a" * 64, "rpm_limit": 5}])
+
     def test_key_policy_preserves_counters_expiry_and_activation(self):
         desired = [{"name": "client", "key": "a" * 64, "settings": {"rpm_limit": 10, "metadata": {"private": "secret"}}}]
         before = [{"token": "a" * 64, "rpm_limit": 5, "metadata": {}, "spend": 100, "blocked": True, "expires": "2030-01-01"}]
