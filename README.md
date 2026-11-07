@@ -9,7 +9,7 @@
 ```text
 .
 ├── AGENTS.md                AIエージェント向けの運用ガイド(安全規則・作法。docs/ を import)
-├── .agents/                 コミュニティの Ansible スキルと、OpenCode のワーカーの設定
+├── .agents/                 共通の Ansible スキルと、Vibe CLI のジョブの手順
 ├── .claude/                 Claude Code 専用(設定・フック。skills は .agents/ へのリンク)
 ├── .devcontainer/           開発コンテナ(Ansible・kubectl・Helm・エージェントCLI)
 ├── ansible.cfg              共通設定(roles_path / inventory)

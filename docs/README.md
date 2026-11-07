@@ -22,6 +22,7 @@
 | ファイル | 内容 |
 | --- | --- |
 | [design/vault.md](design/vault.md) | Vault の用途別分離と全サービスのフォルダ整理案 |
+| [design/agents.md](design/agents.md) | エージェントへのジョブの委譲と独立レビュー |
 | [conventions.md](conventions.md) | 命名規則・変数の層・冪等性・Vault・バージョン管理 |
 
 ## 書き方

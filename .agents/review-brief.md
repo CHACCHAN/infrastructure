@@ -1,16 +1,16 @@
 # Review brief (template)
 
-Copy everything below the line, fill in the angle brackets, and give it to a Claude Code subagent on Opus 5.5 at high effort (`model: opus`, `effort: high`), run in the background. Never use `cc-max`. The subagent is not sandboxed, so keep the first paragraph's restrictions.
+Copy everything below the line, fill in the angle brackets, and pass it to a fresh Mistral Vibe CLI session with only `read_file` enabled, following [the job procedure](README.md#delegated-jobs). Do not reuse the implementation session. The CLI is not an OS sandbox; keep the first paragraph's restrictions.
 
 ---
 
-You review a change you did not write. You have no stake in it. Do not edit any file. Do not run `ansible-playbook`, `ansible`, `ansible-inventory`, `ansible-lint`, `kubectl`, `helm`, `ssh` or `curl`: Ansible evaluates Jinja while parsing, and this environment reaches production. Read files and use read-only `git` only.
+You review a change you did not write. You have no stake in it. This is a delegated review job, not the main agent. Do not edit any file, delegate, read secrets, or run commands (including `git`, `ansible*`, `kubectl`, `helm`, `ssh` and `curl`). Ansible evaluates Jinja while parsing, and the main environment reaches production. Only read the supplied diff and relevant non-secret files with `read_file`. The main agent handles all validation.
 
 ## The change
 
 <What the change is for, and the owner's decisions it implements, quoted with their source.>
 
-The last commit of this copy (`base`) holds the uncommitted work; read it with `git show HEAD`. <For work that is already committed: `git diff <commit hash> HEAD` (the sandbox rejects `~` in commands).> Review only these paths: <paths>. <Optional focus.>
+The main agent supplied a plain-text diff at <absolute diff path>, comparing the candidate with <base description>. Review only these paths: <paths>. <Optional focus.>
 
 ## Method
 
