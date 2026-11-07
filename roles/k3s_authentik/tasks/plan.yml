@@ -1,0 +1,11 @@
+---
+- name: 宣言と現在値の差分を計算する
+  ansible.builtin.set_fact:
+    __authentik_application_plan: "{{ authentik_managed_applications | authentik_application_plan(__authentik_current_apps) }}"
+  no_log: true
+
+- name: 更新値と安全な表示項目を分ける
+  ansible.builtin.set_fact:
+    __authentik_application_changes: "{{ __authentik_application_plan.changes }}"
+    __authentik_application_change_summary: "{{ __authentik_application_plan.summary }}"
+  no_log: true

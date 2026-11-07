@@ -68,12 +68,13 @@ VLAN・ID・VMID・IP の規則は [design/network.md](design/network.md) に書
 
 ## 秘密情報
 
-- 秘密情報は `vault/*.yml` に暗号化して置く。ファイル名はサービス名にする(`vault/proxmox.yml`)。パスワードは1つを共有する(`ANSIBLE_VAULT_PASSWORD_FILE`)。
+- 秘密情報は `vault/*.yml` に暗号化して置く。ファイル名はサービス名にする(`vault/proxmox.yml`)。同じサービスでも読み込む用途が異なる管理データは `<サービス>_<用途>.yml` に分ける(`vault/litellm_keys.yml`)。パスワードは1つを共有する(`ANSIBLE_VAULT_PASSWORD_FILE`)。
 - vault は、必要な playbook だけが `vars_files` で明示的に読み込む。`group_vars` には置かない(秘密を必要な playbook にだけ渡すため)。
 - SSH の秘密鍵も `vault/` に暗号化して置く(開発マシンの `~/.ssh` に依存しない)。
 - vault のパスワードは、開発マシン以外にも控えを持つ(パスワードマネージャなど)。失うと vault は復号できない。
 - Kubernetes への接続も kubeconfig を使わず、vault のトークンで行う([design/k3s.md](design/k3s.md))。
 - 編集は `ansible-vault edit` で行う。
+- 望む非機密の設定は inventory、秘密値と識別子は Vault、API の取得記録は `<サービス>_snapshot.yml` に分ける。通常適用は取得記録を読まず、取得処理は宣言と秘密の台帳を上書きしない。
 - playbook がロールへ通常の変数として渡す。秘密情報を扱うタスクには `no_log` を付ける。
 - 平文のトークン・パスワード・秘密鍵・kubeconfig をコミットしない。
 

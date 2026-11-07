@@ -1,0 +1,21 @@
+# LiteLLM の管理 API から設定を暗号化して保存する。
+# 既存の取得記録を置き換える場合: -e litellm_export_overwrite=true
+# プロバイダーの秘密や仮想キーの平文は取得できず、完全な復元には使えない。
+# 実行例: ansible-playbook playbooks/utils/litellm_export.yml 2>&1 | cat
+---
+- name: LiteLLM の設定を保存する
+  hosts: "k3s[0]"
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_pipelining: true
+    ansible_remote_tmp: /dev/shm/ansible-litellm
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    litellm_master_key: "{{ vault_litellm_master_key }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/litellm.yml"
+  tasks:
+    - name: 管理 API の設定を保存する
+      ansible.builtin.include_role:
+        name: k3s_litellm
+        tasks_from: export

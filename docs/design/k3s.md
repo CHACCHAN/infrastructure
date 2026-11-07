@@ -39,9 +39,10 @@
 - 再現性の範囲:
   - 構成(VM、k3s、Helm のリリース、values、Secret)は、コードから再現する。
   - 設定のコード化は、宣言できるものを宣言する。アプリの OIDC クライアントは、Authentik の Blueprint で宣言する。client_id と client_secret は vault で決め、Authentik と各アプリに同じ値を渡す(Authentik を先に完成させる必要がない)。
-  - 状態(ユーザー、パスワード、チャット、ボード、DB の中身)は、Ansible では管理しない。バックアップで守る(現在はバックアップなし)。例外は、各アプリの緊急用の管理者だけ。
+  - 状態(ユーザー、パスワード、チャット、ボード、DB の中身)は、Ansible では管理しない。バックアップで守る(現在はバックアップなし)。例外は、各アプリの緊急用の管理者と、LiteLLM の既存モデル・仮想キーの管理対象の設定。
   - アプリの中で足す拡張(Nextcloud のアプリ、CLIProxyAPI のプラグイン)も状態にする。Ansible が再現するのは、素のアプリ(インストール直後の状態)と、ほかの決定のために要る設定まで。
-- Authentik は k3s で運用する。旧構成からは移さず、新規に構築する。OIDC クライアント、認証プロキシ、ログインの失敗の制限、MFA の必須化、Google でのログインは Blueprint で宣言し、ユーザー・グループ・グループの所属・アプリケーションを使えるグループの結びつけ・それ以外のフローは手動で設定する。
+- Authentik は k3s で運用する。旧構成からは移さず、新規に構築する。OIDC クライアント、認証プロキシ、ログインの失敗の制限、MFA の必須化、Google でのログインは Blueprint で宣言し、ユーザー・グループ・グループの所属・アプリケーションを使えるグループの結びつけ・それ以外のフローは手動で設定する。 アプリの表示設定は `inventory/group_vars/authentik.yml` を唯一の宣言元にし、Blueprint と管理 API が同じ設定を使う。API は既存 slug の表示設定だけを更新し、プロバイダー・認可ポリシー・利用者・所属の操作やアプリの削除は行わない。取得記録は `vault/authentik_snapshot.yml` に隔離し、適用には使わない。
+- Authentik の管理 API は、ワイルドカード DNS で LAN の入口を返す `auth-api.<lab_domain>` と既定の TLS 証明書を使い、`Host` ヘッダーを既存の Authentik のホスト名にする。Cloudflare Tunnel・DNS レコード・Ingress の追加は不要。管理者トークンで全アプリを取得する。
 - Rancher、AWX、Portainer は使わない。k3s の Web UI は置かない(一時的なコンテナは、開発VMの Docker で動かす)。
 
 ### k3s の構築
@@ -134,7 +135,7 @@ kubectl・Ansible
   - Cloudflare の API トークンは、対象ゾーンの DNS の編集とゾーンの読み取り(cert-manager がゾーンの ID を引くため)だけを許可する。`vault/cloudflare.yml` に置く。ACME の連絡先メールアドレスはインベントリに宣言する(`cert_manager_acme_email`)。
 - Longhorn: 複製数は、ノードが1台の間は1、2台以上なら2(CSI・マネージャーの Pod の数は、ノードの数)。ノード停止時の Pod 削除ポリシーと、同時リビルド数の制限(1)を設定する。管理 UI は認証を持たないため、Authentik の認証プロキシを通して公開する(`longhorn`)。
 - PostgreSQL: メジャーバージョン17、pgvector を含む CloudNativePG の `standard` イメージ。アプリごとの専用のクラスタ(1インスタンス、ボリューム 5Gi)は、アプリのロールが作る(`k3s_postgresql`)。DB とその所有者のロールを宣言で作り、パスワードはアプリの vault(`vault/<アプリ名>.yml`)に置く。スーパーユーザーのアクセスは無効にする。インスタンスが1つの間は PodDisruptionBudget を置かない(ノードの退避を止めないため)。CLIProxyAPI は PostgreSQL を使わない(後述)。
-- 公開ホスト名は `<名前>.<lab_domain>` で、インベントリ(`inventory/group_vars/k3s.yml`)に宣言する(`auth`・`ai`・`litellm`・`longhorn`・`hermes`・`opnsense`・`cliproxy`・`nextcloud`・`gravitee`・`gravitee-console`・`gravitee-am`・`truenas`)。TLS は Traefik で終端し、Ingress は Traefik の既定の証明書を使う。
+- 公開ホスト名は `<名前>.<lab_domain>` で、インベントリ(`inventory/group_vars/k3s.yml` とサービス別の `litellm.yml`・`authentik.yml`)に宣言する(`auth`・`ai`・`litellm`・`longhorn`・`hermes`・`opnsense`・`cliproxy`・`nextcloud`・`gravitee`・`gravitee-console`・`gravitee-am`・`truenas`)。TLS は Traefik で終端し、Ingress は Traefik の既定の証明書を使う。
 - アプリの秘密情報は `vault/<アプリ名>.yml` に置く(DB のパスワードも含む)。
 - ログインは、すべてのアプリで Authentik の SSO(OIDC)にする(OpenWebUI・LiteLLM・Nextcloud Hub、AM を経由する APIM)。Ansible が管理するのは、OIDC の接続(Authentik の OIDC クライアントと、各アプリの接続先)まで。本体が OIDC を持たないアプリは、OPNsense と同じく Authentik の OIDC クライアントだけを置き、アプリ側の接続はアプリの画面で設定する。グループの作成、グループの所属、アプリケーションを使えるグループの結びつけ、Authentik の管理者権限は、Authentik の画面で設定する(状態)。例外は、認証プロキシで守る画面を使えるグループだけ(後述)。権限はグループに付け、ユーザーには直接付けない。アプリは、Authentik が渡すグループ(`groups`)を見て権限を決める。
 - Ansible が持つアカウントは、緊急用のユーザーだけにする。緊急用のパスワードは機械的に作った値をそのまま使う(人が決めるパスワードより強いため)。普段使うユーザーと、グループの所属は状態で、Authentik の画面で決める。MFA を登録していないユーザーには、ログインの途中で登録させる。
@@ -169,7 +170,8 @@ kubectl・Ansible
 - 公開ホスト名の DNS は、`*.<lab_domain>` を Ingress の VIP(`172.16.12.5`)へ向ける(Cloudflare の画面で管理する)。
 - クラスタ内から公開ホスト名を引くと、Traefik の Service を返す(CoreDNS の `coredns-custom`)。Pod から Authentik への OIDC の通信が、外の DNS([network.md](network.md) の名前解決)に頼らないようにする。
 - OpenWebUI はボリュームを持たず、データを PostgreSQL に置く。LLM への接続は OpenWebUI の管理画面で登録する。SSO でのアカウント作成(`ENABLE_OAUTH_SIGNUP`)とメールでの統合(`OAUTH_MERGE_ACCOUNTS_BY_EMAIL`)を有効にする。Authentik では、ユーザーが自分でメールアドレスを変えられないようにする。
-- LiteLLM は、チャートの PostgreSQL を使わず、専用の PostgreSQL(`k3s_postgresql`)に接続する。モデルとプロバイダーの認証情報は、管理画面で登録する(`store_model_in_db` を有効にする。OAuth を使うプロバイダーは宣言できないため)。登録した内容と仮想キーは DB に保存される状態で、バックアップの対象になる。認証情報は `LITELLM_SALT_KEY`(`vault/litellm.yml`)で暗号化される。Hermes Agent が使うモデルの名前は `hermes_llm` にする。
+- LiteLLM は `litellm_settings.drop_params: true` とし、接続先が対応しないパラメーターを除外する。設定は inventory の Helm values に宣言する。
+- LiteLLM は、チャートの PostgreSQL を使わず、専用の PostgreSQL(`k3s_postgresql`)に接続する。`store_model_in_db` を有効にし、既存モデルの非機密の設定は `inventory/group_vars/litellm.yml` に宣言し、管理 API で差分だけを更新する。`litellm` グループは `k3s` を子に持ち、モデル宣言を読み込む。API キー・認証ヘッダーは inventory に置かない。キーの利用範囲は同じ inventory、秘密・ハッシュ・非公開の設定は `vault/litellm_keys.yml`、API の取得結果は `vault/litellm_snapshot.yml` に分ける。取得処理は inventory のモデル宣言を書き換えず、Vault の取得結果もモデルの適用元にはしない。管理対象のモデルは既存の ID、仮想キーは既存のハッシュで識別し、専用 playbook で指定した設定だけを更新する。Helm の適用とは分ける。通常適用ではキーの発行・停止・再発行を行わない。確認値を要求する専用のキー操作は、新しい秘密を暗号化保存してから管理 API で発行・利用停止・再開・ローテーションする。ローテーションは無料版のキー発行 API を使い、新キーの配布後に別操作で旧キーを停止する。中断時は同じ秘密で回復し、台帳は排他制御する。利用サービスへの配布は手動。削除は行わない。プロバイダーの認証情報は完全には取得できず、OAuth の認証状態と仮想キーの平文も取得結果に含まれないため、このファイルだけで完全復元はできない。DB の状態は引き続きバックアップの対象になる。認証情報は `LITELLM_SALT_KEY`(`vault/litellm.yml`)で暗号化される。Hermes Agent が使うモデルの名前は `hermes_llm` にする。
 - 汎用 API ゲートウェイとして Gravitee API Management(APIM) Community Edition と Gravitee Access Management(AM) Community Edition を置く。利用者は開発者ポータルで購読と API キーの発行を行い、ゲートウェイから LiteLLM やほかの API を使う(LiteLLM へログインする必要をなくすため)。
   - ブラウザのログインは Authentik → AM → APIM の SSO にする。APIM Community Edition は汎用の外部 OIDC プロバイダーである Authentik に直接接続できない(汎用 OpenID Connect は有料の Enterprise Edition の機能)。無料で使える LDAP はユーザーの初回作成時にしかロールを設定しないため、ログインのたびにロールの対応づけを再適用できる Gravitee AM を使う。AM は `full_profile` の userinfo で Authentik の `groups` を APIM に渡す。コンソールでは、ユーザーにロールを手で付けない。手で付けたロールは再同期で消えず、その範囲ではグループからの対応づけより優先されるため(グループから外しても権限が残る)。
   - 利用者が使う API の鍵は、すべて Gravitee のポータルで発行する(オーナーの判断)。クラスタ内のサービス同士は Gravitee を通さず、クラスタ内の DNS(`<Service>.<namespace>.svc.cluster.local`)で直接つなぐ。OpenWebUI は、利用者へ連絡してから止める。
@@ -213,6 +215,8 @@ kubectl・Ansible
   - 各サービスの状態を一覧で表示するダッシュボードは置かない。ポータルは Nextcloud Hub にする。
 
 ### 未決(クラスタ内アプリ)
+
+- LiteLLM の仮想キーを利用サービスへ配布する自動化。既存キーの平文をハッシュから復元することはできない。Gravitee の利用者向けキーはポータルで発行する決定を保つ。
 
 - OpenWebUI を止める時期と手順(利用者への連絡のあと)。
 - 緊急用の `akadmin` を、外からのログインで拒否する方法。Authentik のログインは全員が同じ経路を通るため、経路では塞げない。`akadmin` の API トークン(`vault/authentik.yml`)も、外から Authentik の API に使える(MFA も試行回数の制限も通らない)。API のパスは画面も使うため、経路では塞げない。

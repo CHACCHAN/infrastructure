@@ -67,3 +67,8 @@ __authentik_embedded_outpost_config:
   kubernetes_ingress_secret_name: authentik-outpost-tls
   kubernetes_httproute_annotations: {}
   kubernetes_httproute_parent_refs: []
+
+# Blueprint と管理 API は同じアプリ設定を参照する
+__authentik_application_settings: >-
+  {{ dict(authentik_managed_applications | map(attribute='slug') |
+          zip(authentik_managed_applications | map(attribute='settings'))) }}

@@ -1,0 +1,79 @@
+# 入力は暗号化ファイルの保存先と値。参照記録と秘密値の暗号化保存を共通化する。
+---
+- name: 保存する値にテンプレートの区切り文字がないことを確認する
+  ansible.builtin.assert:
+    that: __vault_write_document | to_json is not search('[{][%#]|[{][{]')
+    quiet: true
+    fail_msg: 保存する値に Jinja の区切り文字があるため停止しました。
+  no_log: true
+
+- name: 暗号化ファイルの保存先を確認する
+  ansible.builtin.stat:
+    path: "{{ __vault_write_file }}"
+  register: __vault_write_stat
+
+- name: 保存先が通常ファイルであることを確認する
+  ansible.builtin.assert:
+    that: not __vault_write_stat.stat.exists or (__vault_write_stat.stat.isreg and not __vault_write_stat.stat.islnk)
+    quiet: true
+
+- name: 保存済みの値が暗号化されていることを確認する
+  when: __vault_write_stat.stat.exists
+  block:
+    - name: 保存済みファイルの形式を読み取る
+      ansible.builtin.slurp:
+        src: "{{ __vault_write_file }}"
+      register: __vault_write_cipher
+      no_log: true
+
+    - name: 暗号化ファイルだけを読み込むことを確認する
+      ansible.builtin.assert:
+        that: (__vault_write_cipher.content | b64decode).startswith('$ANSIBLE_VAULT;')
+        quiet: true
+      no_log: true
+
+- name: 保存済みの値を読み込む
+  ansible.builtin.include_vars:
+    file: "{{ __vault_write_file }}"
+    name: __vault_write_existing
+  when: __vault_write_stat.stat.exists
+  no_log: true
+
+- name: 変更がある場合だけ暗号化して保存する
+  when: not __vault_write_stat.stat.exists or __vault_write_existing != __vault_write_document
+  block:
+    - name: メモリ上に暗号文の一時ファイルを用意する
+      ansible.builtin.tempfile:
+        state: file
+        path: /dev/shm
+        prefix: ansible-litellm-vault-
+      register: __vault_write_temp
+
+    - name: 標準入力から暗号化する
+      ansible.builtin.command:
+        argv: [ansible-vault, encrypt, --output, "{{ __vault_write_temp.path }}"]
+        stdin: "{{ __vault_write_document | to_nice_yaml }}"
+      changed_when: true
+      no_log: true
+
+    - name: 暗号化形式を確認する
+      ansible.builtin.command:
+        argv: [head, -c, '14', "{{ __vault_write_temp.path }}"]
+      register: __vault_write_header
+      changed_when: false
+      failed_when: __vault_write_header.stdout != '$ANSIBLE_VAULT'
+      no_log: true
+
+    - name: 暗号文を保存する
+      ansible.builtin.copy:
+        src: "{{ __vault_write_temp.path }}"
+        dest: "{{ __vault_write_file }}"
+        decrypt: false
+        mode: '0600'
+      no_log: true
+  always:
+    - name: 一時ファイルを消す
+      ansible.builtin.file:
+        path: "{{ __vault_write_temp.path }}"
+        state: absent
+      when: __vault_write_temp.path is defined

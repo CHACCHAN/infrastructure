@@ -1,3 +1,4 @@
+# Ansible(roles/k3s_authentik)が生成。手動編集は次回実行で上書きされる。
 # アプリの OIDC クライアント、ログインの失敗の制限、MFA の必須化、Google でのログイン。秘密の値は環境変数(Secret authentik-config)から読む。
 version: 1
 metadata:
@@ -7,7 +8,7 @@ entries:
   - model: authentik_providers_oauth2.oauth2provider
     id: {{ client.slug }}-provider
     identifiers:
-      name: {{ client.name }}
+      name: {{ client.name | to_json }}
     attrs:
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
@@ -36,8 +37,11 @@ entries:
     identifiers:
       slug: {{ client.slug }}
     attrs:
-      name: {{ client.name }}
+      name: {{ __authentik_application_settings.get(client.slug, {}).get('name', client.name) | to_json }}
       provider: !KeyOf {{ client.slug }}-provider
+{% for field, value in __authentik_application_settings.get(client.slug, {}).items() if field != 'name' %}
+      {{ field }}: {{ value | to_json }}
+{% endfor %}
 {% endfor %}
 {% if authentik_login_failure_limit | int > 0 %}
   # ログインの失敗が重なった IP を、ログインのフローに入れない。このポリシーは、評価が閾値以下のときに一致する

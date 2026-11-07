@@ -15,9 +15,7 @@ cert_manager_issuer: letsencrypt-production
 # Debian の cloud イメージが作る、sudo できる既定のユーザー
 ansible_user: debian
 # アプリの公開ホスト名。各 k3s_<app> ロールと、Authentik の OIDC クライアントが同じ値を参照する
-authentik_host: "auth.{{ lab_domain }}"
 openwebui_host: "ai.{{ lab_domain }}"
-litellm_host: "litellm.{{ lab_domain }}"
 longhorn_host: "longhorn.{{ lab_domain }}"
 hermes_host: "hermes.{{ lab_domain }}"
 opnsense_host: "opnsense.{{ lab_domain }}"
@@ -64,9 +62,6 @@ openwebui_values:
 nextcloud_values:
   affinity:
     nodeAffinity: "{{ heavy_workload_node_affinity }}"
-litellm_values:
-  affinity:
-    nodeAffinity: "{{ heavy_workload_node_affinity }}"
 # Gravitee APIM と AM は、Java のコンポーネント(API と Gateway)だけを寄せる。画面の Pod は軽いため寄せない
 gravitee_values:
   api:
@@ -86,16 +81,6 @@ gravitee_am_values:
     deployment:
       affinity:
         nodeAffinity: "{{ heavy_workload_node_affinity }}"
-# Authentik のチャートは、サーバーとワーカーへ共通のノードの条件を渡す(soft が preferred)
-authentik_values:
-  global:
-    affinity:
-      nodeAffinity:
-        type: soft
-        matchExpressions:
-          - key: kubernetes.io/hostname
-            operator: In
-            values: "{{ heavy_workload_nodes }}"
 # Traefik でリバースプロキシする、クラスタの外の画面(Proxmox の管理 UI は k3s_lan_proxy が pve グループから導出する)
 lan_proxy_extra_services:
   # Hermes Agent の受付(hermes01)の管理画面。ログインは Hermes 側の OIDC(Authentik のクライアント hermes)

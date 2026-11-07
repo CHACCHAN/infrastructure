@@ -1,0 +1,24 @@
+# Authentik 管理 API で既存アプリの表示設定を更新する。
+---
+- name: Authentik のアプリ設定を適用する
+  hosts: "k3s[0]"
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    ansible_pipelining: true
+    ansible_remote_tmp: /dev/shm/ansible-authentik
+    authentik_api_token: "{{ vault_authentik_bootstrap_token }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/authentik.yml"
+  tasks:
+    - name: inventory のアプリ宣言を確認する
+      ansible.builtin.assert:
+        that: authentik_managed_applications is defined
+        quiet: true
+        fail_msg: inventory に Authentik のアプリ宣言がありません。
+
+    - name: 管理 API でアプリを管理する
+      ansible.builtin.include_role:
+        name: k3s_authentik
+        tasks_from: manage

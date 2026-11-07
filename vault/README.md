@@ -14,6 +14,9 @@ Ansible Vault で暗号化した秘密情報。規則は [docs/conventions.md](.
 | `authentik.yml` | `vault_authentik_secret_key`、`vault_authentik_db_password`(専用の PostgreSQL の、DB の所有者のロールのパスワード)、`vault_authentik_bootstrap_password`(緊急用の `akadmin`)、`vault_authentik_bootstrap_token`、`vault_authentik_google_client_id`・`vault_authentik_google_client_secret`(Google でのログインに使う OAuth クライアントの client_id と client_secret) | `playbooks/k3s/authentik.yml` |
 | `openwebui.yml` | `vault_openwebui_db_password`(専用の PostgreSQL の、DB の所有者のロールのパスワード)、`vault_openwebui_oidc_client_secret`、`vault_openwebui_secret_key`、`vault_openwebui_admin_password`(緊急用の管理者) | `playbooks/k3s/openwebui.yml`、`authentik.yml` |
 | `litellm.yml` | `vault_litellm_db_password`(専用の PostgreSQL の、DB の所有者のロールのパスワード)、`vault_litellm_master_key`(API の鍵)、`vault_litellm_salt_key`(DB に保存する認証情報の暗号化キー)、`vault_litellm_oidc_client_secret`、`vault_litellm_ui_password`(緊急用の `admin`)、`vault_litellm_provider_keys`(プロバイダーの API キーの辞書) | `playbooks/k3s/litellm.yml`、`authentik.yml` |
+| `litellm_keys.yml` | `vault_litellm_key_material`(論理名ごとのハッシュ・保存できたキー本体・非公開の設定・処理中の操作) | `playbooks/k3s/litellm_manage.yml`、`playbooks/utils/litellm_key.yml` |
+| `litellm_snapshot.yml` | `vault_litellm_import`(管理 API の参照用取得記録) | `playbooks/utils/litellm_export.yml`(保存専用。通常適用では読まない) |
+| `authentik_snapshot.yml` | `vault_authentik_import`(アプリ管理 API の参照用取得記録) | `playbooks/utils/authentik_export.yml`(保存専用。通常適用では読まない) |
 | `cliproxy.yml` | `vault_cliproxy_management_password`(管理画面と管理 API の管理キー)、`vault_cliproxy_api_keys`(API のクライアントの鍵の初期値。設定ファイルが無いときだけ使われる) | `playbooks/k3s/cliproxy.yml` |
 | `nextcloud.yml` | `vault_nextcloud_db_password`(専用の PostgreSQL の、DB の所有者のロールのパスワード)、`vault_nextcloud_oidc_client_secret`(Nextcloud の OIDC クライアントのシークレット。Nextcloud の画面の `user_oidc` の設定にも同じ値を入れる)、`vault_nextcloud_admin_password`(緊急用の `admin`) | `playbooks/k3s/nextcloud.yml`、`authentik.yml` |
 | `gravitee.yml` | `vault_gravitee_db_password`(専用の PostgreSQL の、DB の所有者のロールのパスワード)、`vault_gravitee_admin_password`(緊急用の `admin`)、`vault_gravitee_jwt_secret`(ログインの Cookie の JWT の署名鍵)、`vault_gravitee_properties_encryption_secret`(API の暗号化したプロパティの鍵。英数字32文字。プロパティを置いたあとは変えない)、`vault_gravitee_user_reference_secret`(ユーザーの参照を作る鍵。英数字32文字)、`vault_gravitee_oidc_client_secret`(AM のアプリケーション `gravitee` のシークレット。AM の画面にも同じ値を入れる) | `playbooks/k3s/gravitee.yml` |
@@ -35,3 +38,11 @@ Ansible Vault で暗号化した秘密情報。規則は [docs/conventions.md](.
 - 編集は `ansible-vault edit vault/<ファイル>.yml`。パスワードは `ANSIBLE_VAULT_PASSWORD_FILE` が指すファイル。
 - パスワードは、開発マシン以外にも控えを持つ。失うと復号できない。
 - 競合は、テキストをマージせず、再暗号化で解消する(`.gitattributes` で `-text -diff -merge`)。
+
+## 用途による分離
+
+サービスの基盤用の秘密と、API で管理するデータは、読み込む playbook ごとに分ける。LiteLLM の基盤用の秘密は `litellm.yml`、モデルの非機密の宣言は [inventory/group_vars/litellm.yml](../inventory/group_vars/litellm.yml)、キーの秘密と識別子は `litellm_keys.yml`、参照用の取得記録は `litellm_snapshot.yml` に置く。公開するキーの利用範囲は inventory に宣言する。Authentik の表示設定も inventory、取得記録は `authentik_snapshot.yml` に置く。取得処理は宣言や台帳を上書きしない。管理データの編集と取り直しは [LiteLLM の手順](../roles/k3s_litellm/README.md)を参照する。
+
+全サービスのフォルダ移動は行わず、既存の `vars_files` と暗号化ファイルのパスを保つ。秘密を共有するためだけに、全 Vault を一括で読み込まない。
+
+全サービスをフォルダ分けする場合の保存先・用途別分割・移行手順は [Vault の整理案](../docs/design/vault.md)を参照する。移行は未実施。

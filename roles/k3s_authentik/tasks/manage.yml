@@ -1,0 +1,64 @@
+---
+- name: アプリの宣言を確認する
+  ansible.builtin.import_tasks: validate_applications.yml
+
+- name: 管理 API の現在の設定を取得する
+  ansible.builtin.import_tasks: read_api.yml
+
+- name: 管理対象のアプリが存在することを確認する
+  ansible.builtin.assert:
+    that: authentik_managed_applications | map(attribute='slug') | difference(__authentik_current_apps | map(attribute='slug')) | length == 0
+    fail_msg: 管理対象のアプリが見つかりません。新規作成せず停止しました。
+    quiet: true
+  no_log: true
+
+- name: 変更する項目を計算する
+  ansible.builtin.import_tasks: plan.yml
+
+- name: 反映後の確認が必要か記録する
+  ansible.builtin.set_fact:
+    __authentik_verify_needed: "{{ __authentik_application_changes | length > 0 }}"
+
+- name: 更新するアプリの件数を表示する
+  ansible.builtin.debug:
+    msg: "アプリ {{ __authentik_application_changes | length }} 件"
+  changed_when: __authentik_verify_needed
+
+- name: 値を表示せず変更対象を確認する
+  ansible.builtin.debug:
+    msg: "{{ __authentik_application_change_summary }}"
+  when: (ansible_check_mode or ansible_diff_mode) and __authentik_verify_needed
+
+- name: 既存アプリの設定を更新する
+  ansible.builtin.uri:
+    url: "{{ authentik_management_url }}/api/v3/core/applications/{{ item.slug | urlencode }}/"
+    method: PATCH
+    headers:
+      Authorization: "Bearer {{ authentik_api_token }}"
+      Host: "{{ authentik_host }}"
+    body_format: json
+    body: "{{ item.settings }}"
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  loop: "{{ __authentik_application_changes }}"
+  when: not ansible_check_mode
+  changed_when: true
+  no_log: true
+
+- name: 反映された設定を確認する
+  when: not ansible_check_mode and __authentik_verify_needed
+  block:
+    - name: 反映後のアプリを取得する
+      ansible.builtin.include_tasks: read_api.yml
+
+    - name: 反映後の差分を計算する
+      ansible.builtin.include_tasks: plan.yml
+
+    - name: 管理対象の設定が反映されたことを確認する
+      ansible.builtin.assert:
+        that: __authentik_application_changes | length == 0
+        fail_msg: 管理 API の反映を確認できません。反映の遅延または非対応の設定項目を確認してください。
+        quiet: true
+      no_log: true

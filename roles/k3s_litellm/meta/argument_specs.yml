@@ -80,3 +80,88 @@ argument_specs:
       litellm_values:
         type: dict
         description: "LiteLLM の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"
+  manage:
+    short_description: 管理 API で既存モデルと仮想キーの設定を更新する
+    options:
+      litellm_management_url:
+        type: str
+        description: 管理 API の URL
+      litellm_master_key:
+        type: str
+        required: true
+        no_log: true
+        description: 管理 API のマスターキー
+      litellm_managed_models:
+        type: list
+        elements: dict
+        no_log: true
+        description: inventory に宣言する既存モデルの ID・名前・非機密の接続設定
+      litellm_managed_keys:
+        type: list
+        elements: dict
+        no_log: true
+        description: inventory に宣言する仮想キーの論理名と更新する設定
+      litellm_key_material:
+        type: dict
+        required: true
+        no_log: true
+        description: Vault から渡すキーの論理名ごとのハッシュ・秘密値・非公開の設定
+      litellm_managed_model_fields:
+        type: list
+        elements: str
+        description: 認証情報を含まない、更新を許可するモデル設定のフィールド
+      litellm_managed_key_fields:
+        type: list
+        elements: str
+        description: 更新を許可する仮想キー設定のフィールド
+  export:
+    short_description: 管理 API の取得結果を暗号化して保存する
+    options:
+      litellm_management_url:
+        type: str
+        description: 管理 API の URL
+      litellm_master_key:
+        type: str
+        required: true
+        no_log: true
+        description: 管理 API のマスターキー
+      litellm_export_file:
+        type: path
+        description: 暗号化した取得結果の保存先
+      litellm_export_overwrite:
+        type: bool
+        description: 既存の宣言の置き換えを許可する
+  key_lifecycle:
+    short_description: 確認したキーだけを発行・利用停止・再開・ローテーションする
+    options:
+      litellm_master_key:
+        type: str
+        required: true
+        no_log: true
+        description: 管理 API のマスターキー
+      litellm_management_url:
+        type: str
+        description: TLS を検証する管理 API URL
+      litellm_key_name:
+        type: str
+        required: true
+        description: 操作するキーの論理名
+      litellm_key_action:
+        type: str
+        required: true
+        choices: [create, block, unblock, rotate, retire]
+        description: 発行・利用停止・再開・新キー準備・旧キー停止のいずれか
+      litellm_key_confirm:
+        type: str
+        description: 実行を確認する「論理名/操作」
+      litellm_key_file:
+        type: path
+        description: キーの識別子と秘密を暗号化して保存するファイル
+      litellm_managed_keys:
+        type: list
+        elements: dict
+        description: inventory に宣言するキーの論理名と利用範囲
+      litellm_managed_key_fields:
+        type: list
+        elements: str
+        description: 許可する利用範囲の設定項目

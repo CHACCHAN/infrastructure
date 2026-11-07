@@ -11,56 +11,9 @@ authentik_db_namespace: authentik-db
 authentik_db_host: "{{ authentik_db_namespace }}-rw.{{ authentik_db_namespace }}.svc.cluster.local"
 authentik_db_name: authentik
 # OIDC クライアント。client_secret は authentik_oidc_client_secrets[slug] で渡す
-authentik_oidc_clients:
-  - name: OpenWebUI
-    slug: openwebui
-    redirect_uris:
-      - "https://{{ openwebui_host }}/oauth/oidc/callback"
-  - name: Nextcloud
-    slug: nextcloud
-    # pretty URL の有効・無効で生成されるコールバックが異なるため、両方を許可する
-    redirect_uris:
-      - "https://{{ nextcloud_host }}/apps/user_oidc/code"
-      - "https://{{ nextcloud_host }}/index.php/apps/user_oidc/code"
-  - name: LiteLLM
-    slug: litellm
-    redirect_uris:
-      - "https://{{ litellm_host }}/sso/callback"
-  # Hermes Agent の受付(hermes01)の管理画面。コールバックのパスは Hermes 側で決まるため、ホストの中だけを許可する
-  - name: Hermes
-    slug: hermes
-    redirect_uris: []
-    redirect_uri_regex: "^https://{{ hermes_host | regex_escape }}/.*$"
-  # ルータ(OPNsense)の管理画面。パスの末尾は、OPNsense の OIDC の設定の Application code(authentik)
-  - name: OPNsense
-    slug: opnsense
-    redirect_uris:
-      - "https://{{ opnsense_host }}/api/openidconnect/auth/callback/authentik"
-  # Proxmox の管理画面(OpenID のレルム)。Proxmox は、開いている画面の URL をそのままリダイレクト URI にするため、pve グループの各ノードの公開ホスト名だけを許可する
-  - name: Proxmox
-    slug: proxmox
-    redirect_uris: []
-    redirect_uri_regex: "^https://({{ groups['pve'] | default([]) | map('regex_escape') | join('|') }})\\.{{ lab_domain | regex_escape }}/?$"
-  - name: Gravitee AM
-    slug: gravitee-am
-    redirect_uris:
-      - "https://{{ gravitee_host }}/auth/apim/login/callback"
+authentik_oidc_clients: []
 # 認証プロキシ(forward auth)で守るアプリケーション。自前のログインを持たない画面(と、ログインが共有の鍵だけの画面)を、Traefik のミドルウェア(authentik_forward_auth_middleware)で守る
-authentik_proxy_apps:
-  - name: Longhorn
-    slug: longhorn
-    host: "{{ longhorn_host }}"
-  # CLIProxyAPI の公開ホスト名のすべてのパス(管理画面のログインが共有の管理キーだけのため)。API はクラスタ内の Service からだけ使う(roles/k3s_cliproxy)
-  - name: CLIProxyAPI
-    slug: cliproxy
-    host: "{{ cliproxy_host }}"
-  - name: Gravitee AM Admin
-    slug: gravitee-am-admin
-    host: "{{ gravitee_am_host }}"
-  # ポータルと同じ SSO を使うコンソールと管理 API を管理者に限る
-  - name: Gravitee Console
-    slug: gravitee-console
-    host: "{{ gravitee_console_host }}"
+authentik_proxy_apps: []
 # 認証プロキシで守る画面を使える Authentik のグループ(グループ自体と所属は、Authentik の画面で作る)
 authentik_proxy_access_group: admins
 # 認証プロキシのミドルウェアの名前。Ingress からは <namespace>-<名前>@kubernetescrd で参照する
@@ -80,3 +33,16 @@ authentik_google_client_id: ""
 authentik_google_client_secret: ""
 # Helm values の上書き(基本値へ再帰的に合成する)
 authentik_values: {}
+# 管理 API は LAN 向けワイルドカード DNS と TLS を使い、Host は既存の Ingress に合わせる
+authentik_management_url: "https://{{ authentik_api_host }}"
+authentik_managed_applications: []
+authentik_managed_application_fields:
+  - name
+  - open_in_new_tab
+  - meta_launch_url
+  - meta_description
+  - meta_publisher
+  - group
+  - meta_hide
+authentik_export_file: "{{ role_path }}/../../vault/authentik_snapshot.yml"
+authentik_export_overwrite: false

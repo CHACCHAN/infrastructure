@@ -8,6 +8,9 @@
 
 | playbook | 内容 | 実行例 |
 | --- | --- | --- |
+| `authentik_export.yml` | Authentik のアプリ管理 API の取得記録を暗号化して保存する。宣言と実環境は変更しない | `ansible-playbook playbooks/utils/authentik_export.yml 2>&1 \| cat` |
+| `litellm_key.yml` | LiteLLM のキーを明示的に発行・利用停止・再開・ローテーションする([確認値と手順](../../roles/k3s_litellm/README.md)) | `ansible-playbook playbooks/utils/litellm_key.yml --check -e litellm_key_name=client_01 -e litellm_key_action=block 2>&1 \| cat` |
+| `litellm_export.yml` | LiteLLM 管理 API を読み取り、既存モデル・仮想キーの設定を暗号化して保存する。実環境は変更しない([手順](../../roles/k3s_litellm/README.md)) | `ansible-playbook playbooks/utils/litellm_export.yml 2>&1 \| cat` |
 | `k3s_token.yml` | k3s に ServiceAccount(`cluster-admin`)と長期トークンを作り、トークンと認証局の証明書を `vault/k3s.yml` に暗号化して保存する | `ansible-playbook playbooks/utils/k3s_token.yml 2>&1 \| cat` |
 | `k3s_cluster_token.yml` | k3s のクラスタのトークン(サーバーの参加に使う)を `vault/k3s.yml` に保存する。クラスタが動いていれば先頭のホストのトークンを写し、無ければ新しく作る | `ansible-playbook playbooks/utils/k3s_cluster_token.yml 2>&1 \| cat` |
 | `k3s_app_remove.yml` | クラスタからアプリを取り除く(Helm のリリースと namespace を消す) | `ansible-playbook playbooks/utils/k3s_app_remove.yml -e k3s_app_remove_namespace=<名前> -e k3s_app_remove_confirm=<名前> 2>&1 \| cat` |
@@ -33,3 +36,5 @@
 - リリース名が namespace と違うときは、`-e k3s_app_remove_release=<名前>` を付ける。リリースが見つからないときは止まる(リリースを消したあとの残りを消すときは `-e k3s_app_remove_no_release=true`)。
 - 専用の DB(PostgreSQL)を持つアプリは、DB の namespace(`<アプリの namespace>-db`)も、この playbook で別に消す。
 - 消すのはクラスタの中だけ。ロール・playbook・vault・インベントリのホスト名・Authentik の OIDC クライアントは、別に取り除く。
+
+暗号化して保存する共通タスクは `tasks/vault_write.yml`。暗号文だけを一時ファイルに置き、秘密を標準入力から暗号化して保存する。アプリの取得記録は通常の設定適用に読み込まない。

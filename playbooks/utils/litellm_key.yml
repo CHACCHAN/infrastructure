@@ -1,0 +1,18 @@
+# キーの発行・利用停止・再開・ローテーションを明示的に行う。
+---
+- name: LiteLLM のキーを操作する
+  hosts: "k3s[0]"
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    ansible_pipelining: true
+    ansible_remote_tmp: /dev/shm/ansible-litellm
+    litellm_master_key: "{{ vault_litellm_master_key }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/litellm.yml"
+  tasks:
+    - name: キーを明示的に操作する
+      ansible.builtin.include_role:
+        name: k3s_litellm
+        tasks_from: key_lifecycle

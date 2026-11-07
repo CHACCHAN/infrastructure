@@ -2,7 +2,7 @@
 # 秘密情報と、公開ホスト名(litellm_host、authentik_host)は、既定値を持たない。
 ---
 # チャートのバージョン(OCI)。イメージのタグは、チャートの appVersion
-litellm_chart_version: "1.104.2"
+litellm_chart_version: "1.108.2"
 litellm_chart_url: oci://ghcr.io/berriai/litellm-helm
 litellm_release_name: litellm
 litellm_namespace: litellm
@@ -22,3 +22,42 @@ litellm_models: []
 litellm_provider_keys: {}
 # Helm values の上書き(基本値へ再帰的に合成する)
 litellm_values: {}
+# 管理 API は LAN/VPN 用のホスト名で TLS を検証する
+litellm_management_url: "https://{{ litellm_host }}"
+litellm_managed_models: []
+litellm_managed_keys: []
+# キーの識別子と秘密値。通常の設定宣言とは分けて playbook が渡す
+litellm_key_material: {}
+# 使用量や期限の相対指定は管理せず、予算カウンターを保つ
+litellm_managed_key_fields:
+  - key_alias
+  - models
+  - max_budget
+  - tpm_limit
+  - rpm_limit
+  - max_parallel_requests
+  - metadata
+litellm_export_file: "{{ role_path }}/../../vault/litellm_snapshot.yml"
+litellm_export_overwrite: false
+# 認証情報・ヘッダー・プロバイダー固有の秘密を更新対象へ混ぜない
+litellm_managed_model_fields:
+  - model
+  - api_base
+  - custom_llm_provider
+  - timeout
+  - request_timeout
+  - max_retries
+  - rpm
+  - tpm
+  - weight
+  - tags
+  - guardrails
+  - allowed_openai_params
+  - allow_client_keepalive_override
+  - use_in_pass_through
+  - use_litellm_proxy
+  - use_xai_oauth
+  - merge_reasoning_content_in_choices
+# ライフサイクル操作では「論理名/操作」を確認値に指定する
+litellm_key_confirm: ""
+litellm_key_file: "{{ role_path }}/../../vault/litellm_keys.yml"

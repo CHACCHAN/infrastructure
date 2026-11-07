@@ -6,6 +6,15 @@ argument_specs:
       - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
       - OIDC クライアントの client_id は slug と同じ。client_secret は vault で決め、アプリ側にも同じ値を渡す。
     options:
+      authentik_managed_applications:
+        type: list
+        elements: dict
+        no_log: true
+        description: Blueprint と管理 API が共有する既存アプリの表示設定
+      authentik_managed_application_fields:
+        type: list
+        elements: str
+        description: 更新を許可するアプリ設定の項目
       authentik_chart_version:
         type: str
         description: "チャートのバージョン"
@@ -124,3 +133,49 @@ argument_specs:
       authentik_values:
         type: dict
         description: "Authentik の Helm values の上書き(基本値へ再帰的に合成する。例: resources、TZ)"
+
+  manage:
+    short_description: 管理 API で既存アプリの設定を更新する
+    options:
+      authentik_host:
+        type: str
+        required: true
+        description: Ingress に渡す Authentik のホスト名
+      authentik_management_url:
+        type: str
+        description: LAN 用の管理 API URL
+      authentik_api_token:
+        type: str
+        required: true
+        no_log: true
+        description: Authentik 管理 API のトークン
+      authentik_managed_applications:
+        type: list
+        elements: dict
+        no_log: true
+        description: inventory に宣言する既存アプリの slug と表示設定
+      authentik_managed_application_fields:
+        type: list
+        elements: str
+        description: 更新を許可するアプリ設定の項目
+  export:
+    short_description: 既存アプリの取得記録を暗号化して保存する
+    options:
+      authentik_host:
+        type: str
+        required: true
+        description: Ingress に渡す Authentik のホスト名
+      authentik_management_url:
+        type: str
+        description: LAN 用の管理 API URL
+      authentik_api_token:
+        type: str
+        required: true
+        no_log: true
+        description: Authentik 管理 API のトークン
+      authentik_export_file:
+        type: path
+        description: 暗号化した取得記録の保存先
+      authentik_export_overwrite:
+        type: bool
+        description: 取得記録の置き換えを許可する

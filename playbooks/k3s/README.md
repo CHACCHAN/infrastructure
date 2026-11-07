@@ -12,11 +12,13 @@ k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconf
 | `cert_manager.yml` | cert-manager を入れ、Let's Encrypt(Cloudflare の DNS-01)のワイルドカード証明書を Traefik の既定の証明書にする | `ansible-playbook playbooks/k3s/cert_manager.yml [--check --diff] 2>&1 \| cat` |
 | `longhorn.yml` | Longhorn を入れ、既定の StorageClass にする。管理 UI を、Authentik の認証プロキシを通して公開する | `ansible-playbook playbooks/k3s/longhorn.yml [--check --diff] 2>&1 \| cat` |
 | `cnpg.yml` | CloudNativePG のオペレーターを入れる。各アプリ専用の PostgreSQL は、そのアプリの playbook が作る([roles/k3s_postgresql](../../roles/k3s_postgresql/README.md)) | `ansible-playbook playbooks/k3s/cnpg.yml [--check --diff] 2>&1 \| cat` |
+| `authentik_manage.yml` | 管理 API で既存アプリの表示設定を更新する。Helm とプロバイダーの接続は変更しない([手順](../../roles/k3s_authentik/README.md)) | `ansible-playbook playbooks/k3s/authentik_manage.yml --check --diff 2>&1 \| cat` |
 | `authentik.yml` | Authentik を入れ、アプリの OIDC クライアントと認証プロキシを Blueprint で宣言する | `ansible-playbook playbooks/k3s/authentik.yml [--check --diff] 2>&1 \| cat` |
 | `gravitee_am.yml` | Gravitee Access Management と専用の PostgreSQL を入れる([roles/k3s_gravitee_am](../../roles/k3s_gravitee_am/README.md)) | `ansible-playbook playbooks/k3s/gravitee_am.yml [--check --diff] 2>&1 \| cat` |
 | `gravitee.yml` | Gravitee API Management と専用の PostgreSQL を入れる([roles/k3s_gravitee](../../roles/k3s_gravitee/README.md)) | `ansible-playbook playbooks/k3s/gravitee.yml [--check --diff] 2>&1 \| cat` |
 | `openwebui.yml` | OpenWebUI を入れる | `ansible-playbook playbooks/k3s/openwebui.yml [--check --diff] 2>&1 \| cat` |
 | `nextcloud.yml` | Nextcloud Hub と専用の PostgreSQL を入れる([roles/k3s_nextcloud](../../roles/k3s_nextcloud/README.md)) | `ansible-playbook playbooks/k3s/nextcloud.yml [--check --diff] 2>&1 \| cat` |
+| `litellm_manage.yml` | LiteLLM 管理 API で既存モデル・仮想キーの設定を更新する。Helm は適用しない([手順](../../roles/k3s_litellm/README.md)) | `ansible-playbook playbooks/k3s/litellm_manage.yml --check --diff 2>&1 \| cat` |
 | `litellm.yml` | LiteLLM Proxy を入れる | `ansible-playbook playbooks/k3s/litellm.yml [--check --diff] 2>&1 \| cat` |
 | `cliproxy.yml` | CLIProxyAPI を置き、管理画面を Authentik の認証プロキシを通して公開する | `ansible-playbook playbooks/k3s/cliproxy.yml [--check --diff] 2>&1 \| cat` |
 | `lan_proxy.yml` | クラスタの外にある LAN 内のサービス(Proxmox の管理 UI など)を、Traefik でリバースプロキシする | `ansible-playbook playbooks/k3s/lan_proxy.yml [--check --diff] 2>&1 \| cat` |
@@ -36,3 +38,5 @@ k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconf
 ## アプリを足す
 
 [ansible-new-role](../../.agents/skills/ansible-new-role/SKILL.md)とリポジトリの規約に従い、`k3s_<app>` ロールを作る。ロールは [k3s](../../roles/k3s/README.md) を `include_role` で呼ぶだけにし、チャートとバージョンを `defaults/main.yml` に、values の基本値を `vars/main.yml` に書く。playbook は `metallb.yml` と同じ形にする。
+
+`litellm_manage.yml` と `authentik_manage.yml` は例外として Kubernetes API と `vault/k3s.yml` を使わず、各サービスの管理 API と必要な Vault だけを使う。モデル設定は [inventory/group_vars/litellm.yml](../../inventory/group_vars/litellm.yml) で編集し、`--check --diff` で変更対象の識別子と項目名を確認してから適用する。

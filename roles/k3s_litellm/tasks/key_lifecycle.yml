@@ -1,0 +1,228 @@
+---
+- name: キー操作の対象と確認値を検証する
+  ansible.builtin.assert:
+    that:
+      - litellm_key_action in ['create', 'block', 'unblock', 'rotate', 'retire']
+      - litellm_key_name is match('^[a-z][a-z0-9_]{0,62}$')
+      - ansible_check_mode or litellm_key_confirm == litellm_key_name ~ '/' ~ litellm_key_action
+      - litellm_managed_keys | selectattr('name', 'equalto', litellm_key_name) | list | length == 1
+    fail_msg: 対象の宣言と操作を確認し、確認値に「論理名/操作」を指定してください。
+    quiet: true
+
+- name: キーの宣言を選ぶ
+  ansible.builtin.set_fact:
+    __litellm_key_declaration: "{{ litellm_managed_keys | selectattr('name', 'equalto', litellm_key_name) | first }}"
+  no_log: true
+
+- name: 発行するキーの利用範囲を確認する
+  ansible.builtin.assert:
+    that:
+      - __litellm_key_declaration.settings is mapping
+      - __litellm_key_declaration.settings.keys() | difference(litellm_managed_key_fields) | length == 0
+      - __litellm_key_declaration.settings.values() | select('none') | list | length == 0
+      - __litellm_key_declaration.settings.key_alias is string
+      - __litellm_key_declaration.settings.key_alias | length > 0
+      - __litellm_key_declaration.settings.models is sequence
+      - __litellm_key_declaration.settings.models is not string
+      - __litellm_key_declaration.settings.models is not mapping
+    quiet: true
+  no_log: true
+
+- name: キー台帳を排他制御して操作する
+  block:
+    - name: キー台帳の排他ロックを取得する
+      ansible.builtin.command:
+        argv: [mkdir, "{{ litellm_key_file }}.lock"]
+      register: __litellm_key_lock
+      changed_when: false
+      when: not ansible_check_mode
+
+    - name: キー台帳の存在を確認する
+      ansible.builtin.stat:
+        path: "{{ litellm_key_file }}"
+      register: __litellm_key_registry_stat
+
+    - name: キー台帳が通常ファイルであることを確認する
+      ansible.builtin.assert:
+        that: >-
+          not __litellm_key_registry_stat.stat.exists or
+          (__litellm_key_registry_stat.stat.isreg and not __litellm_key_registry_stat.stat.islnk)
+        quiet: true
+
+    - name: キー台帳の暗号化形式を読み取る
+      ansible.builtin.slurp:
+        src: "{{ litellm_key_file }}"
+      register: __litellm_key_cipher
+      when: __litellm_key_registry_stat.stat.exists
+      no_log: true
+
+    - name: 暗号化したキー台帳だけを読み込むことを確認する
+      ansible.builtin.assert:
+        that: (__litellm_key_cipher.content | b64decode).startswith('$ANSIBLE_VAULT;')
+        quiet: true
+      when: __litellm_key_registry_stat.stat.exists
+      no_log: true
+
+    - name: キー台帳を読み込む
+      ansible.builtin.include_vars:
+        file: "{{ litellm_key_file }}"
+        name: __litellm_key_loaded
+      when: __litellm_key_registry_stat.stat.exists
+      no_log: true
+
+    - name: キー台帳の形式を確認する
+      ansible.builtin.assert:
+        that:
+          - __litellm_key_loaded | default({}) | list | difference(['vault_litellm_key_material']) | length == 0
+          - __litellm_key_loaded.vault_litellm_key_material | default({}) is mapping
+        quiet: true
+      no_log: true
+
+    - name: キー台帳の値を準備する
+      ansible.builtin.set_fact:
+        __litellm_key_registry: "{{ __litellm_key_loaded.vault_litellm_key_material | default({}) }}"
+      no_log: true
+
+    - name: 操作するキーの値を準備する
+      ansible.builtin.set_fact:
+        __litellm_key_entry: "{{ __litellm_key_registry.get(litellm_key_name, {}) }}"
+      no_log: true
+
+    - name: 秘密の設定と処理中の操作を確認する
+      ansible.builtin.assert:
+        that:
+          - >-
+            __litellm_key_entry.keys() | difference(['hash', 'settings', 'token', 'previous_hash',
+            'pending_token', 'pending_hash', 'operation', 'previous_retired', 'alias_suffix']) | length == 0
+          - (__litellm_key_entry.pending_token is defined) == (__litellm_key_entry.pending_hash is defined)
+          - (__litellm_key_entry.operation is defined) == (__litellm_key_entry.pending_token is defined)
+          - >-
+            __litellm_key_entry.token is not defined or
+            (__litellm_key_entry.hash == (__litellm_key_entry.token | hash('sha256')))
+          - __litellm_key_entry.settings | default({}) is mapping
+          - __litellm_key_entry.settings | default({}) | list | difference(litellm_managed_key_fields) | length == 0
+          - __litellm_key_entry.settings | default({}) | dict2items | selectattr('value', 'none') | list | length == 0
+          - __litellm_key_entry.settings | default({}) | list | intersect(__litellm_key_declaration.settings | list) | length == 0
+          - __litellm_key_entry.operation is not defined or __litellm_key_entry.operation == litellm_key_action
+          - __litellm_key_entry.hash | default('') != litellm_master_key | hash('sha256')
+          - __litellm_key_entry.previous_hash | default('') != litellm_master_key | hash('sha256')
+          - >-
+            litellm_key_action != 'rotate' or __litellm_key_entry.previous_hash | default('') | length == 0 or
+            __litellm_key_entry.previous_retired | default(false) | bool
+          - litellm_key_action != 'retire' or __litellm_key_entry.previous_hash | default('') is match('^[a-f0-9]{64}$')
+          - >-
+            __litellm_key_entry.pending_token is not defined or
+            (__litellm_key_entry.pending_hash == (__litellm_key_entry.pending_token | hash('sha256')) and
+             __litellm_key_entry.pending_token is match('^sk-[a-zA-Z0-9]{48}$') and
+             litellm_key_action in ['create', 'rotate'])
+        quiet: true
+      no_log: true
+
+    - name: 利用状態を変えるキーの識別子を選ぶ
+      ansible.builtin.set_fact:
+        __litellm_key_target_hash: >-
+          {{ __litellm_key_entry.previous_hash | default('') if litellm_key_action == 'retire'
+             else __litellm_key_entry.hash | default('') }}
+      no_log: true
+
+    - name: キーの現在の状態を取得する
+      ansible.builtin.include_tasks: read_api.yml
+
+    - name: 登録済みのキーの状態をまとめる
+      ansible.builtin.set_fact:
+        __litellm_key_active_hash: "{{ __litellm_key_entry.hash | default('') }}"
+        __litellm_key_active_present: "{{ __litellm_key_entry.hash | default('') in __litellm_current_keys | map(attribute='token') | list }}"
+        __litellm_key_pending_present: >-
+          {{ __litellm_key_entry.pending_hash | default('') in __litellm_current_keys | map(attribute='token') | list }}
+        __litellm_key_current: >-
+          {{ (__litellm_current_keys | selectattr('token', 'equalto', __litellm_key_target_hash) | list | first) | default({}) }}
+      no_log: true
+
+    - name: 発行済みのキーを取り違えていないことを確認する
+      ansible.builtin.assert:
+        that:
+          - >-
+            (litellm_key_action == 'create' and __litellm_key_active_hash | length == 0) or
+            __litellm_key_active_present or
+            (litellm_key_action == 'rotate' and __litellm_key_pending_present)
+          - litellm_key_action != 'rotate' or __litellm_key_active_hash is match('^[a-f0-9]{64}$')
+          - >-
+            litellm_key_action != 'retire' or
+            __litellm_key_target_hash in __litellm_current_keys | map(attribute='token') | list
+          - litellm_key_action not in ['block', 'unblock', 'retire'] or __litellm_key_entry.pending_token is not defined
+        quiet: true
+        fail_msg: キー台帳と実環境が一致しないため停止しました。処理中の操作を確認してください。
+      no_log: true
+
+    - name: 変更の有無を計算する
+      ansible.builtin.set_fact:
+        __litellm_key_changed: >-
+          {{ (litellm_key_action == 'rotate') or
+             (litellm_key_action == 'create' and
+              (not __litellm_key_active_present or __litellm_key_entry.pending_token is defined)) or
+             (litellm_key_action in ['block', 'unblock', 'retire'] and
+              ((__litellm_key_current.blocked | default(false) | bool) != (litellm_key_action != 'unblock') or
+               (litellm_key_action == 'retire' and not (__litellm_key_entry.previous_retired | default(false) | bool)))) }}
+      no_log: true
+
+    - name: キーの操作予定を表示する
+      ansible.builtin.debug:
+        msg: "{{ litellm_key_name }}: {{ litellm_key_action }}"
+      changed_when: __litellm_key_changed
+
+    - name: キーを発行またはローテーションする
+      ansible.builtin.include_tasks: key_issue.yml
+      when: not ansible_check_mode and __litellm_key_changed and litellm_key_action in ['create', 'rotate']
+
+    - name: キーを利用停止または再開する
+      when: not ansible_check_mode and __litellm_key_changed and litellm_key_action in ['block', 'unblock', 'retire']
+      block:
+        - name: キーの利用状態を変更する
+          ansible.builtin.uri:
+            url: "{{ litellm_management_url }}/key/{{ 'block' if litellm_key_action == 'retire' else litellm_key_action }}"
+            method: POST
+            headers:
+              Authorization: "Bearer {{ litellm_master_key }}"
+            body_format: json
+            body:
+              key: "{{ __litellm_key_target_hash }}"
+            follow_redirects: none
+            unredirected_headers: [Authorization]
+            validate_certs: true
+            status_code: 200
+          changed_when: true
+          when: (__litellm_key_current.blocked | default(false) | bool) != (litellm_key_action != 'unblock')
+          no_log: true
+
+        - name: 変更後のキーを取得する
+          ansible.builtin.include_tasks: read_api.yml
+
+        - name: キーの利用状態を確認する
+          vars:
+            __litellm_key_after: "{{ __litellm_current_keys | selectattr('token', 'equalto', __litellm_key_target_hash) | first }}"
+          ansible.builtin.assert:
+            that: (__litellm_key_after.blocked | bool) == (litellm_key_action != 'unblock')
+            quiet: true
+          no_log: true
+        - name: 旧キーの利用停止が完了したことを記録する
+          ansible.builtin.set_fact:
+            __litellm_key_registry: >-
+              {{ __litellm_key_registry | combine({litellm_key_name:
+                 __litellm_key_entry | combine({'previous_retired': true})}) }}
+          when: litellm_key_action == 'retire'
+          no_log: true
+
+        - name: 旧キーの利用停止を暗号化して保存する
+          ansible.builtin.include_tasks: write_vault.yml
+          vars:
+            __litellm_vault_file: "{{ litellm_key_file }}"
+            __litellm_vault_document:
+              vault_litellm_key_material: "{{ __litellm_key_registry }}"
+          when: litellm_key_action == 'retire'
+  always:
+    - name: この実行で取得した排他ロックを解放する
+      ansible.builtin.file:
+        path: "{{ litellm_key_file }}.lock"
+        state: absent
+      changed_when: false
+      when: __litellm_key_lock is defined and __litellm_key_lock.rc | default(1) == 0

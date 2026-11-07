@@ -1,0 +1,48 @@
+---
+- name: チェックモードでは保存を行わない
+  ansible.builtin.assert:
+    that: not ansible_check_mode
+    quiet: true
+
+- name: 保存先を確認する
+  ansible.builtin.stat:
+    path: "{{ authentik_export_file }}"
+  register: __authentik_export_stat
+
+- name: 取得記録の上書きが許可されていることを確認する
+  ansible.builtin.assert:
+    that: not __authentik_export_stat.stat.exists or authentik_export_overwrite | bool
+    fail_msg: 取得記録の置き換えには authentik_export_overwrite=true が必要です。
+    quiet: true
+
+- name: 保存済みの取得記録を確認する
+  when: __authentik_export_stat.stat.exists
+  block:
+    - name: 保存済みの取得記録を読み込む
+      ansible.builtin.include_vars:
+        file: "{{ authentik_export_file }}"
+        name: __authentik_export_existing
+      no_log: true
+
+    - name: 取得記録以外の値が含まれていないことを確認する
+      ansible.builtin.assert:
+        that: __authentik_export_existing.keys() | difference(['vault_authentik_import']) | length == 0
+        quiet: true
+      no_log: true
+
+- name: アプリの現在の設定を取得する
+  ansible.builtin.import_tasks: read_api.yml
+
+- name: 参照専用の取得記録をまとめる
+  ansible.builtin.set_fact:
+    __authentik_export_document:
+      vault_authentik_import:
+        source: Authentik management API
+        applications: "{{ __authentik_apps_first.json | combine({'results': __authentik_current_apps}) }}"
+  no_log: true
+
+- name: 取得記録だけを暗号化して保存する
+  ansible.builtin.include_tasks: "{{ role_path }}/../../playbooks/utils/tasks/vault_write.yml"
+  vars:
+    __vault_write_file: "{{ authentik_export_file }}"
+    __vault_write_document: "{{ __authentik_export_document }}"

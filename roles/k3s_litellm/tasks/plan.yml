@@ -1,0 +1,14 @@
+---
+- name: 宣言と現在値の差分を計算する
+  ansible.builtin.set_fact:
+    __litellm_model_plan: "{{ litellm_managed_models | litellm_model_plan(__litellm_current_models) }}"
+    __litellm_key_plan: "{{ __litellm_resolved_keys | litellm_key_plan(__litellm_current_keys) }}"
+  no_log: true
+
+- name: 更新値と安全な表示項目を分ける
+  ansible.builtin.set_fact:
+    __litellm_model_changes: "{{ __litellm_model_plan.changes }}"
+    __litellm_key_changes: "{{ __litellm_key_plan.changes }}"
+    __litellm_model_change_summary: "{{ __litellm_model_plan.summary }}"
+    __litellm_key_change_summary: "{{ __litellm_key_plan.summary }}"
+  no_log: true

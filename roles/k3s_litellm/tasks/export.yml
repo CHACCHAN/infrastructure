@@ -1,0 +1,81 @@
+---
+- name: チェックモードでは保存を行わない
+  ansible.builtin.assert:
+    that: not ansible_check_mode
+    fail_msg: チェックモードではエクスポートできません。
+
+- name: 保存先を確認する
+  ansible.builtin.stat:
+    path: "{{ litellm_export_file }}"
+  register: __litellm_export_stat
+
+- name: 既存の取得記録の上書きを確認する
+  ansible.builtin.assert:
+    that: not __litellm_export_stat.stat.exists or litellm_export_overwrite | bool
+    fail_msg: 既存の取得記録を上書きするには litellm_export_overwrite=true を指定してください。
+
+- name: 既存の取得記録を別の名前空間に読み込む
+  ansible.builtin.include_vars:
+    file: "{{ litellm_export_file }}"
+    name: __litellm_export_existing
+  when: __litellm_export_stat.stat.exists
+  no_log: true
+
+- name: 既存の取得記録に未知の項目がないことを確認する
+  ansible.builtin.assert:
+    that:
+      - __litellm_export_existing.keys() | difference(['vault_litellm_import']) | length == 0
+    fail_msg: 取得記録以外の項目があるため上書きしません。
+  when: __litellm_export_stat.stat.exists
+  no_log: true
+
+- name: 管理 API の現在の設定を取得する
+  ansible.builtin.import_tasks: read_api.yml
+
+- name: 認証情報の一覧を取得する
+  ansible.builtin.uri:
+    url: "{{ litellm_management_url }}/credentials"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ litellm_master_key }}"
+    validate_certs: true
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    return_content: true
+  register: __litellm_export_credentials
+  changed_when: false
+  check_mode: false
+  no_log: true
+
+- name: 認証情報の応答を確認する
+  ansible.builtin.assert:
+    that:
+      - __litellm_export_credentials.json.success | default(false) | bool
+      - __litellm_export_credentials.json.credentials is defined
+    quiet: true
+  no_log: true
+
+- name: 参照専用の取得記録をまとめる
+  ansible.builtin.set_fact:
+    __litellm_export_document:
+      vault_litellm_import:
+        source: LiteLLM management API
+        provider_secrets_complete: false
+        virtual_key_plaintexts_included: false
+        models: "{{ __litellm_current_models }}"
+        keys: "{{ __litellm_keys_response.json | combine({'keys': __litellm_current_keys}) }}"
+        credentials: "{{ __litellm_export_credentials.json }}"
+  no_log: true
+
+- name: 取得値にテンプレートの区切り文字がないことを確認する
+  ansible.builtin.assert:
+    that: __litellm_export_document | to_json is not search('[{][%#]|[{][{]')
+    fail_msg: 取得値に Jinja の区切り文字があるため保存しません。取得元の設定を確認してください。
+    quiet: true
+  no_log: true
+
+- name: 取得記録だけを暗号化して保存する
+  ansible.builtin.include_tasks: write_vault.yml
+  vars:
+    __litellm_vault_file: "{{ litellm_export_file }}"
+    __litellm_vault_document: "{{ __litellm_export_document }}"

@@ -1,4 +1,7 @@
 ---
+- name: アプリ設定の宣言を確認する
+  ansible.builtin.import_tasks: validate_applications.yml
+
 - name: 専用の PostgreSQL を適用する
   ansible.builtin.include_role:
     name: k3s_postgresql

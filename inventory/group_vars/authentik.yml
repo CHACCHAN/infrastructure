@@ -1,0 +1,162 @@
+# Authentik のサービス設定と管理 API で更新する既存アプリの宣言。
+---
+authentik_host: "auth.{{ lab_domain }}"
+
+authentik_values:
+  global:
+    affinity:
+      nodeAffinity:
+        type: soft
+        matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values: "{{ heavy_workload_nodes }}"
+
+authentik_oidc_clients:
+  - name: OpenWebUI
+    slug: openwebui
+    redirect_uris:
+      - https://{{ openwebui_host }}/oauth/oidc/callback
+  - name: Nextcloud
+    slug: nextcloud
+    redirect_uris:
+      - https://{{ nextcloud_host }}/apps/user_oidc/code
+      - https://{{ nextcloud_host }}/index.php/apps/user_oidc/code
+  - name: LiteLLM
+    slug: litellm
+    redirect_uris:
+      - https://{{ litellm_host }}/sso/callback
+  - name: Hermes
+    slug: hermes
+    redirect_uris: []
+    redirect_uri_regex: ^https://{{ hermes_host | regex_escape }}/.*$
+  - name: OPNsense
+    slug: opnsense
+    redirect_uris:
+      - https://{{ opnsense_host }}/api/openidconnect/auth/callback/authentik
+  - name: Proxmox
+    slug: proxmox
+    redirect_uris: []
+    redirect_uri_regex: ^https://({{ groups['pve'] | default([]) | map('regex_escape') | join('|') }})\.{{ lab_domain | regex_escape
+      }}/?$
+  - name: Gravitee AM
+    slug: gravitee-am
+    redirect_uris:
+      - https://{{ gravitee_host }}/auth/apim/login/callback
+
+authentik_proxy_apps:
+  - name: Longhorn
+    slug: longhorn
+    host: '{{ longhorn_host }}'
+  - name: CLIProxyAPI
+    slug: cliproxy
+    host: '{{ cliproxy_host }}'
+  - name: Gravitee AM Admin
+    slug: gravitee-am-admin
+    host: '{{ gravitee_am_host }}'
+  - name: Gravitee Console
+    slug: gravitee-console
+    host: '{{ gravitee_console_host }}'
+
+authentik_api_host: "auth-api.{{ lab_domain }}"
+
+authentik_managed_applications:
+  - slug: cliproxy
+    settings:
+      name: CLIProxyAPI
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false
+  - slug: gravitee-am
+    settings:
+      name: Gravitee AM
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false
+  - slug: gravitee-am-admin
+    settings:
+      name: Gravitee AM Admin
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false
+  - slug: gravitee-console
+    settings:
+      name: Gravitee Console
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false
+  - slug: hermes
+    settings:
+      name: Hermes
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false
+  - slug: litellm
+    settings:
+      name: LiteLLM
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false
+  - slug: longhorn
+    settings:
+      name: Longhorn
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false
+  - slug: nextcloud
+    settings:
+      name: Nextcloud
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false
+  - slug: opnsense
+    settings:
+      name: OPNsense
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false
+  - slug: openwebui
+    settings:
+      name: OpenWebUI
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false
+  - slug: proxmox
+    settings:
+      name: Proxmox
+      open_in_new_tab: false
+      meta_launch_url: ''
+      meta_description: ''
+      meta_publisher: ''
+      group: ''
+      meta_hide: false

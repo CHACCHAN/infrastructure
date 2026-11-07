@@ -67,6 +67,7 @@ IP   = 172.16.<VLAN>.<ID>
 - 名前解決は Cloudflare の DNS を使う。
 - OPNsense でスプリット DNS は使わない(オーナーの判断)。Tunnel に載せたホスト名は Cloudflare に個別の DNS レコードを持ち、ワイルドカード(`*.cc-chacchan.com` → `172.16.12.5`)より優先されるため、LAN のクライアントも Cloudflare を経由して届く。LAN と VPN だけで使う画面は、Tunnel に載せないホスト名に置く。
 - OPNsense の DNS(Unbound)は、DNS リバインド対策でプライベート IP を返す応答を捨てる。`cc-chacchan.com` は Private Domains に登録し、この対策の対象から外す(ラボの公開ホスト名が `172.16.12.5` を返すため)。
+- Authentik の管理 API クライアントは `auth-api.<lab_domain>` を使い、既存のワイルドカード DNS で LAN の Ingress へ接続する。HTTPS はワイルドカード証明書で検証し、`Host` ヘッダーに Authentik の既存のホスト名を渡す([k3s.md](k3s.md))。
 - ルータの構成が固まってから、詳細を設計する。
 
 ### リモートアクセス・公開

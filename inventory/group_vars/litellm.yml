@@ -1,0 +1,1549 @@
+# LiteLLM 管理 API で更新する既存モデルの宣言。認証情報は vault/ に置く。
+---
+litellm_managed_models:
+  - model_name: DeepSeek V4.1 Flash OpenCode Go 1
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: deepseek-v4.1-flash
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 43aab978-ecf9-48ae-b01c-81ca6f11c7e4
+  - model_name: Qwen 3.8 27B Groq API
+    litellm_params:
+      custom_llm_provider: groq
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: groq/qwen/qwen3.8-27b
+    model_info:
+      id: 2e1e1819-f55f-47bb-b83e-0b25ebf02182
+  - model_name: Gemini 3.8 Flash Google AI Studio API (takeuti1)
+    litellm_params:
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini/gemini-3.8-flash
+    model_info:
+      id: c13c7352-48c0-4851-97cc-c20bb2419213
+  - model_name: Gemini 3.5 Flash Lite Google AI Studio API (takeuti1)
+    litellm_params:
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini/gemini-3.5-flash-lite
+    model_info:
+      id: 9f7326c5-4895-4a31-a568-adae60e34f83
+  - model_name: Gemini 3.8 Flash CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini-3.8-flash-high
+      guardrails: []
+    model_info:
+      id: e961a71b-3e7a-4eaa-8895-ece4bbb14a93
+  - model_name: Claude Opus 4.6 CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
+      custom_llm_provider: anthropic
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: claude-opus-4-6-thinking
+      guardrails: []
+    model_info:
+      id: 14b278d2-9a63-4a2a-b799-b8dd135e7401
+  - model_name: Claude Sonnet 4.6 CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
+      custom_llm_provider: anthropic
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: claude-sonnet-4-6
+      guardrails: []
+    model_info:
+      id: 53d33393-7a9d-4f54-8d48-c98a2b0b48e7
+  - model_name: gpt-oss-120b-medium CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-oss-120b-medium
+      guardrails: []
+    model_info:
+      id: 2ecbdf1c-e346-4c76-a135-c53c89698329
+  - model_name: Gemini 3.5 Flash Lite Google AI Studio API (s24g3102dp)
+    litellm_params:
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini/gemini-3.5-flash-lite
+    model_info:
+      id: fce546c9-c98f-4f6c-a112-ccb7b54ee256
+  - model_name: Claude Sonnet 5.5 CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
+      custom_llm_provider: anthropic
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: claude-sonnet-5-5-high
+      guardrails: []
+    model_info:
+      id: 6b25be5f-e94d-4a76-8bc1-24439c726955
+  - model_name: Claude Opus 5.5 CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
+      custom_llm_provider: anthropic
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: claude-opus-5-5-high
+      guardrails: []
+    model_info:
+      id: 9fa579e0-b212-47bc-ac1c-9a7ae07ef423
+  - model_name: MiMo V2.6 Pro OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: mimo-v2.6-pro
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 9c099977-0d86-429d-ab47-fca0602d8444
+  - model_name: Gemini 3.5 Flash Lite Google AI Studio API (chacchan.global)
+    litellm_params:
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini/gemini-3.5-flash-lite
+    model_info:
+      id: 7c9f26f3-4274-4fd3-83b8-d5c0af33ddf2
+  - model_name: Gemini 4 Argon CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini-4-argon-high
+      guardrails: []
+    model_info:
+      id: ea7687f8-43ae-4905-8b02-3d981d2894e8
+  - model_name: Gemini 3.8 Flash Google AI Studio API (chacchan.global)
+    litellm_params:
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini/gemini-3.8-flash
+    model_info:
+      id: fc1e5eaa-8d22-4bd7-b66e-501b35a87eed
+  - model_name: 'Muse Spark 1.3 Contributor OpenCode Go 1 '
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: openai/responses/muse-spark-1.3-contributor
+    model_info:
+      id: 90920ea9-a8a5-4782-a72c-7e7d2f2d74de
+  - model_name: Muse Spark 1.3 Contributor OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: openai/responses/muse-spark-1.3-contributor
+    model_info:
+      id: 959e438e-61e0-47ae-8d09-2d6287001c7e
+  - model_name: Claude Haiku 5.5 OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/inference/go/anthropic
+      custom_llm_provider: anthropic
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: claude-haiku-5-5
+      guardrails: []
+    model_info:
+      id: 69409ef4-b89d-4796-ae2f-4e53cb0aebb5
+  - model_name: Gemini 3.5 Flash Lite Google AI Studio API (chacchan.info)
+    litellm_params:
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini/gemini-3.5-flash-lite
+      guardrails: []
+    model_info:
+      id: a3cf42d9-b18c-4ae8-a564-aa0b97c57c39
+  - model_name: ChatGPT 6 Luna CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-6-luna
+      guardrails: []
+    model_info:
+      id: 1386b07e-d8b1-47b6-aad8-6f6c9e6364fa
+  - model_name: Gemini 3.5 Flash Lite CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini-3.5-flash-lite
+      guardrails: []
+    model_info:
+      id: 90b07cf1-a4d7-4293-974a-0c59bc9ce276
+  - model_name: Gemini 3.8 Flash Google AI Studio API (chacchan.info)
+    litellm_params:
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini/gemini-3.8-flash
+      guardrails: []
+    model_info:
+      id: 14da3510-7c90-4f99-8c54-845e38407306
+  - model_name: ChatGPT 6.1 Sol CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-6.1-sol
+      guardrails: []
+    model_info:
+      id: 56600576-10c0-4047-b048-9f9045045ed4
+  - model_name: Gemini 3.8 Flash Google AI Studio API (chacchan.audio)
+    litellm_params:
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini/gemini-3.8-flash
+    model_info:
+      id: 20eafe2b-ed1d-4a5a-a3b9-4f56db55ad68
+  - model_name: Gemini 3.5 Flash Lite Google AI Studio API (chacchan.audio)
+    litellm_params:
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini/gemini-3.5-flash-lite
+    model_info:
+      id: a3c768ea-692d-46b9-ad50-f1424a6d5ff3
+  - model_name: Gemini 4 Argon Contributor OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/inference/go/google/v1beta
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini-4-argon-contributor
+      guardrails: []
+    model_info:
+      id: 0818559f-df5c-4d4d-a8bf-17595ee890c7
+  - model_name: MiMo V2.6 Flash OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: mimo-v2.6-flash
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 47b114fb-7d20-4863-bc5a-8d9d0899af18
+  - model_name: DeepSeek V4.1 Flash OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: deepseek-v4.1-flash
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 3d532513-dfe4-42ee-bbc1-34c361865a22
+  - model_name: Grok 4.7 OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/inference/go/openai/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: openai/responses/grok-4.7
+      guardrails: []
+    model_info:
+      id: a0e55d40-5a18-40d3-82ce-f4a27e407ec5
+  - model_name: MiMo V2.6 Flash OpenCode Go 1
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: mimo-v2.6-flash
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: f8f6bc78-aa39-419c-95c5-636c85616f23
+  - model_name: GLM 4.7 Flash Z.ai API
+    litellm_params:
+      api_base: https://api.z.ai/api/paas/v4/
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: custom_openai/glm-4.7-flash
+    model_info:
+      id: 4846fe7f-c055-43c0-a8ba-e5ea6e883a66
+  - model_name: GLM 4.5 Flash Z.ai API
+    litellm_params:
+      api_base: https://api.z.ai/api/paas/v4/
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: custom_openai/glm-4.5-flash
+    model_info:
+      id: ba9c962d-73f1-4fc3-81be-7836ec032388
+  - model_name: GLM 4.6V Flash Z.ai API
+    litellm_params:
+      api_base: https://api.z.ai/api/paas/v4/
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: custom_openai/glm-4.6v-flash
+    model_info:
+      id: 35774bea-1c8c-473d-a747-a40db4f733a8
+  - model_name: ChatGPT 6 Astra CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-6-astra
+    model_info:
+      id: 66939d6d-cc9d-4739-98d1-6896afabc86f
+  - model_name: ChatGPT 6 Luna OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-6-luna
+    model_info:
+      id: 4272b85b-696a-495f-b51e-2e3c2df6950f
+  - model_name: gpt-oss-120b Cloudflare API
+    litellm_params:
+      api_base: https://api.cloudflare.com/client/v4/accounts/f9865bd20e40f0b4023ed7ed29daeb88/ai/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: custom_openai/@cf/openai/gpt-oss-120b
+    model_info:
+      id: b2b449ad-23cc-496b-ba64-d6575a9a751f
+  - model_name: DeepSeek V4.1 Flash CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: deepseek-v4.1-flash-free
+    model_info:
+      id: 7aab7e22-9a37-4760-a428-a0e089e36440
+  - model_name: GLM 5.3 Flash CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: glm-5.3-flash-free
+    model_info:
+      id: f0bedca1-a117-430d-a803-4ce6858b99b4
+  - model_name: Gemini 3.8 Flash Google AI Studio API (s24g3102dp)
+    litellm_params:
+      custom_llm_provider: gemini
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini/gemini-3.8-flash
+    model_info:
+      id: b589cd67-3c38-43d2-b14f-7d72bba01273
+  - model_name: GPT Image 2.5 Flare Edit CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-image-2.5-flare
+    model_info:
+      id: 9a024d89-ac50-4603-9d0e-8f08c1f83e71
+  - model_name: Kimi K3.1 Pro OpenCode Go 1
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: kimi-k3.1-pro
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 7518f06b-da09-4576-a9ad-37e97ef4917f
+  - model_name: GPT Image 2.5 Sunburst Generate CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-image-2.5-sunburst
+    model_info:
+      id: 65e5978e-d8fa-4b68-bf60-b56f1f7c4c39
+  - model_name: GPT Image 2.5 Sunburst Edit CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-image-2.5-sunburst
+    model_info:
+      id: a10a99d7-2753-4a10-a97f-62f2b713e29e
+  - model_name: GPT Image 2.5 Flare Generate CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-image-2.5-flare
+      guardrails: []
+    model_info:
+      id: f03bf8bc-d100-433e-831d-dad96e4a373d
+  - model_name: Kimi K3.1 Pro OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: kimi-k3.1-pro
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 5184bb13-39b8-4dba-bc68-7a0913d9511c
+  - model_name: Sarashina3 Mini Sarashina API
+    litellm_params:
+      api_base: https://api.sarashina.ai/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: sarashina3-mini
+    model_info:
+      id: a2874e08-dd8e-45be-9fd3-2f09e60c1ac9
+  - model_name: Sarashina3 Nano Sarashina API
+    litellm_params:
+      api_base: https://api.sarashina.ai/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: sarashina3-nano
+    model_info:
+      id: 4928cc66-ae62-4fe9-914e-e9a514ee1970
+  - model_name: Nemotron 3 Ultra NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: nvidia/nemotron-3-ultra-550b-a55b
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 6ad5a909-09b2-49b3-83bc-3836ba56e753
+  - model_name: Nemotron 3.5 Super NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: nvidia/nemotron-3.5-super-vl-120b-a12b
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 3b98a637-9298-4cc0-a05e-d8331c4e014f
+  - model_name: Nemotron 3.5 Lightning NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: nvidia/nemotron-3.5-lightning-30b-a3b
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 4f600267-419a-41ce-be33-f2a96a7ef9dd
+  - model_name: Nemotron 3.5 Bolt NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: nvidia/nemotron-3.5-bolt-e4b
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: f13ccf65-b8aa-45ab-b3a0-f4914770f3e6
+  - model_name: DeepSeek V4.1 Flash NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: deepseek-ai/deepseek-v4.1-flash
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: ab0f84b3-237d-4444-bee6-b3d2e5644b1b
+  - model_name: GLM 5.3 Flash NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: z-ai/glm-5.3-flash
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: c4078bbd-8d9f-4412-89d6-3388be483801
+  - model_name: MinMax M3.1 Flash NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: minimaxai/minimax-m3.1-flash
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 1038ae67-a6bb-4caf-bdae-fa723860d347
+  - model_name: Step 5 Preview NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: stepfun-ai/step-5-preview
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 34a3ba8b-45d8-4940-af56-9fc6c9fdad45
+  - model_name: Laguna XS 2.1 NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: poolside/laguna-xs-2.1
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: f25b520a-278c-4c5e-8619-a9308c69d314
+  - model_name: gpt-oss-20b NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: openai/gpt-oss-20b
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 6cdfe21c-1f28-40e1-840f-fefcfb9bb593
+  - model_name: Gemma 4 31b NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: google/gemma-4-31b-it
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: af880716-a964-4e36-9743-0187c0d79fa7
+  - model_name: Diffusion Gemma 26b NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: google/diffusiongemma-26b-a4b-it
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 183a77a7-6385-4047-a2d8-82738b9aa321
+  - model_name: Muse Glimmer 30b NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: meta/muse-glimmer-30b
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: e46355bd-9441-482b-8dec-e5778e7f4033
+  - model_name: Nemotron 3 Nano Omni NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: d30cac0b-439c-4b9e-8158-e2ae5805c029
+  - model_name: Llama 3.2 11b NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: meta/llama-3.2-11b-vision-instruct
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 055c5606-f5df-47fd-a4f8-b6e2841a726b
+  - model_name: Llama 3.2 90b NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: meta/llama-3.2-90b-vision-instruct
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: d7e75116-876b-4e4b-a9a4-e67178048716
+  - model_name: Grok 4.7 CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: grok-4.7
+    model_info:
+      id: 3595cd73-cd07-4106-9edb-4eeaadb106f8
+  - model_name: Grok 4.6 CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: grok-4.6
+    model_info:
+      id: 690a99bd-4c1e-467c-bab5-cec56cd05b33
+  - model_name: Grok 4.5 CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: grok-4.5
+    model_info:
+      id: 82fea8d3-034a-4d55-9e36-4dce3bccb9d2
+  - model_name: SWE-1.6 Slow CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: devin/swe-1-6-slow
+    model_info:
+      id: 29b22990-c309-43b6-a429-bcaebab7f9b3
+  - model_name: ChatGPT 5.6 Sol CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-5.6-sol
+    model_info:
+      id: 18cb8d68-1edf-4d2a-94b2-12faae8ed789
+  - model_name: ChatGPT 5.6 Terra CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-5.6-terra
+    model_info:
+      id: c9a7c033-6b0a-4818-a810-c6623c757740
+  - model_name: ChatGPT 5.6 Luna CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-5.6-luna
+    model_info:
+      id: bbf796d2-33fe-4b13-8db5-45da93259cf8
+  - model_name: ChatGPT 6 Sol
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-6-sol
+    model_info:
+      id: 6373b5b7-9576-43da-93a9-bfbc6ad75bea
+  - model_name: ChatGPT 6.1 Terra CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-6.1-terra
+      guardrails: []
+    model_info:
+      id: df89b0a5-69ac-4a29-9ad9-86169e7bd650
+  - model_name: ChatGPT 6.1 Terra for Hermes CLIProxy
+    litellm_params:
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-6.1-terra
+      guardrails: []
+    model_info:
+      id: d63febfe-86cb-46c4-8c85-6e385a8733ec
+  - model_name: Gemini 3.8 Flash for Hermes CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini-3.8-flash-high
+    model_info:
+      id: 77933f1c-6756-4e6e-baeb-4317c8793c8a
+  - model_name: Grok 4.7 for Hermes CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: grok-4.7
+    model_info:
+      id: 4c9cf962-874a-4a7d-902c-c21b0651fdb1
+  - model_name: ChatGPT 6 Luna for Hermes CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-6-luna
+    model_info:
+      id: acf15e0e-e95d-415d-a8e8-0c2917fdd656
+  - model_name: ChatGPT 6.1 Sol for CC CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-6.1-sol
+    model_info:
+      id: 8d1dd82e-c7bb-4643-bd55-9f4bc75a2dbc
+  - model_name: DeepSeek V4.1 Flash for CC OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: deepseek-v4.1-flash
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 68688502-bb05-440c-b046-644341c2e09a
+  - model_name: DeepSeek V4.1 Flash for CC OpenCode Go 1
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: deepseek-v4.1-flash
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: eca2d65c-60fe-48a8-8953-bd537be6b333
+  - model_name: Grok 4.7 for CC CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: grok-4.7
+    model_info:
+      id: 5448c99a-18f7-4b04-b700-0e1f03a8fa61
+  - model_name: ChatGPT 6 Luna for CC CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-6-luna
+    model_info:
+      id: d4202b39-196e-4c9d-a104-98ef0941895c
+  - model_name: Gemini 3.8 Flash for CC CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini-3.8-flash-high
+    model_info:
+      id: f3aa532d-fdae-44c7-a5c0-77374fec22c7
+  - model_name: Claude Opus 5.5 for CC Max CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
+      custom_llm_provider: anthropic
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: claude-opus-5-5-high
+      guardrails: []
+    model_info:
+      id: 1b2f5244-75f1-421c-9893-0177720e6096
+  - model_name: DeepSeek V4.1 Flash for CC Max OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: deepseek-v4.1-flash
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 6f08c6e3-e95c-4565-86c7-902bd8b46a04
+  - model_name: DeepSeek V4.1 Flash for CC Max OpenCode Go 1
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: deepseek-v4.1-flash
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: f92525ac-fdf7-447c-aa14-6409939210d5
+  - model_name: ChatGPT 6 Luna for CC Max CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gpt-6-luna
+    model_info:
+      id: fa7d2b75-f1b9-4e68-a9e6-340915e05299
+  - model_name: Gemini 3.8 Flash for CC Max CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini-3.8-flash-high
+    model_info:
+      id: 3bf5c539-d3e3-4739-ba24-51dd80024b10
+  - model_name: Gemini 4 Argon for CC Max CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini-4-argon-high
+    model_info:
+      id: 7aa8b0f3-cea3-4ec1-ac2f-7bbc5f4f9391
+  - model_name: Iceman Contributor Free OpenCode Go 1
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: iceman-contributor-free
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 8482863d-eed1-4af3-bd48-1620f321f3b5
+  - model_name: Gemini 4 Argon for CC CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini-4-argon-high
+      guardrails: []
+    model_info:
+      id: c10778a6-1c76-40c1-8193-74e5880abea9
+  - model_name: ChatGPT 6.1 Terra for CC CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-6.1-terra
+      guardrails: []
+    model_info:
+      id: 670d4bea-2075-47dd-8875-6c31570a3d2d
+  - model_name: Grok 4.7 for CC Max CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: grok-4.7
+      guardrails: []
+    model_info:
+      id: 3fe2961a-e371-4087-a43a-769a814ae9cb
+  - model_name: DeepSeek V4.1 Flash for Hermes OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: deepseek-v4.1-flash
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 4558e6d2-ffbf-4fa0-a2ff-505b30dd2945
+  - model_name: DeepSeek V4.1 Flash for Hermes OpenCode Go 1
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: deepseek-v4.1-flash
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 10470ced-358e-4f53-934b-6dac708c5cb2
+  - model_name: Gemini 4 Argon for Hermes CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini-4-argon-high
+      guardrails: []
+    model_info:
+      id: 8a8f73c1-d5a9-4ac3-868d-69e3121f1b33
+  - model_name: ChatGPT 6.1 Sol for Hermes CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-6.1-sol
+      guardrails: []
+    model_info:
+      id: d2076712-4f4d-4607-b875-ff710d39e0ee
+  - model_name: MiMo V2.6 Flash CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: mimo-v2.6-flash-free
+      guardrails: []
+    model_info:
+      id: 9622f530-6de7-4a0f-b797-db49451b224c
+  - model_name: ChatGPT 6.1 Terra for CC Max CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-6.1-terra
+      guardrails: []
+    model_info:
+      id: 93a1d4b0-1f13-4e0d-9e75-f2e7ac770a49
+  - model_name: ChatGPT 6.1 Sol for CC Max CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-6.1-sol
+      guardrails: []
+    model_info:
+      id: 85e8fb33-482d-40b5-96b9-af0a6bd8fe9b
+  - model_name: ChatGPT 6 Astra for CC Max CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gpt-6-astra
+      guardrails: []
+    model_info:
+      id: 74b4b5b9-38ba-436c-bd7a-839ec3c3010b
+  - model_name: Claude Sonnet 5.5 for CC CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
+      custom_llm_provider: anthropic
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: claude-sonnet-5-5-high
+    model_info:
+      id: 8d546257-8bfc-48fb-83bf-8191940254e0
+  - model_name: Claude Sonnet 5.5 for CC Max CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
+      custom_llm_provider: anthropic
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: claude-sonnet-5-5-high
+      guardrails: []
+    model_info:
+      id: e59db039-1e15-4e52-bd86-c1a49fb9cdf7
+  - model_name: Claude Sonnet 5.5 for Hermes CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
+      custom_llm_provider: anthropic
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: claude-sonnet-5-5-high
+    model_info:
+      id: feccd47b-2e61-467b-b6a6-f6145329d87f
+  - model_name: GLM 5.3 Flash Mistral Vibe
+    litellm_params:
+      custom_llm_provider: mistral
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: mistral/zai-glm-5-3-flash
+    model_info:
+      id: fc2fe600-1217-4ac9-a2c6-89eb37324f1e
+  - model_name: DeepSeek V4.1 Flash Mistral Vibe
+    litellm_params:
+      custom_llm_provider: mistral
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: mistral/deepseek-v4-1-flash-1017
+    model_info:
+      id: 0dfb2ba9-d8c3-47fe-acb4-b86a1c7a801d
+  - model_name: beam 1.0 for Hermes OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: beam-free
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 31fa378c-9e25-4653-a9ed-0ed083fb8204
+  - model_name: beam 1.0 for CC OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: beam-free
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 3a8205a4-fd64-4ed0-8610-765f695d2f4f
+  - model_name: cc-max
+    litellm_params:
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: auto_router/complexity_router
+    model_info:
+      id: c18835d2-2200-4dc6-8664-fb0c6b7bd10c
+  - model_name: hermes-agent
+    litellm_params:
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: auto_router/complexity_router
+    model_info:
+      id: 8b9b552c-e491-4438-9aec-573bbea29cdc
+  - model_name: cc
+    litellm_params:
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: auto_router/complexity_router
+    model_info:
+      id: 579b7a9b-7318-4921-bcd9-b1dec0b41152
+  - model_name: beam 1.0 OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: beam-free
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 6950fe7c-8184-46f3-a11a-0971c28fb642
+
+litellm_host: "litellm.{{ lab_domain }}"
+
+litellm_values:
+  proxy_config:
+    litellm_settings:
+      drop_params: true
+  affinity:
+    nodeAffinity: "{{ heavy_workload_node_affinity }}"
+
+litellm_managed_keys:
+  - name: client_01
+    settings:
+      key_alias: Gravitee
+      models:
+        - all-proxy-models
+  - name: client_02
+    settings:
+      key_alias: HermesAgent
+      models:
+        - hermes-agent
+  - name: client_03
+    settings:
+      key_alias: OpenWebUI
+      models:
+        - grok-4.7
+        - gpt-6-luna
+        - gpt-6.1-sol
+        - mimo-v2.6-pro
+        - gemini-4-argon
+        - claude-opus-4.6
+        - claude-opus-5.5
+        - claude-haiku-5.5
+        - claude-sonnet-4.6
+        - gpt-oss-120b-medium
+        - gemini-4-argon-contributor
+        - deepseek-v4.1-flash
+        - gemini-3.8-flash
+        - gemini-3.5-flash-lite
+        - mimo-v2.6-flash
+        - muse-spark-1.3-contributor
+        - glm-4.5-flash
+        - glm-4.7-flash
+        - glm-4.6v-flash
+        - claude-sonnet-5.5
+        - gpt-6-astra
+        - gpt-oss-120b
+        - qwen-3.8-27b
+        - gemini-3.5-flash-lite-free
+        - gemini-3.8-flash-free
+        - gpt-image-2.5-sunburst-generate
+        - gpt-image-2.5-sunburst-edit
+        - gpt-image-2.5-flare-edit
+        - gpt-image-2.5-flare-generate
+        - kimi-k3.1-pro
+        - sarashina-3-mini
+        - sarashina-3-nano
+        - beam-1.0
+        - glm-5.3-flash
+        - nemotron-3-ultra
+        - nemotron-3.5-super
+        - nemotron-3.5-lightning
+        - nemotron-3.5-bolt
+        - minmax-m3.1-flash
+        - step-5-preview
+        - laguna-xs-2.1
+        - muse-glimmer-30b
+        - gemma-4-31b
+        - diffusion-gemma-26b
+        - gpt-oss-20b
+        - nemotron-3-nano-omni
+        - llama-3.2-11b
+        - llama-3.2-90b
+        - grok-4.6
+        - grok-4.5
+        - swe-1.6-slow
+        - gpt-5.6-sol
+        - gpt-5.6-terra
+        - gpt-5.6-luna
+        - gpt-6-sol
+        - cc
+        - cc-max
+        - gpt-6.1-terra
+        - iceman-contributor-free

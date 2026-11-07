@@ -20,6 +20,9 @@
 │   ├── hosts/               VLANごとに1ファイル(10_pve / 11_private / 12_k3s / 13_hermes / 14_core)
 │   ├── group_vars/
 │   │   ├── all/             全ホスト共通(network.yml=VLAN台帳、pve.yml=Proxmox API の共通値)
+│   │   ├── k3s.yml          k3s の共通値
+│   │   ├── litellm.yml      LiteLLM のサービス・モデル・キー利用範囲
+│   │   ├── authentik.yml    Authentik のサービス・アプリ設定
 │   │   └── <group>.yml      グループ(役割)ごとの差分
 │   └── host_vars/           個体差が出たホストだけ
 ├── playbooks/               薄いオーケストレーション(ロジックはロールに置く)

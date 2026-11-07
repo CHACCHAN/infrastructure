@@ -1,0 +1,72 @@
+---
+- name: 管理 API の TLS 接続を確認する
+  ansible.builtin.assert:
+    that: litellm_management_url is match('^https://[^/]+$')
+    quiet: true
+
+- name: モデルの設定を取得する
+  ansible.builtin.uri:
+    url: "{{ litellm_management_url }}/model/info"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ litellm_master_key }}"
+    return_content: true
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  register: __litellm_models_response
+  check_mode: false
+  changed_when: false
+  no_log: true
+
+- name: 仮想キーの最初のページを取得する
+  ansible.builtin.uri:
+    url: "{{ litellm_management_url }}/key/list?page=1&size=100&return_full_object=true"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ litellm_master_key }}"
+    return_content: true
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  register: __litellm_keys_response
+  check_mode: false
+  changed_when: false
+  no_log: true
+
+- name: 仮想キーの残りのページを取得する
+  ansible.builtin.uri:
+    url: "{{ litellm_management_url }}/key/list?page={{ item }}&size=100&return_full_object=true"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ litellm_master_key }}"
+    return_content: true
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  loop: "{{ range(2, (__litellm_keys_response.json.total_pages | int) + 1) | list }}"
+  register: __litellm_key_pages
+  check_mode: false
+  changed_when: false
+  no_log: true
+
+- name: 取得した設定をまとめる
+  ansible.builtin.set_fact:
+    __litellm_current_models: "{{ __litellm_models_response.json.data }}"
+    __litellm_current_keys: >-
+      {{ __litellm_keys_response.json['keys'] +
+         (__litellm_key_pages.results | default([]) | map(attribute='json.keys') | flatten) }}
+  no_log: true
+
+- name: 全仮想キーの取得を確認する
+  ansible.builtin.assert:
+    that:
+      - __litellm_current_keys | length == __litellm_keys_response.json.total_count | int
+      - __litellm_current_keys | map(attribute='token') | unique | length == __litellm_current_keys | length
+      - __litellm_current_models | map(attribute='model_info.id') | unique | length == __litellm_current_models | length
+    quiet: true
+    fail_msg: 取得中に設定が変わった可能性があります。もう一度実行してください。
+  no_log: true

@@ -1,0 +1,74 @@
+---
+- name: 新しいキーの秘密を生成する
+  ansible.builtin.set_fact:
+    __litellm_key_candidate: "sk-{{ lookup('ansible.builtin.password', '/dev/null', length=48, chars=['ascii_letters', 'digits']) }}"
+  when: __litellm_key_entry.pending_token is not defined
+  no_log: true
+
+- name: 再試行では保存済みの秘密を使う
+  ansible.builtin.set_fact:
+    __litellm_key_candidate: "{{ __litellm_key_entry.pending_token }}"
+  when: __litellm_key_entry.pending_token is defined
+  no_log: true
+
+- name: 処理中の秘密を台帳へ追加する
+  ansible.builtin.set_fact:
+    __litellm_key_pending_hash: "{{ __litellm_key_candidate | hash('sha256') }}"
+    __litellm_key_registry: >-
+      {{ __litellm_key_registry | combine({litellm_key_name: __litellm_key_entry | combine({
+         'pending_token': __litellm_key_candidate, 'pending_hash': __litellm_key_candidate | hash('sha256'),
+         'operation': litellm_key_action})}) }}
+  no_log: true
+
+- name: API を変更する前に秘密を暗号化して保存する
+  ansible.builtin.include_tasks: write_vault.yml
+  vars:
+    __litellm_vault_file: "{{ litellm_key_file }}"
+    __litellm_vault_document:
+      vault_litellm_key_material: "{{ __litellm_key_registry }}"
+
+- name: 新しいキーを発行する
+  ansible.builtin.uri:
+    url: "{{ litellm_management_url }}/key/generate"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ litellm_master_key }}"
+    body_format: json
+    body: >-
+      {{ __litellm_key_declaration.settings | combine(__litellm_key_entry.settings | default({})) |
+         combine({'key': __litellm_key_candidate, 'key_type': 'llm_api',
+                  'key_alias': __litellm_key_declaration.settings.key_alias ~ '-' ~ __litellm_key_pending_hash[:12]}) }}
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  when: not __litellm_key_pending_present
+  changed_when: true
+  no_log: true
+
+- name: 発行後のキーを取得する
+  ansible.builtin.include_tasks: read_api.yml
+
+- name: 発行結果を確認する
+  ansible.builtin.assert:
+    that:
+      - __litellm_key_pending_hash in __litellm_current_keys | map(attribute='token') | list
+    quiet: true
+  no_log: true
+
+- name: 完了したキーの識別子と秘密をまとめる
+  ansible.builtin.set_fact:
+    __litellm_key_registry: >-
+      {{ __litellm_key_registry | combine({litellm_key_name: {
+         'hash': __litellm_key_pending_hash, 'token': __litellm_key_candidate,
+         'settings': __litellm_key_entry.settings | default({}),
+         'previous_hash': __litellm_key_active_hash, 'previous_retired': litellm_key_action != 'rotate',
+         'alias_suffix': __litellm_key_pending_hash[:12]}}) }}
+  no_log: true
+
+- name: 完了したキーを暗号化して保存する
+  ansible.builtin.include_tasks: write_vault.yml
+  vars:
+    __litellm_vault_file: "{{ litellm_key_file }}"
+    __litellm_vault_document:
+      vault_litellm_key_material: "{{ __litellm_key_registry }}"

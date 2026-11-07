@@ -1,3 +1,4 @@
+# Ansible(roles/k3s_authentik)が生成。手動編集は次回実行で上書きされる。
 # 認証プロキシ(forward auth)で守るアプリケーション。OIDC クライアントの Blueprint と分け、片方の失敗がもう片方を止めないようにする。
 version: 1
 metadata:
@@ -16,7 +17,7 @@ entries:
   - model: authentik_providers_proxy.proxyprovider
     id: {{ app.slug }}-provider
     identifiers:
-      name: {{ app.name }}
+      name: {{ app.name | to_json }}
     attrs:
       mode: forward_single
       external_host: https://{{ app.host }}
@@ -27,8 +28,14 @@ entries:
     identifiers:
       slug: {{ app.slug }}
     attrs:
-      name: {{ app.name }}
+      name: {{ __authentik_application_settings.get(app.slug, {}).get('name', app.name) | to_json }}
       provider: !KeyOf {{ app.slug }}-provider
+{% for field, value in __authentik_application_settings.get(app.slug, {}).items() if field != 'name' %}
+      {{ field }}: {{ value | to_json }}
+{% endfor %}
+{% if 'meta_launch_url' not in __authentik_application_settings.get(app.slug, {}) %}
+      meta_launch_url: https://{{ app.host }}
+{% endif %}
   - model: authentik_policies.policybinding
     identifiers:
       order: 0

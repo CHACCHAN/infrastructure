@@ -20,3 +20,13 @@ k3s:
       id: 3
       node: pve03
       pve_vm_agent: 1
+
+# LiteLLM のモデル宣言を k3s ノードで読み込む
+litellm:
+  children:
+    k3s: {}
+
+# Authentik のサービス設定を k3s ノードで読み込む
+authentik:
+  children:
+    k3s: {}

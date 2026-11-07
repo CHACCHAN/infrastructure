@@ -1,0 +1,27 @@
+---
+- name: アプリケーションの宣言を確認する
+  ansible.builtin.assert:
+    that:
+      - authentik_managed_applications | map(attribute='slug') | unique | length == authentik_managed_applications | length
+    quiet: true
+  no_log: true
+
+- name: アプリケーションの設定項目を確認する
+  ansible.builtin.assert:
+    that:
+      - item.keys() | difference(['slug', 'settings']) | length == 0
+      - item.slug is match('^[-a-zA-Z0-9_]{1,50}$')
+      - item.settings is mapping
+      - item.settings.keys() | difference(authentik_managed_application_fields) | length == 0
+      - item.settings.values() | select('none') | list | length == 0
+      - item.settings | to_json is not search('[{][%#]|[{][{]')
+      - >-
+        item.settings | dict2items | selectattr('key', 'in', ['open_in_new_tab', 'meta_hide']) |
+        rejectattr('value', 'boolean') | list | length == 0
+      - >-
+        item.settings | dict2items | rejectattr('key', 'in', ['open_in_new_tab', 'meta_hide']) |
+        rejectattr('value', 'string') | list | length == 0
+      - item.settings.name is not defined or item.settings.name | length > 0
+    quiet: true
+  loop: "{{ authentik_managed_applications }}"
+  no_log: true

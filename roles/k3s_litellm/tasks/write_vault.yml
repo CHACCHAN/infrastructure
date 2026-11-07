@@ -1,0 +1,6 @@
+---
+- name: 暗号化した値を保存する
+  ansible.builtin.include_tasks: "{{ role_path }}/../../playbooks/utils/tasks/vault_write.yml"
+  vars:
+    __vault_write_file: "{{ __litellm_vault_file }}"
+    __vault_write_document: "{{ __litellm_vault_document }}"

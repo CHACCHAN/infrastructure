@@ -1,0 +1,58 @@
+---
+- name: 管理 API の TLS 接続を確認する
+  ansible.builtin.assert:
+    that:
+      - authentik_management_url is match('^https://[^/]+$')
+      - authentik_host is match('^[a-zA-Z0-9.-]+$')
+    quiet: true
+
+- name: アプリの最初のページを取得する
+  ansible.builtin.uri:
+    url: "{{ authentik_management_url }}/api/v3/core/applications/?page_size=100&page=1&superuser_full_list=true"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_api_token }}"
+      Host: "{{ authentik_host }}"
+    return_content: true
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  register: __authentik_apps_first
+  check_mode: false
+  changed_when: false
+  no_log: true
+
+- name: アプリの残りのページを取得する
+  ansible.builtin.uri:
+    url: "{{ authentik_management_url }}/api/v3/core/applications/?page_size=100&page={{ item }}&superuser_full_list=true"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_api_token }}"
+      Host: "{{ authentik_host }}"
+    return_content: true
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  loop: "{{ range(2, (__authentik_apps_first.json.pagination.total_pages | int) + 1) | list }}"
+  register: __authentik_apps_pages
+  check_mode: false
+  changed_when: false
+  no_log: true
+
+- name: アプリの取得結果をまとめる
+  ansible.builtin.set_fact:
+    __authentik_current_apps: >-
+      {{ __authentik_apps_first.json.results +
+         (__authentik_apps_pages.results | default([]) | map(attribute='json.results') | flatten) }}
+  no_log: true
+
+- name: 全アプリの取得を確認する
+  ansible.builtin.assert:
+    that:
+      - __authentik_current_apps | length == __authentik_apps_first.json.pagination.count | int
+      - __authentik_current_apps | map(attribute='slug') | unique | length == __authentik_current_apps | length
+    quiet: true
+    fail_msg: アプリ一覧の取得中に設定が変わった可能性があります。もう一度実行してください。
+  no_log: true

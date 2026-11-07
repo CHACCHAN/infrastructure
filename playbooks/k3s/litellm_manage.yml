@@ -1,0 +1,28 @@
+# LiteLLM 管理 API で既存のモデルと仮想キーの設定を更新する。
+---
+- name: LiteLLM の管理対象の設定を適用する
+  hosts: "k3s[0]"
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_pipelining: true
+    ansible_remote_tmp: /dev/shm/ansible-litellm
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    litellm_master_key: "{{ vault_litellm_master_key }}"
+    litellm_key_material: "{{ vault_litellm_key_material }}"
+  vars_files:
+    - "{{ playbook_dir }}/../../vault/litellm.yml"
+    - "{{ playbook_dir }}/../../vault/litellm_keys.yml"
+  tasks:
+    - name: inventory のモデル宣言を確認する
+      ansible.builtin.assert:
+        that:
+          - litellm_managed_models is defined
+          - litellm_managed_keys is defined
+        fail_msg: inventory に LiteLLM のモデル宣言がありません。group_vars の配置を確認してください。
+        quiet: true
+
+    - name: 管理 API の設定を適用する
+      ansible.builtin.include_role:
+        name: k3s_litellm
+        tasks_from: manage

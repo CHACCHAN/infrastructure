@@ -1,0 +1,145 @@
+---
+- name: 管理対象の形式と識別子を確認する
+  ansible.builtin.assert:
+    that:
+      - litellm_managed_models | map(attribute='model_info.id') | list | unique | length == litellm_managed_models | length
+      - litellm_managed_keys | map(attribute='name') | list | unique | length == litellm_managed_keys | length
+    quiet: true
+  no_log: true
+
+- name: モデルの更新対象を確認する
+  ansible.builtin.assert:
+    that:
+      - item.keys() | difference(['model_name', 'litellm_params', 'model_info']) | length == 0
+      - item.model_info.keys() | list == ['id']
+      - item.model_name is string
+      - item.litellm_params is mapping
+      - item.litellm_params.keys() | difference(litellm_managed_model_fields) | length == 0
+      - item.litellm_params | to_json is not search('[*]{3,}')
+      - item.litellm_params.values() | select('none') | list | length == 0
+      - item.model_info.id is string
+    quiet: true
+  loop: "{{ litellm_managed_models }}"
+  no_log: true
+
+- name: 仮想キーの更新対象を確認する
+  ansible.builtin.assert:
+    that:
+      - item.keys() | difference(['name', 'settings']) | length == 0
+      - item.name is match('^[a-z][a-z0-9_]{0,62}$')
+      - item.settings is mapping
+      - item.settings.keys() | difference(litellm_managed_key_fields) | length == 0
+      - item.settings.values() | select('none') | list | length == 0
+      - item.name in litellm_key_material
+      - litellm_key_material[item.name].hash is match('^[a-f0-9]{64}$')
+      - litellm_key_material[item.name].pending_token is not defined
+      - >-
+        litellm_key_material[item.name].alias_suffix is not defined or
+        litellm_key_material[item.name].alias_suffix == litellm_key_material[item.name].hash[:12]
+      - litellm_key_material[item.name].settings | default({}) is mapping
+      - litellm_key_material[item.name].settings | default({}) | list | difference(litellm_managed_key_fields) | length == 0
+      - litellm_key_material[item.name].settings | default({}) | dict2items | selectattr('value', 'none') | list | length == 0
+      - item.settings.keys() | intersect(litellm_key_material[item.name].settings | default({}) | list) | length == 0
+    quiet: true
+  loop: "{{ litellm_managed_keys }}"
+  no_log: true
+
+- name: キーの宣言と秘密の識別子を組み合わせる
+  ansible.builtin.set_fact:
+    __litellm_resolved_keys: >-
+      {%- set ns = namespace(keys=[]) -%}
+      {%- for declaration in litellm_managed_keys -%}
+      {%- set material = litellm_key_material[declaration.name] -%}
+      {%- set settings = declaration.settings | combine(material.settings | default({})) -%}
+      {%- if material.alias_suffix is defined and settings.key_alias is defined -%}
+      {%- set settings = settings | combine({'key_alias': settings.key_alias ~ '-' ~ material.alias_suffix}) -%}
+      {%- endif -%}
+      {%- set ns.keys = ns.keys + [{'name': declaration.name, 'key': material.hash, 'settings': settings}] -%}
+      {%- endfor -%}
+      {{ ns.keys }}
+  no_log: true
+
+- name: 管理 API の現在の設定を取得する
+  ansible.builtin.import_tasks: read_api.yml
+
+- name: 更新対象の存在を確認する
+  ansible.builtin.assert:
+    that:
+      - >-
+        litellm_managed_models | map(attribute='model_info.id') |
+        difference(__litellm_current_models | selectattr('model_info.db_model') | map(attribute='model_info.id')) | length == 0
+      - __litellm_resolved_keys | map(attribute='key') | difference(__litellm_current_keys | map(attribute='token')) | length == 0
+    quiet: true
+    fail_msg: 管理対象が見つかりません。再発行せず、取得結果と宣言を確認してください。
+  no_log: true
+
+- name: 更新する差分を計算する
+  ansible.builtin.import_tasks: plan.yml
+
+- name: 反映後の確認が必要か記録する
+  ansible.builtin.set_fact:
+    __litellm_verify_needed: "{{ __litellm_model_changes | length > 0 or __litellm_key_changes | length > 0 }}"
+
+- name: 更新する設定の件数を表示する
+  ansible.builtin.debug:
+    msg: "モデル {{ __litellm_model_changes | length }} 件、仮想キー {{ __litellm_key_changes | length }} 件"
+  changed_when: __litellm_model_changes | length > 0 or __litellm_key_changes | length > 0
+
+- name: 値を表示せず変更対象を確認する
+  ansible.builtin.debug:
+    msg:
+      models: "{{ __litellm_model_change_summary }}"
+      keys: "{{ __litellm_key_change_summary }}"
+  when: (ansible_check_mode or ansible_diff_mode) and __litellm_verify_needed
+
+- name: 既存モデルの設定を更新する
+  ansible.builtin.uri:
+    url: "{{ litellm_management_url }}/model/{{ item.model_info.id | urlencode }}/update"
+    method: PATCH
+    headers:
+      Authorization: "Bearer {{ litellm_master_key }}"
+    body_format: json
+    body: "{{ item | dict2items | rejectattr('key', 'equalto', 'model_info') | items2dict }}"
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  loop: "{{ __litellm_model_changes }}"
+  when: not ansible_check_mode
+  changed_when: true
+  no_log: true
+
+- name: 既存仮想キーの設定を更新する
+  ansible.builtin.uri:
+    url: "{{ litellm_management_url }}/key/update"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ litellm_master_key }}"
+    body_format: json
+    body: "{{ item }}"
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  loop: "{{ __litellm_key_changes }}"
+  when: not ansible_check_mode
+  changed_when: true
+  no_log: true
+
+- name: 反映された設定を確認する
+  when: not ansible_check_mode and __litellm_verify_needed
+  block:
+    - name: 反映後の設定を取得する
+      ansible.builtin.include_tasks: read_api.yml
+
+    - name: 反映後の差分を計算する
+      ansible.builtin.include_tasks: plan.yml
+
+    - name: 管理対象の設定が反映されていることを確認する
+      ansible.builtin.assert:
+        that:
+          - __litellm_model_changes | length == 0
+          - __litellm_key_changes | length == 0
+        fail_msg: 管理 API の反映を確認できません。反映の遅延または非対応のフィールドを確認してください。
+        quiet: true
+      no_log: true
