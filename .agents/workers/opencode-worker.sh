@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs sandboxed OpenCode workers on throwaway copies of this repository (see SKILL.md).
+# Runs sandboxed OpenCode workers on throwaway copies of this repository (see ../README.md).
 set -euo pipefail
 
 : "${DELEGATE_DIR:?set DELEGATE_DIR to a scratch directory}"

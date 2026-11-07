@@ -35,4 +35,4 @@ k3s のクラスタ内アプリを、Helm で宣言どおりにする。kubeconf
 
 ## アプリを足す
 
-`new-role` スキルに従い、`k3s_<app>` ロールを作る。ロールは [k3s](../../roles/k3s/README.md) を `include_role` で呼ぶだけにし、チャートとバージョンを `defaults/main.yml` に、values の基本値を `vars/main.yml` に書く。playbook は `metallb.yml` と同じ形にする。
+[ansible-new-role](../../.agents/skills/ansible-new-role/SKILL.md)とリポジトリの規約に従い、`k3s_<app>` ロールを作る。ロールは [k3s](../../roles/k3s/README.md) を `include_role` で呼ぶだけにし、チャートとバージョンを `defaults/main.yml` に、values の基本値を `vars/main.yml` に書く。playbook は `metallb.yml` と同じ形にする。

@@ -34,11 +34,11 @@ The environment is being redesigned for new hardware. **The tree is currently a 
 - Before working in a directory, read its `README.md` if it has one (usage, prerequisites, run order). READMEs describe usage only; design and undecided items live in `docs/design/`, and variable lists live in `defaults/main.yml` and `meta/argument_specs.yml`.
 - When the user describes a problem or asks a question, report findings first and change files only when asked.
 - When a design decision changes, update the matching file under `docs/` and the affected directory's `README.md` in the same change.
-- Skills for recurring work: `new-host`, `new-role`, `validate`, `delegate` (see [.agents/README.md](.agents/README.md)).
-- Hand self-contained work (implementation, research, wide repository exploration, drafting, reviews, second opinions) to sandboxed OpenCode workers with the `delegate` skill; keep the main context for decisions. The owner does not ration their use: split the work and run them in parallel. The orchestrating agent keeps the decisions, the review, the validation and anything that touches real infrastructure, and reads every worker diff before applying or validating it. OpenCode workers themselves do not delegate.
+- Community Ansible skills are installed under `.agents/skills/` (see [.agents/README.md](.agents/README.md)). Use `ansible-new-role` for scaffolding and `ansible-good-practices` for self-review; repository instructions and the owner's decisions take precedence over generic skill recommendations.
+- Hand self-contained work (implementation, research, wide repository exploration, drafting, reviews, second opinions) to sandboxed OpenCode workers with the [OpenCode worker utility](.agents/workers/opencode-worker.sh); keep the main context for decisions. The owner does not ration their use: split the work and run them in parallel. The orchestrating agent keeps the decisions, the review, the validation and anything that touches real infrastructure, and reads every worker diff before applying or validating it. OpenCode workers themselves do not delegate.
 - Do not hand work to other models of your own agent (for example Claude Code subagents); the owner wants the work on the OpenCode workers and the orchestrating agent on decisions. The one exception is the independent review below.
-- Validate every change yourself with the `validate` skill before reporting it as done. Validation never goes to a worker: Ansible evaluates Jinja lookups while parsing, so running its tools on unreviewed files runs their code with your SSH keys and vault password.
-- For non-trivial changes (design documents, new roles, anything spanning several files), get an independent read-only review from a Claude Code subagent on Opus 5.5 at high effort (`model: opus`, `effort: high`) with the delegate skill's [review brief](.agents/skills/delegate/review-brief.md). Never use the OpenCode model `cc-max` (the owner forbids it). The subagent is not sandboxed: it runs with your SSH keys and vault password, so the brief forbids editing files and running `ansible*`, `kubectl`, `helm`, `ssh` and `curl`. Weigh its findings; the decision stays with the owner.
+- Validate every change yourself with the suite below before reporting it as done. Validation never goes to a worker: Ansible evaluates Jinja lookups while parsing, so running its tools on unreviewed files runs their code with your SSH keys and vault password.
+- For non-trivial changes (design documents, new roles, anything spanning several files), get an independent read-only review from a Claude Code subagent on Opus 5.5 at high effort (`model: opus`, `effort: high`) with the [review brief](.agents/review-brief.md). Never use the OpenCode model `cc-max` (the owner forbids it). The subagent is not sandboxed: it runs with your SSH keys and vault password, so the brief forbids editing files and running `ansible*`, `kubectl`, `helm`, `ssh` and `curl`. Weigh its findings; the decision stays with the owner.
 
 ## Safety: this environment reaches production
 
@@ -53,7 +53,7 @@ The dev container mounts `~/.ssh` and the vault password, so it can reach the re
 
 ## Validation before reporting done
 
-Use the `validate` skill. In short:
+Run the validation suite yourself after reviewing every change. In short:
 
 ```sh
 ansible-galaxy collection install -r collections/requirements.yml   # once per container

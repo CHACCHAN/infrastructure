@@ -1,0 +1,5 @@
+# Ansible 公式ドキュメントを検索する MCP。コミュニティスキルの依存版に固定する。
+[mcp_servers.ansible-know]
+command = "pipx"
+args = ["run", "--spec", "ansible-know-mcp==0.11.0", "ansible-know-mcp"]
+startup_timeout_sec = 120
