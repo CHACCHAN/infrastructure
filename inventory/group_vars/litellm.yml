@@ -1271,38 +1271,6 @@ litellm_managed_models:
       model: mistral/deepseek-v4-1-flash-1017
     model_info:
       id: 0dfb2ba9-d8c3-47fe-acb4-b86a1c7a801d
-  - model_name: beam 1.0 for Hermes OpenCode Go 2
-    litellm_params:
-      api_base: https://opencode.ai/zen/go/v1
-      custom_llm_provider: custom_openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      tags: []
-      model: beam-free
-      guardrails: []
-      allowed_openai_params:
-        - reasoning_effort
-    model_info:
-      id: 31fa378c-9e25-4653-a9ed-0ed083fb8204
-  - model_name: beam 1.0 for CC OpenCode Go 2
-    litellm_params:
-      api_base: https://opencode.ai/zen/go/v1
-      custom_llm_provider: custom_openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      tags: []
-      model: beam-free
-      guardrails: []
-      allowed_openai_params:
-        - reasoning_effort
-    model_info:
-      id: 3a8205a4-fd64-4ed0-8610-765f695d2f4f
   - model_name: cc-max
     litellm_params:
       allow_client_keepalive_override: false
@@ -1349,6 +1317,131 @@ litellm_managed_models:
         - reasoning_effort
     model_info:
       id: 6950fe7c-8184-46f3-a11a-0971c28fb642
+  - model_name: Gemini 3.5 Flash Lite for Hermes CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini-3.5-flash-lite
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 54f68188-ac55-4122-a360-b0f5c5e0d189
+  - model_name: Gemini 3.5 Flash Lite for CC CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini-3.5-flash-lite
+      guardrails: []
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 62d74be0-191c-4533-919a-8f2713cbfc39
+  - model_name: Nemotron 3.5 Super for Hermes NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: nvidia/nemotron-3.5-super-vl-120b-a12b
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 6ff186fd-061f-492f-a7f8-59abf9ad35f6
+  - model_name: Nemotron 3.5 Super for CC NVIDIA API
+    litellm_params:
+      api_base: https://integrate.api.nvidia.com/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: nvidia/nemotron-3.5-super-vl-120b-a12b
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: 4d839fcf-9d52-4021-901f-790505d057de
+  - model_name: GLM 5.3 Flash for Hermes Mistral Vibe
+    litellm_params:
+      model: mistral/zai-glm-5-3-flash
+      custom_llm_provider: mistral
+      allowed_openai_params:
+        - reasoning_effort
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+    model_info:
+      id: 668cc1bf-17e5-4a7a-8ff6-c03804aeb2c3
+  - model_name: GLM 5.3 Flash for CC Mistral Vibe
+    litellm_params:
+      model: mistral/zai-glm-5-3-flash
+      custom_llm_provider: mistral
+      allowed_openai_params:
+        - reasoning_effort
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+    model_info:
+      id: c61e863c-fc49-4b74-978c-189f5cff6a96
+  - model_name: GLM 5.3 Flash for CC Max Mistral Vibe
+    litellm_params:
+      model: mistral/zai-glm-5-3-flash
+      custom_llm_provider: mistral
+      allowed_openai_params:
+        - reasoning_effort
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+    model_info:
+      id: 8739db9b-142e-4549-921b-2d7e7c5a232d
+  - model_name: GLM 5.3 Mistral Vibe
+    litellm_params:
+      model: mistral/zai-glm-5-3
+      custom_llm_provider: mistral
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+    model_info:
+      id: 9d1d36cc-7638-409e-a483-5dd3f3f30f2a
+  - model_name: Iceman Contributor Free OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: iceman-contributor-free
+      guardrails: []
+      allowed_openai_params: []
+    model_info:
+      id: ff1c5cb5-6eaf-4805-98cc-93c97813d91e
 
 litellm_host: "litellm.{{ lab_domain }}"
 
@@ -1408,6 +1501,7 @@ litellm_managed_keys:
         - sarashina-3-nano
         - beam-1.0
         - glm-5.3-flash
+        - glm-5.3
         - nemotron-3-ultra
         - nemotron-3.5-super
         - nemotron-3.5-lightning
