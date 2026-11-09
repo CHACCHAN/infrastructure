@@ -65,9 +65,11 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 
 ### Nextcloud Hub の管理(hermes07)
 
-- Nextcloud の専用のユーザー `hermes-agent`(表示名 `HermesAgent`)で、MCP for Cloud(Nextcloud のアプリ `mcp`)から Nextcloud を操作する。Authentik の SSO を使わない、Nextcloud のローカルのユーザーにする([k3s.md](k3s.md) の SSO の例外)。緊急用の `admin` は渡さず、`admin` グループにも入れない(Nextcloud の管理者は、アプリを入れて k3s の中の Nextcloud の Pod でコードを動かせるため)。
-- 認証は、`hermes-agent` のアプリパスワードでの Basic 認証にする(Nextcloud はクライアントにアプリパスワードだけを許す。[k3s.md](k3s.md))。`hermes-agent:<アプリパスワード>` を base64 にした値は、hermes07 の組織が自分で使う認証情報として、Hermes の側の MCP の設定に入れる(「コンテナ」の、VM に置いてよい認証情報)。控えは `vault/nextcloud_hermes.yml` に、base64 にした値とアプリパスワードそのものの両方を置き(作り直すときは両方を更新する)、どの playbook も読まない。ログインのパスワードも同じファイルに置き、Hermes には渡さない。漏れたときは、アプリパスワードを取り消して作り直す。
-- MCP for Cloud の権限は、すべての操作を許す(削除・共有・公開リンク・Talk の会話の作成を含む)。サーバーのログは管理者用のため付けない。Nextcloud の中での権限は普通のユーザーと同じで、管理させるもの(Deck のボード、カレンダー、フォルダなど)は人が `hermes-agent` に共有する。
+- Authentik のユーザー `HermesAgent` で、MCP for Cloud(Nextcloud のアプリ `mcp`)から Nextcloud を操作する。ほかの人と同じく Authentik の SSO(`user_oidc`)で作る Nextcloud のユーザーにし、Nextcloud のローカルのユーザーは置かない(ほかのアプリへ OIDC で広げるときも、アカウントを Authentik の1か所で管理するため)。Nextcloud のユーザー ID は `user_oidc` が作るハッシュになる。ユーザーとグループの所属は Authentik の画面で設定する(状態)。
+- `HermesAgent` は Authentik のグループ `services` にだけ入れ、`admins` には入れない(`admins` は Authentik の superuser で、認証プロキシで守る画面と各アプリの管理者の権限を持つため)。Authentik では、`services` を Nextcloud のアプリケーションにだけ結びつける(状態)。緊急用の `admin` は渡さず、Nextcloud の `admin` グループにも入れない(Nextcloud の管理者は、アプリを入れて k3s の中の Nextcloud の Pod でコードを動かせるため)。
+- Authentik のログインのパスワードは機械的に作った値で、`vault/nextcloud_hermes.yml` に置き、Hermes には渡さない。最初のログインで登録する MFA(TOTP)はオーナーが持つ。Nextcloud のユーザーを作るとき(最初のログイン)と、アプリパスワードを作り直すとき以外は、Authentik のログインを使わない。
+- 認証は、`HermesAgent` のアプリパスワードでの Basic 認証にする(Nextcloud はクライアントにアプリパスワードだけを許す。[k3s.md](k3s.md))。SSO のユーザーはログインのパスワードを Nextcloud に持たないため、Authentik のパスワードを変えてもアプリパスワードは無効にならない。`<Nextcloud のユーザー ID>:<アプリパスワード>` を base64 にした値は、hermes07 の組織が自分で使う認証情報として、Hermes の側の MCP の設定に入れる(「コンテナ」の、VM に置いてよい認証情報)。控えは `vault/nextcloud_hermes.yml` に、base64 にした値とアプリパスワードそのものの両方を置き(作り直すときは両方を更新する)、どの playbook も読まない。漏れたときは、アプリパスワードを取り消して作り直す。
+- MCP for Cloud の権限は、すべての操作を許す(削除・共有・公開リンク・Talk の会話の作成を含む)。サーバーのログは管理者用のため付けない。Nextcloud の中での権限は普通のユーザーと同じで、管理させるもの(Deck のボード、カレンダー、フォルダなど)は人が `HermesAgent` に共有する。コレクティブは、`services` のグループを普通のメンバーとして足す。
 - ユーザー・アプリパスワード・MCP for Cloud の導入と権限は、Nextcloud の状態で、Ansible では管理しない。
 
 ### OS
