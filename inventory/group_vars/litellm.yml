@@ -538,6 +538,9 @@ litellm_managed_models:
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
       model: sarashina3-mini
+      additional_drop_params:
+        - reasoning_effort
+        - max_tokens
     model_info:
       id: a2874e08-dd8e-45be-9fd3-2f09e60c1ac9
   - model_name: Sarashina3 Nano Sarashina API
@@ -550,11 +553,15 @@ litellm_managed_models:
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
       model: sarashina3-nano
+      additional_drop_params:
+        - reasoning_effort
+        - max_tokens
     model_info:
       id: 4928cc66-ae62-4fe9-914e-e9a514ee1970
   - model_name: Nemotron 3 Ultra NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -569,6 +576,7 @@ litellm_managed_models:
   - model_name: Nemotron 3.5 Super NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -583,6 +591,7 @@ litellm_managed_models:
   - model_name: Nemotron 3.5 Lightning NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -597,6 +606,7 @@ litellm_managed_models:
   - model_name: Nemotron 3.5 Bolt NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -611,6 +621,7 @@ litellm_managed_models:
   - model_name: DeepSeek V4.1 Flash NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -625,6 +636,7 @@ litellm_managed_models:
   - model_name: GLM 5.3 Flash NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -639,6 +651,7 @@ litellm_managed_models:
   - model_name: MinMax M3.1 Flash NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -655,6 +668,7 @@ litellm_managed_models:
   - model_name: Step 5 Preview NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -669,6 +683,7 @@ litellm_managed_models:
   - model_name: Laguna XS 2.1 NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -683,6 +698,7 @@ litellm_managed_models:
   - model_name: gpt-oss-20b NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -697,6 +713,7 @@ litellm_managed_models:
   - model_name: Gemma 4 31b NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -713,6 +730,7 @@ litellm_managed_models:
   - model_name: Diffusion Gemma 26b NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -729,6 +747,7 @@ litellm_managed_models:
   - model_name: Muse Glimmer 30b NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -745,6 +764,7 @@ litellm_managed_models:
   - model_name: Nemotron 3 Nano Omni NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -759,6 +779,7 @@ litellm_managed_models:
   - model_name: Llama 3.2 11b NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -773,6 +794,7 @@ litellm_managed_models:
   - model_name: Llama 3.2 90b NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -894,8 +916,9 @@ litellm_managed_models:
       guardrails: []
     model_info:
       id: df89b0a5-69ac-4a29-9ad9-86169e7bd650
-  - model_name: ChatGPT 6.1 Terra for Hermes CLIProxy
+  - model_name: ChatGPT 6.1 Terra High CLIProxy
     litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
       custom_llm_provider: openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -905,9 +928,10 @@ litellm_managed_models:
       tags: []
       model: gpt-6.1-terra
       guardrails: []
+      reasoning_effort: high
     model_info:
       id: d63febfe-86cb-46c4-8c85-6e385a8733ec
-  - model_name: Gemini 3.8 Flash for Hermes CLIProxy
+  - model_name: Gemini 3.8 Flash High CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
       custom_llm_provider: openai
@@ -917,9 +941,10 @@ litellm_managed_models:
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
       model: gemini-3.8-flash-high
+      reasoning_effort: high
     model_info:
       id: 77933f1c-6756-4e6e-baeb-4317c8793c8a
-  - model_name: Grok 4.7 for Hermes CLIProxy
+  - model_name: Grok 4.7 XHigh CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
       custom_llm_provider: openai
@@ -929,9 +954,10 @@ litellm_managed_models:
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
       model: grok-4.7
+      reasoning_effort: xhigh
     model_info:
       id: 4c9cf962-874a-4a7d-902c-c21b0651fdb1
-  - model_name: ChatGPT 6 Luna for Hermes CLIProxy
+  - model_name: ChatGPT 6 Luna Max CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
       custom_llm_provider: openai
@@ -941,9 +967,10 @@ litellm_managed_models:
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
       model: gpt-6-luna
+      reasoning_effort: max
     model_info:
       id: acf15e0e-e95d-415d-a8e8-0c2917fdd656
-  - model_name: ChatGPT 6.1 Sol for CC CLIProxy
+  - model_name: ChatGPT 6.1 Sol High CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
       custom_llm_provider: openai
@@ -953,59 +980,10 @@ litellm_managed_models:
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
       model: gpt-6.1-sol
+      reasoning_effort: high
     model_info:
       id: 8d1dd82e-c7bb-4643-bd55-9f4bc75a2dbc
-  - model_name: DeepSeek V4.1 Flash for CC OpenCode Go 2
-    litellm_params:
-      api_base: https://opencode.ai/zen/go/v1
-      custom_llm_provider: custom_openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: deepseek-v4.1-flash
-      allowed_openai_params:
-        - reasoning_effort
-    model_info:
-      id: 68688502-bb05-440c-b046-644341c2e09a
-  - model_name: Grok 4.7 for CC CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: grok-4.7
-    model_info:
-      id: 5448c99a-18f7-4b04-b700-0e1f03a8fa61
-  - model_name: ChatGPT 6 Luna for CC CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: gpt-6-luna
-    model_info:
-      id: d4202b39-196e-4c9d-a104-98ef0941895c
-  - model_name: Gemini 3.8 Flash for CC CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: gemini-3.8-flash-high
-    model_info:
-      id: f3aa532d-fdae-44c7-a5c0-77374fec22c7
-  - model_name: Claude Opus 5.5 for CC Max CLIProxy
+  - model_name: Claude Opus 5.5 High CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
       custom_llm_provider: anthropic
@@ -1017,47 +995,10 @@ litellm_managed_models:
       tags: []
       model: claude-opus-5-5-high
       guardrails: []
+      reasoning_effort: high
     model_info:
       id: 1b2f5244-75f1-421c-9893-0177720e6096
-  - model_name: DeepSeek V4.1 Flash for CC Max OpenCode Go 2
-    litellm_params:
-      api_base: https://opencode.ai/zen/go/v1
-      custom_llm_provider: custom_openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: deepseek-v4.1-flash
-      allowed_openai_params:
-        - reasoning_effort
-    model_info:
-      id: 6f08c6e3-e95c-4565-86c7-902bd8b46a04
-  - model_name: ChatGPT 6 Luna for CC Max CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: gpt-6-luna
-    model_info:
-      id: fa7d2b75-f1b9-4e68-a9e6-340915e05299
-  - model_name: Gemini 3.8 Flash for CC Max CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: gemini-3.8-flash-high
-    model_info:
-      id: 3bf5c539-d3e3-4739-ba24-51dd80024b10
-  - model_name: Gemini 4 Argon for CC Max CLIProxy
+  - model_name: Gemini 4 Argon High CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
       custom_llm_provider: openai
@@ -1067,23 +1008,10 @@ litellm_managed_models:
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
       model: gemini-4-argon-high
+      reasoning_effort: high
     model_info:
       id: 7aa8b0f3-cea3-4ec1-ac2f-7bbc5f4f9391
-  - model_name: Gemini 4 Argon for CC CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      tags: []
-      model: gemini-4-argon-high
-      guardrails: []
-    model_info:
-      id: c10778a6-1c76-40c1-8193-74e5880abea9
-  - model_name: ChatGPT 6.1 Terra for CC CLIProxy
+  - model_name: ChatGPT 6.1 Terra Medium CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
       custom_llm_provider: openai
@@ -1095,66 +1023,9 @@ litellm_managed_models:
       tags: []
       model: gpt-6.1-terra
       guardrails: []
+      reasoning_effort: medium
     model_info:
       id: 670d4bea-2075-47dd-8875-6c31570a3d2d
-  - model_name: Grok 4.7 for CC Max CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      tags: []
-      model: grok-4.7
-      guardrails: []
-    model_info:
-      id: 3fe2961a-e371-4087-a43a-769a814ae9cb
-  - model_name: DeepSeek V4.1 Flash for Hermes OpenCode Go 2
-    litellm_params:
-      api_base: https://opencode.ai/zen/go/v1
-      custom_llm_provider: custom_openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      tags: []
-      model: deepseek-v4.1-flash
-      guardrails: []
-      allowed_openai_params:
-        - reasoning_effort
-    model_info:
-      id: 4558e6d2-ffbf-4fa0-a2ff-505b30dd2945
-  - model_name: Gemini 4 Argon for Hermes CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      tags: []
-      model: gemini-4-argon-high
-      guardrails: []
-    model_info:
-      id: 8a8f73c1-d5a9-4ac3-868d-69e3121f1b33
-  - model_name: ChatGPT 6.1 Sol for Hermes CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      tags: []
-      model: gpt-6.1-sol
-      guardrails: []
-    model_info:
-      id: d2076712-4f4d-4607-b875-ff710d39e0ee
   - model_name: MiMo V2.6 Flash CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
@@ -1169,35 +1040,7 @@ litellm_managed_models:
       guardrails: []
     model_info:
       id: 9622f530-6de7-4a0f-b797-db49451b224c
-  - model_name: ChatGPT 6.1 Terra for CC Max CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      tags: []
-      model: gpt-6.1-terra
-      guardrails: []
-    model_info:
-      id: 93a1d4b0-1f13-4e0d-9e75-f2e7ac770a49
-  - model_name: ChatGPT 6.1 Sol for CC Max CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      tags: []
-      model: gpt-6.1-sol
-      guardrails: []
-    model_info:
-      id: 85e8fb33-482d-40b5-96b9-af0a6bd8fe9b
-  - model_name: ChatGPT 6 Astra for CC Max CLIProxy
+  - model_name: ChatGPT 6 Astra Medium CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
       custom_llm_provider: openai
@@ -1209,21 +1052,10 @@ litellm_managed_models:
       tags: []
       model: gpt-6-astra
       guardrails: []
+      reasoning_effort: medium
     model_info:
       id: 74b4b5b9-38ba-436c-bd7a-839ec3c3010b
-  - model_name: Claude Sonnet 5.5 for CC CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
-      custom_llm_provider: anthropic
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: claude-sonnet-5-5-high
-    model_info:
-      id: 8d546257-8bfc-48fb-83bf-8191940254e0
-  - model_name: Claude Sonnet 5.5 for CC Max CLIProxy
+  - model_name: Claude Sonnet 5.5 High CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
       custom_llm_provider: anthropic
@@ -1235,20 +1067,9 @@ litellm_managed_models:
       tags: []
       model: claude-sonnet-5-5-high
       guardrails: []
+      reasoning_effort: high
     model_info:
       id: e59db039-1e15-4e52-bd86-c1a49fb9cdf7
-  - model_name: Claude Sonnet 5.5 for Hermes CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317
-      custom_llm_provider: anthropic
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: claude-sonnet-5-5-high
-    model_info:
-      id: feccd47b-2e61-467b-b6a6-f6145329d87f
   - model_name: GLM 5.3 Flash Mistral Vibe
     litellm_params:
       custom_llm_provider: mistral
@@ -1279,6 +1100,37 @@ litellm_managed_models:
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
       model: auto_router/complexity_router
+      complexity_router_config:
+        tiers:
+          MEDIUM:
+            - cc-max-medium
+          SIMPLE:
+            - cc-max-simple
+          COMPLEX:
+            - cc-max-complex
+          REASONING:
+            - cc-max-reasoning
+        default_model: cc-max-medium
+        classifier_type: llm
+        modality_routing: true
+        session_affinity: false
+        plan_mode_min_tier: MEDIUM
+        classification_mode: user_turn
+        deployment_affinity: false
+        escalation_keywords:
+          - LITELLM ESCALATE
+        classifier_llm_config:
+          model: cc-max-judge
+          timeout_ms: 10000
+          classification_rubric: agentic
+          reasoning_effort: low
+        modality_pin_override: false
+        max_tokens_from_tier_model: false
+        classifier_context_window_size: 3
+        classifier_context_budget_chars: 4000
+        enable_context_window_escalation: true
+        classifier_context_include_assistant_turns: true
+      complexity_router_default_model: cc-max-medium
     model_info:
       id: c18835d2-2200-4dc6-8664-fb0c6b7bd10c
   - model_name: hermes-agent
@@ -1289,6 +1141,36 @@ litellm_managed_models:
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
       model: auto_router/complexity_router
+      complexity_router_config:
+        tiers:
+          MEDIUM:
+            - hermes-agent-medium
+          SIMPLE:
+            - hermes-agent-simple
+          COMPLEX:
+            - hermes-agent-complex
+          REASONING:
+            - hermes-agent-reasoning
+        default_model: hermes-agent-medium
+        classifier_type: llm
+        modality_routing: true
+        session_affinity: false
+        plan_mode_min_tier: MEDIUM
+        classification_mode: every_request
+        deployment_affinity: false
+        escalation_keywords:
+          - LITELLM ESCALATE
+        classifier_llm_config:
+          model: hermes-agent-judge
+          timeout_ms: 10000
+          classification_rubric: agentic
+          reasoning_effort: low
+        modality_pin_override: false
+        max_tokens_from_tier_model: false
+        classifier_context_window_size: 3
+        classifier_context_budget_chars: 8000
+        enable_context_window_escalation: true
+      complexity_router_default_model: hermes-agent-medium
     model_info:
       id: 8b9b552c-e491-4438-9aec-573bbea29cdc
   - model_name: cc
@@ -1299,6 +1181,37 @@ litellm_managed_models:
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
       model: auto_router/complexity_router
+      complexity_router_config:
+        tiers:
+          MEDIUM:
+            - cc-medium
+          SIMPLE:
+            - cc-simple
+          COMPLEX:
+            - cc-complex
+          REASONING:
+            - cc-reasoning
+        default_model: cc-medium
+        classifier_type: llm
+        modality_routing: true
+        session_affinity: false
+        plan_mode_min_tier: MEDIUM
+        classification_mode: user_turn
+        deployment_affinity: false
+        escalation_keywords:
+          - LITELLM ESCALATE
+        classifier_llm_config:
+          model: cc-judge
+          timeout_ms: 10000
+          classification_rubric: agentic
+          reasoning_effort: low
+        modality_pin_override: false
+        max_tokens_from_tier_model: false
+        classifier_context_window_size: 3
+        classifier_context_budget_chars: 4000
+        enable_context_window_escalation: true
+        classifier_context_include_assistant_turns: true
+      complexity_router_default_model: cc-medium
     model_info:
       id: 579b7a9b-7318-4921-bcd9-b1dec0b41152
   - model_name: beam 1.0 OpenCode Go 2
@@ -1317,7 +1230,7 @@ litellm_managed_models:
         - reasoning_effort
     model_info:
       id: 6950fe7c-8184-46f3-a11a-0971c28fb642
-  - model_name: Gemini 3.5 Flash Lite for Hermes CLIProxy
+  - model_name: Gemini 3.5 Flash Lite High CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
       custom_llm_provider: openai
@@ -1331,27 +1244,13 @@ litellm_managed_models:
       guardrails: []
       allowed_openai_params:
         - reasoning_effort
+      reasoning_effort: high
     model_info:
       id: 54f68188-ac55-4122-a360-b0f5c5e0d189
-  - model_name: Gemini 3.5 Flash Lite for CC CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      tags: []
-      model: gemini-3.5-flash-lite
-      guardrails: []
-      allowed_openai_params:
-        - reasoning_effort
-    model_info:
-      id: 62d74be0-191c-4533-919a-8f2713cbfc39
-  - model_name: Nemotron 3.5 Super for Hermes NVIDIA API
+  - model_name: Nemotron 3.5 Super Max NVIDIA API
     litellm_params:
       api_base: https://integrate.api.nvidia.com/v1
+      stream_timeout: 60
       custom_llm_provider: custom_openai
       allow_client_keepalive_override: false
       use_in_pass_through: false
@@ -1361,23 +1260,10 @@ litellm_managed_models:
       model: nvidia/nemotron-3.5-super-vl-120b-a12b
       allowed_openai_params:
         - reasoning_effort
+      reasoning_effort: max
     model_info:
       id: 6ff186fd-061f-492f-a7f8-59abf9ad35f6
-  - model_name: Nemotron 3.5 Super for CC NVIDIA API
-    litellm_params:
-      api_base: https://integrate.api.nvidia.com/v1
-      custom_llm_provider: custom_openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: nvidia/nemotron-3.5-super-vl-120b-a12b
-      allowed_openai_params:
-        - reasoning_effort
-    model_info:
-      id: 4d839fcf-9d52-4021-901f-790505d057de
-  - model_name: GLM 5.3 Flash for Hermes Mistral Vibe
+  - model_name: GLM 5.3 Flash Max Mistral Vibe
     litellm_params:
       model: mistral/zai-glm-5-3-flash
       custom_llm_provider: mistral
@@ -1388,34 +1274,9 @@ litellm_managed_models:
       use_litellm_proxy: false
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
+      reasoning_effort: max
     model_info:
       id: 668cc1bf-17e5-4a7a-8ff6-c03804aeb2c3
-  - model_name: GLM 5.3 Flash for CC Mistral Vibe
-    litellm_params:
-      model: mistral/zai-glm-5-3-flash
-      custom_llm_provider: mistral
-      allowed_openai_params:
-        - reasoning_effort
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-    model_info:
-      id: c61e863c-fc49-4b74-978c-189f5cff6a96
-  - model_name: GLM 5.3 Flash for CC Max Mistral Vibe
-    litellm_params:
-      model: mistral/zai-glm-5-3-flash
-      custom_llm_provider: mistral
-      allowed_openai_params:
-        - reasoning_effort
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-    model_info:
-      id: 8739db9b-142e-4549-921b-2d7e7c5a232d
   - model_name: GLM 5.3 Mistral Vibe
     litellm_params:
       model: mistral/zai-glm-5-3
@@ -1442,6 +1303,538 @@ litellm_managed_models:
       allowed_openai_params: []
     model_info:
       id: ff1c5cb5-6eaf-4805-98cc-93c97813d91e
+  - model_name: DeepSeek V4.1 Flash Max OpenCode Go 2
+    litellm_params:
+      api_base: https://opencode.ai/zen/go/v1
+      custom_llm_provider: custom_openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: deepseek-v4.1-flash
+      reasoning_effort: max
+      allowed_openai_params:
+        - reasoning_effort
+    model_info:
+      id: c56c904b-79cd-4d4b-84ba-222076e458d2
+
+# router 設定のルーティンググループ。グループ名で識別し、宣言したグループだけを置き換える。
+litellm_managed_routing_groups:
+  - group_name: deepseek-v4.1-flash
+    models:
+      - DeepSeek V4.1 Flash OpenCode Go 2
+      - DeepSeek V4.1 Flash CLIProxy
+      - DeepSeek V4.1 Flash NVIDIA API
+      - DeepSeek V4.1 Flash Mistral Vibe
+    routing_strategy: priority
+    model_priorities:
+      DeepSeek V4.1 Flash CLIProxy: 3
+      DeepSeek V4.1 Flash NVIDIA API: 2
+      DeepSeek V4.1 Flash Mistral Vibe: 4
+      DeepSeek V4.1 Flash OpenCode Go 2: 1
+  - group_name: gemini-3.8-flash
+    models:
+      - Gemini 3.8 Flash CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Gemini 3.8 Flash CLIProxy: 5
+  - group_name: gemini-3.5-flash-lite
+    models:
+      - Gemini 3.5 Flash Lite CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Gemini 3.5 Flash Lite CLIProxy: 5
+  - group_name: mimo-v2.6-flash
+    models:
+      - MiMo V2.6 Flash OpenCode Go 2
+      - MiMo V2.6 Flash CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      MiMo V2.6 Flash CLIProxy: 3
+      MiMo V2.6 Flash OpenCode Go 2: 1
+  - group_name: muse-spark-1.3-contributor
+    models:
+      - Muse Spark 1.3 Contributor OpenCode Go 2
+    routing_strategy: priority
+    model_priorities:
+      Muse Spark 1.3 Contributor OpenCode Go 2: 1
+  - group_name: gpt-6-astra
+    models:
+      - ChatGPT 6 Astra CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6 Astra CLIProxy: 1
+  - group_name: gpt-6.1-sol
+    models:
+      - ChatGPT 6.1 Sol CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6.1 Sol CLIProxy: 1
+  - group_name: gpt-6-luna
+    models:
+      - ChatGPT 6 Luna CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6 Luna CLIProxy: 2
+  - group_name: gpt-oss-120b-medium
+    models:
+      - gpt-oss-120b-medium CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      gpt-oss-120b-medium CLIProxy: 1
+  - group_name: gemini-4-argon-contributor
+    models:
+      - Gemini 4 Argon Contributor OpenCode Go 2
+    routing_strategy: priority
+    model_priorities:
+      Gemini 4 Argon Contributor OpenCode Go 2: 1
+  - group_name: claude-sonnet-5.5
+    models:
+      - Claude Sonnet 5.5 CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Claude Sonnet 5.5 CLIProxy: 1
+  - group_name: claude-sonnet-4.6
+    models:
+      - Claude Sonnet 4.6 CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Claude Sonnet 4.6 CLIProxy: 1
+  - group_name: claude-haiku-5.5
+    models:
+      - Claude Haiku 5.5 OpenCode Go 2
+    routing_strategy: priority
+    model_priorities:
+      Claude Haiku 5.5 OpenCode Go 2: 1
+  - group_name: claude-opus-5.5
+    models:
+      - Claude Opus 5.5 CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Claude Opus 5.5 CLIProxy: 1
+  - group_name: claude-opus-4.6
+    models:
+      - Claude Opus 4.6 CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Claude Opus 4.6 CLIProxy: 1
+  - group_name: glm-4.6v-flash
+    models:
+      - GLM 4.6V Flash Z.ai API
+    routing_strategy: priority
+    model_priorities:
+      GLM 4.6V Flash Z.ai API: 1
+  - group_name: gemini-4-argon
+    models:
+      - Gemini 4 Argon CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Gemini 4 Argon CLIProxy: 1
+  - group_name: mimo-v2.6-pro
+    models:
+      - MiMo V2.6 Pro OpenCode Go 2
+    routing_strategy: priority
+    model_priorities:
+      MiMo V2.6 Pro OpenCode Go 2: 1
+  - group_name: glm-4.7-flash
+    models:
+      - GLM 4.7 Flash Z.ai API
+    routing_strategy: priority
+    model_priorities:
+      GLM 4.7 Flash Z.ai API: 1
+  - group_name: glm-4.5-flash
+    models:
+      - GLM 4.5 Flash Z.ai API
+    routing_strategy: priority
+    model_priorities:
+      GLM 4.5 Flash Z.ai API: 1
+  - group_name: grok-4.7
+    models:
+      - Grok 4.7 CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Grok 4.7 CLIProxy: 1
+  - group_name: gpt-oss-120b
+    models:
+      - gpt-oss-120b Cloudflare API
+    routing_strategy: priority
+    model_priorities:
+      gpt-oss-120b Cloudflare API: 1
+  - group_name: qwen-3.8-27b
+    models:
+      - Qwen 3.8 27B Groq API
+    routing_strategy: priority
+    model_priorities:
+      Qwen 3.8 27B Groq API: 1
+  - group_name: gemini-3.8-flash-free
+    models:
+      - Gemini 3.8 Flash Google AI Studio API (chacchan.info)
+      - Gemini 3.8 Flash Google AI Studio API (s24g3102dp)
+      - Gemini 3.8 Flash Google AI Studio API (chacchan.global)
+      - Gemini 3.8 Flash Google AI Studio API (chacchan.audio)
+      - Gemini 3.8 Flash Google AI Studio API (takeuti1)
+    routing_strategy: priority
+    model_priorities:
+      Gemini 3.8 Flash Google AI Studio API (takeuti1): 5
+      Gemini 3.8 Flash Google AI Studio API (s24g3102dp): 2
+      Gemini 3.8 Flash Google AI Studio API (chacchan.info): 1
+      Gemini 3.8 Flash Google AI Studio API (chacchan.audio): 4
+      Gemini 3.8 Flash Google AI Studio API (chacchan.global): 3
+  - group_name: gemini-3.5-flash-lite-free
+    models:
+      - Gemini 3.5 Flash Lite Google AI Studio API (chacchan.info)
+      - Gemini 3.5 Flash Lite Google AI Studio API (s24g3102dp)
+      - Gemini 3.5 Flash Lite Google AI Studio API (chacchan.global)
+      - Gemini 3.5 Flash Lite Google AI Studio API (chacchan.audio)
+      - Gemini 3.5 Flash Lite Google AI Studio API (takeuti1)
+    routing_strategy: priority
+    model_priorities:
+      Gemini 3.5 Flash Lite Google AI Studio API (takeuti1): 5
+      Gemini 3.5 Flash Lite Google AI Studio API (s24g3102dp): 2
+      Gemini 3.5 Flash Lite Google AI Studio API (chacchan.info): 1
+      Gemini 3.5 Flash Lite Google AI Studio API (chacchan.audio): 4
+      Gemini 3.5 Flash Lite Google AI Studio API (chacchan.global): 3
+  - group_name: gpt-image-2.5-sunburst-generate
+    models:
+      - GPT Image 2.5 Sunburst Generate CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      GPT Image 2.5 Sunburst Generate CLIProxy: 1
+  - group_name: gpt-image-2.5-sunburst-edit
+    models:
+      - GPT Image 2.5 Sunburst Edit CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      GPT Image 2.5 Sunburst Edit CLIProxy: 1
+  - group_name: gpt-image-2.5-flare-edit
+    models:
+      - GPT Image 2.5 Flare Edit CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      GPT Image 2.5 Flare Edit CLIProxy: 1
+  - group_name: gpt-image-2.5-flare-generate
+    models:
+      - GPT Image 2.5 Flare Generate CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      GPT Image 2.5 Flare Generate CLIProxy: 1
+  - group_name: kimi-k3.1-pro
+    models:
+      - Kimi K3.1 Pro OpenCode Go 2
+    routing_strategy: priority
+    model_priorities:
+      Kimi K3.1 Pro OpenCode Go 2: 1
+  - group_name: sarashina-3-mini
+    models:
+      - Sarashina3 Mini Sarashina API
+    routing_strategy: priority
+    model_priorities:
+      Sarashina3 Mini Sarashina API: 1
+  - group_name: sarashina-3-nano
+    models:
+      - Sarashina3 Nano Sarashina API
+    routing_strategy: priority
+    model_priorities:
+      Sarashina3 Nano Sarashina API: 1
+  - group_name: beam-1.0
+    models:
+      - beam 1.0 OpenCode Go 2
+    routing_strategy: priority
+    model_priorities:
+      beam 1.0 OpenCode Go 2: 1
+  - group_name: glm-5.3-flash
+    models:
+      - GLM 5.3 Flash CLIProxy
+      - GLM 5.3 Flash Mistral Vibe
+    routing_strategy: priority
+    model_priorities:
+      GLM 5.3 Flash CLIProxy: 1
+      GLM 5.3 Flash Mistral Vibe: 3
+  - group_name: glm-5.3
+    models:
+      - GLM 5.3 Mistral Vibe
+    routing_strategy: priority
+    model_priorities:
+      GLM 5.3 Mistral Vibe: 1
+  - group_name: nemotron-3-ultra
+    models:
+      - Nemotron 3 Ultra NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Nemotron 3 Ultra NVIDIA API: 1
+  - group_name: nemotron-3.5-super
+    models:
+      - Nemotron 3.5 Super NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Nemotron 3.5 Super NVIDIA API: 1
+  - group_name: nemotron-3.5-lightning
+    models:
+      - Nemotron 3.5 Lightning NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Nemotron 3.5 Lightning NVIDIA API: 1
+  - group_name: nemotron-3.5-bolt
+    models:
+      - Nemotron 3.5 Bolt NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Nemotron 3.5 Bolt NVIDIA API: 1
+  - group_name: minmax-m3.1-flash
+    models:
+      - MinMax M3.1 Flash NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      MinMax M3.1 Flash NVIDIA API: 1
+  - group_name: step-5-preview
+    models:
+      - Step 5 Preview NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Step 5 Preview NVIDIA API: 1
+  - group_name: laguna-xs-2.1
+    models:
+      - Laguna XS 2.1 NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Laguna XS 2.1 NVIDIA API: 1
+  - group_name: muse-glimmer-30b
+    models:
+      - Muse Glimmer 30b NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Muse Glimmer 30b NVIDIA API: 1
+  - group_name: gemma-4-31b
+    models:
+      - Gemma 4 31b NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Gemma 4 31b NVIDIA API: 1
+  - group_name: diffusion-gemma-26b
+    models:
+      - Diffusion Gemma 26b NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Diffusion Gemma 26b NVIDIA API: 1
+  - group_name: gpt-oss-20b
+    models:
+      - gpt-oss-20b NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      gpt-oss-20b NVIDIA API: 1
+  - group_name: nemotron-3-nano-omni
+    models:
+      - Nemotron 3 Nano Omni NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Nemotron 3 Nano Omni NVIDIA API: 1
+  - group_name: llama-3.2-11b
+    models:
+      - Llama 3.2 11b NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Llama 3.2 11b NVIDIA API: 1
+  - group_name: llama-3.2-90b
+    models:
+      - Llama 3.2 90b NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Llama 3.2 90b NVIDIA API: 1
+  - group_name: grok-4.6
+    models:
+      - Grok 4.6 CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Grok 4.6 CLIProxy: 1
+  - group_name: grok-4.5
+    models:
+      - Grok 4.5 CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Grok 4.5 CLIProxy: 1
+  - group_name: swe-1.6-slow
+    models:
+      - SWE-1.6 Slow CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      SWE-1.6 Slow CLIProxy: 1
+  - group_name: gpt-5.6-sol
+    models:
+      - ChatGPT 5.6 Sol CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 5.6 Sol CLIProxy: 1
+  - group_name: gpt-5.6-terra
+    models:
+      - ChatGPT 5.6 Terra CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 5.6 Terra CLIProxy: 1
+  - group_name: gpt-5.6-luna
+    models:
+      - ChatGPT 5.6 Luna CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 5.6 Luna CLIProxy: 1
+  - group_name: gpt-6-sol
+    models:
+      - ChatGPT 6 Sol
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6 Sol: 1
+  - group_name: cc-medium
+    models:
+      - ChatGPT 6 Luna Max CLIProxy
+      - Gemini 3.8 Flash High CLIProxy
+      - GLM 5.3 Flash Max Mistral Vibe
+      - DeepSeek V4.1 Flash Max OpenCode Go 2
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6 Luna Max CLIProxy: 1
+      Gemini 3.8 Flash High CLIProxy: 1
+      GLM 5.3 Flash Max Mistral Vibe: 1
+      DeepSeek V4.1 Flash Max OpenCode Go 2: 1
+  - group_name: cc-simple
+    models:
+      - Gemini 3.5 Flash Lite High CLIProxy
+      - Nemotron 3.5 Super Max NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Gemini 3.5 Flash Lite High CLIProxy: 1
+      Nemotron 3.5 Super Max NVIDIA API: 1
+  - group_name: cc-complex
+    models:
+      - ChatGPT 6.1 Terra Medium CLIProxy
+      - Grok 4.7 XHigh CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6.1 Terra Medium CLIProxy: 1
+      Grok 4.7 XHigh CLIProxy: 1
+  - group_name: cc-max-complex
+    models:
+      - ChatGPT 6.1 Sol High CLIProxy
+      - Gemini 4 Argon High CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6.1 Sol High CLIProxy: 1
+      Gemini 4 Argon High CLIProxy: 1
+  - group_name: cc-max-medium
+    models:
+      - ChatGPT 6.1 Terra Medium CLIProxy
+      - Grok 4.7 XHigh CLIProxy
+      - Claude Sonnet 5.5 High CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6.1 Terra Medium CLIProxy: 1
+      Grok 4.7 XHigh CLIProxy: 1
+      Claude Sonnet 5.5 High CLIProxy: 1
+  - group_name: cc-max-simple
+    models:
+      - ChatGPT 6 Luna Max CLIProxy
+      - Gemini 3.8 Flash High CLIProxy
+      - GLM 5.3 Flash Max Mistral Vibe
+      - DeepSeek V4.1 Flash Max OpenCode Go 2
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6 Luna Max CLIProxy: 1
+      Gemini 3.8 Flash High CLIProxy: 1
+      GLM 5.3 Flash Max Mistral Vibe: 1
+      DeepSeek V4.1 Flash Max OpenCode Go 2: 1
+  - group_name: cc-reasoning
+    models:
+      - Gemini 4 Argon High CLIProxy
+      - ChatGPT 6.1 Sol High CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Gemini 4 Argon High CLIProxy: 1
+      ChatGPT 6.1 Sol High CLIProxy: 1
+  - group_name: cc-max-reasoning
+    models:
+      - Claude Opus 5.5 High CLIProxy
+      - ChatGPT 6 Astra Medium CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Claude Opus 5.5 High CLIProxy: 1
+      ChatGPT 6 Astra Medium CLIProxy: 1
+  - group_name: gpt-6.1-terra
+    models:
+      - ChatGPT 6.1 Terra CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6.1 Terra CLIProxy: 1
+  - group_name: hermes-agent-reasoning
+    models:
+      - ChatGPT 6.1 Sol High CLIProxy
+      - Gemini 4 Argon High CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6.1 Sol High CLIProxy: 1
+      Gemini 4 Argon High CLIProxy: 1
+  - group_name: hermes-agent-complex
+    models:
+      - ChatGPT 6.1 Terra High CLIProxy
+      - Grok 4.7 XHigh CLIProxy
+      - Claude Sonnet 5.5 High CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      ChatGPT 6.1 Terra High CLIProxy: 1
+      Grok 4.7 XHigh CLIProxy: 1
+      Claude Sonnet 5.5 High CLIProxy: 1
+  - group_name: hermes-agent-medium
+    models:
+      - Gemini 3.8 Flash High CLIProxy
+      - ChatGPT 6 Luna Max CLIProxy
+      - DeepSeek V4.1 Flash Max OpenCode Go 2
+    routing_strategy: priority
+    model_priorities:
+      Gemini 3.8 Flash High CLIProxy: 1
+      ChatGPT 6 Luna Max CLIProxy: 1
+      DeepSeek V4.1 Flash Max OpenCode Go 2: 1
+  - group_name: hermes-agent-simple
+    models:
+      - Gemini 3.5 Flash Lite High CLIProxy
+      - Nemotron 3.5 Super Max NVIDIA API
+    routing_strategy: priority
+    model_priorities:
+      Gemini 3.5 Flash Lite High CLIProxy: 1
+      Nemotron 3.5 Super Max NVIDIA API: 1
+  - group_name: iceman-contributor-free
+    models:
+      - Iceman Contributor Free OpenCode Go 2
+    routing_strategy: priority
+    model_priorities:
+      Iceman Contributor Free OpenCode Go 2: 1
+  - group_name: hermes-agent-judge
+    models:
+      - Gemini 3.8 Flash CLIProxy
+      - DeepSeek V4.1 Flash OpenCode Go 2
+      - GLM 5.3 Flash Mistral Vibe
+    routing_strategy: priority
+    model_priorities:
+      Gemini 3.8 Flash CLIProxy: 1
+      DeepSeek V4.1 Flash OpenCode Go 2: 1
+      GLM 5.3 Flash Mistral Vibe: 1
+  - group_name: cc-judge
+    models:
+      - Gemini 3.8 Flash CLIProxy
+      - DeepSeek V4.1 Flash OpenCode Go 2
+      - GLM 5.3 Flash Mistral Vibe
+    routing_strategy: priority
+    model_priorities:
+      Gemini 3.8 Flash CLIProxy: 1
+      DeepSeek V4.1 Flash OpenCode Go 2: 1
+      GLM 5.3 Flash Mistral Vibe: 1
+  - group_name: cc-max-judge
+    models:
+      - Gemini 3.8 Flash CLIProxy
+      - DeepSeek V4.1 Flash OpenCode Go 2
+      - GLM 5.3 Flash Mistral Vibe
+    routing_strategy: priority
+    model_priorities:
+      Gemini 3.8 Flash CLIProxy: 1
+      DeepSeek V4.1 Flash OpenCode Go 2: 1
+      GLM 5.3 Flash Mistral Vibe: 1
 
 litellm_host: "litellm.{{ lab_domain }}"
 
@@ -1527,3 +1920,39 @@ litellm_managed_keys:
         - cc-max
         - gpt-6.1-terra
         - iceman-contributor-free
+
+# 段階のグループが失敗したときに順に試すグループ。上位の段階を先に試し、無ければ下位へ下げる。判定用(*-judge)には置かない
+litellm_managed_fallbacks:
+  - cc-simple:
+      - cc-medium
+  - cc-medium:
+      - cc-complex
+      - cc-simple
+  - cc-complex:
+      - cc-reasoning
+      - cc-medium
+  - cc-reasoning:
+      - cc-complex
+      - cc-medium
+  - cc-max-simple:
+      - cc-max-medium
+  - cc-max-medium:
+      - cc-max-complex
+      - cc-max-simple
+  - cc-max-complex:
+      - cc-max-reasoning
+      - cc-max-medium
+  - cc-max-reasoning:
+      - cc-max-complex
+      - cc-max-medium
+  - hermes-agent-simple:
+      - hermes-agent-medium
+  - hermes-agent-medium:
+      - hermes-agent-complex
+      - hermes-agent-simple
+  - hermes-agent-complex:
+      - hermes-agent-reasoning
+      - hermes-agent-medium
+  - hermes-agent-reasoning:
+      - hermes-agent-complex
+      - hermes-agent-medium

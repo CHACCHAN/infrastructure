@@ -63,6 +63,7 @@
         provider_secrets_complete: false
         virtual_key_plaintexts_included: false
         models: "{{ __litellm_current_models }}"
+        router_settings: "{{ __litellm_current_router }}"
         keys: "{{ __litellm_keys_response.json | combine({'keys': __litellm_current_keys}) }}"
         credentials: "{{ __litellm_export_credentials.json }}"
   no_log: true

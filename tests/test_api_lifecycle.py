@@ -46,6 +46,10 @@ class MockApi(http.server.BaseHTTPRequestHandler):
                         "total_pages": 1 if state["keys"] else 0, "current_page": 1})
         elif path.path == "/credentials":
             self.reply({"success": True, "credentials": []})
+        elif path.path == "/router/settings":
+            self.reply({"current_values": {"routing_groups": state["routing_groups"],
+                                           "fallbacks": state["fallbacks"]},
+                        "source": {"routing_groups": "db", "fallbacks": "db"}})
         elif path.path == "/api/v3/core/applications/":
             query = parse_qs(path.query)
             if query.get("superuser_full_list") != ["true"]:
@@ -76,6 +80,9 @@ class MockApi(http.server.BaseHTTPRequestHandler):
             state["keys"][key_hash] = {**old, "token": key_hash}
         elif self.path in ("/key/block", "/key/unblock"):
             state["keys"][body["key"]]["blocked"] = self.path.endswith("/block")
+        elif self.path == "/config/update":
+            # 管理画面と同じく、送った項目だけを置き換える。
+            state.update(body["router_settings"])
         else:
             return self.reply({}, 404)
         if state["fail_after_commit"]:
@@ -134,7 +141,7 @@ class ApiTaskTests(unittest.TestCase):
         self.password.write_text("local-test-password\n")
         self.password.chmod(0o600)
         self.key_file = self.work_path / "keys.yml"
-        self.state = {"keys": {}, "models": [], "apps": [], "reads": [], "writes": [], "fail_after_commit": False}
+        self.state = {"keys": {}, "models": [], "routing_groups": [], "fallbacks": [], "apps": [], "reads": [], "writes": [], "fail_after_commit": False}
         self.server.state = self.state
         self.env = {"HOME": self.work.name, "PATH": os.environ["PATH"], "LANG": "C.UTF-8",
                     "ANSIBLE_CONFIG": str(ROOT / "ansible.cfg"),
@@ -274,6 +281,43 @@ class ApiTaskTests(unittest.TestCase):
         self.assertEqual(self.state["reads"], [])
         self.assertEqual(self.state["writes"], [])
         self.assertNotIn("a" * 64, output)
+
+    def test_manage_routing_groups_check_apply_and_idempotence(self):
+        self.state["routing_groups"] = [
+            {"group_name": "ui-only", "models": ["x"], "routing_strategy": "priority"},
+            {"group_name": "tier", "models": ["a"], "routing_strategy": "simple-shuffle",
+             "routing_strategy_args": None}]
+        variables = {
+            "litellm_master_key": "sk-fake-master-for-local-tests", "litellm_management_url": self.url,
+            "litellm_managed_models": [], "litellm_managed_keys": [], "litellm_key_material": {},
+            "litellm_managed_routing_groups": [
+                {"group_name": "tier", "models": ["a", "b"], "routing_strategy": "simple-shuffle"}]}
+        self.run_role("k3s_litellm", "manage", variables, check=True)
+        self.assertEqual(self.state["writes"], [])
+        self.run_role("k3s_litellm", "manage", variables)
+        self.assertEqual([path for path, _ in self.state["writes"]], ["/config/update"])
+        self.assertEqual(self.state["routing_groups"], [
+            {"group_name": "ui-only", "models": ["x"], "routing_strategy": "priority"},
+            {"group_name": "tier", "models": ["a", "b"], "routing_strategy": "simple-shuffle"}])
+        self.assertIn("changed=0", self.run_role("k3s_litellm", "manage", variables))
+        self.assertEqual(len(self.state["writes"]), 1)
+
+    def test_manage_fallbacks_merge_declared_and_keep_others(self):
+        self.state["routing_groups"] = [
+            {"group_name": name, "models": [name], "routing_strategy": "priority"} for name in ("a", "b", "c")]
+        self.state["fallbacks"] = [{"c": ["a"]}, {"a": ["c"]}]
+        variables = {
+            "litellm_master_key": "sk-fake-master-for-local-tests", "litellm_management_url": self.url,
+            "litellm_managed_models": [], "litellm_managed_keys": [], "litellm_key_material": {},
+            "litellm_managed_fallbacks": [{"a": ["b", "c"]}, {"b": ["a"]}]}
+        self.run_role("k3s_litellm", "manage", variables, check=True)
+        self.assertEqual(self.state["writes"], [])
+        self.run_role("k3s_litellm", "manage", variables)
+        self.assertEqual(self.state["writes"], [
+            ("/config/update", {"router_settings": {"fallbacks": [{"c": ["a"]}, {"a": ["b", "c"]}, {"b": ["a"]}]}})])
+        self.assertEqual(len(self.state["routing_groups"]), 3)
+        self.assertIn("changed=0", self.run_role("k3s_litellm", "manage", variables))
+        self.assertEqual(len(self.state["writes"]), 1)
 
     def test_export_refuses_to_overwrite_key_registry(self):
         self.lifecycle("create")

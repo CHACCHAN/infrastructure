@@ -20,6 +20,22 @@
   changed_when: false
   no_log: true
 
+- name: router の設定を取得する
+  ansible.builtin.uri:
+    url: "{{ litellm_management_url }}/router/settings"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ litellm_master_key }}"
+    return_content: true
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  register: __litellm_router_response
+  check_mode: false
+  changed_when: false
+  no_log: true
+
 - name: 仮想キーの最初のページを取得する
   ansible.builtin.uri:
     url: "{{ litellm_management_url }}/key/list?page=1&size=100&return_full_object=true"
@@ -56,6 +72,7 @@
 - name: 取得した設定をまとめる
   ansible.builtin.set_fact:
     __litellm_current_models: "{{ __litellm_models_response.json.data }}"
+    __litellm_current_router: "{{ __litellm_router_response.json.current_values }}"
     __litellm_current_keys: >-
       {{ __litellm_keys_response.json['keys'] +
          (__litellm_key_pages.results | default([]) | map(attribute='json.keys') | flatten) }}

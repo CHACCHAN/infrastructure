@@ -22,6 +22,20 @@
   loop: "{{ litellm_managed_models }}"
   no_log: true
 
+- name: ルーティンググループの更新対象を確認する
+  ansible.builtin.assert:
+    that:
+      - litellm_managed_routing_groups | map(attribute='group_name') | list | unique | length == litellm_managed_routing_groups | length
+      - item.keys() | difference(litellm_managed_routing_group_fields) | length == 0
+      - item.group_name is string
+      - item.models is sequence and item.models is not string
+      - item.routing_strategy is string
+      - item.values() | select('none') | list | length == 0
+    quiet: true
+  loop: "{{ litellm_managed_routing_groups }}"
+  loop_control:
+    label: "{{ item.group_name | default('') }}"
+
 - name: 仮想キーの更新対象を確認する
   ansible.builtin.assert:
     that:
@@ -68,17 +82,24 @@
 
 - name: 反映後の確認が必要か記録する
   ansible.builtin.set_fact:
-    __litellm_verify_needed: "{{ __litellm_model_changes | length > 0 or __litellm_key_changes | length > 0 }}"
+    __litellm_verify_needed: >-
+      {{ __litellm_model_changes | length > 0 or __litellm_router_changes | length > 0 or
+         __litellm_key_changes | length > 0 }}
 
 - name: 更新する設定の件数を表示する
   ansible.builtin.debug:
-    msg: "モデル {{ __litellm_model_changes | length }} 件、仮想キー {{ __litellm_key_changes | length }} 件"
-  changed_when: __litellm_model_changes | length > 0 or __litellm_key_changes | length > 0
+    msg: >-
+      {{ 'モデル %d 件、ルーティンググループ %d 件、フォールバック %d 件、仮想キー %d 件' | format(
+         __litellm_model_changes | length, __litellm_routing_group_change_summary | length,
+         __litellm_fallback_change_summary | length, __litellm_key_changes | length) }}
+  changed_when: __litellm_verify_needed | bool
 
 - name: 値を表示せず変更対象を確認する
   ansible.builtin.debug:
     msg:
       models: "{{ __litellm_model_change_summary }}"
+      routing_groups: "{{ __litellm_routing_group_change_summary }}"
+      fallbacks: "{{ __litellm_fallback_change_summary }}"
       keys: "{{ __litellm_key_change_summary }}"
   when: (ansible_check_mode or ansible_diff_mode) and __litellm_verify_needed
 
@@ -96,6 +117,24 @@
     status_code: 200
   loop: "{{ __litellm_model_changes }}"
   when: not ansible_check_mode
+  changed_when: true
+  no_log: true
+
+# グループはモデル名で参照するため、モデルの名前を変えたあとに更新する
+- name: ルーティンググループとフォールバックを更新する
+  ansible.builtin.uri:
+    url: "{{ litellm_management_url }}/config/update"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ litellm_master_key }}"
+    body_format: json
+    body:
+      router_settings: "{{ __litellm_router_changes }}"
+    follow_redirects: none
+    unredirected_headers: [Authorization]
+    validate_certs: true
+    status_code: 200
+  when: not ansible_check_mode and __litellm_router_changes | length > 0
   changed_when: true
   no_log: true
 
@@ -129,6 +168,7 @@
       ansible.builtin.assert:
         that:
           - __litellm_model_changes | length == 0
+          - __litellm_router_changes | length == 0
           - __litellm_key_changes | length == 0
         fail_msg: 管理 API の反映を確認できません。反映の遅延または非対応のフィールドを確認してください。
         quiet: true

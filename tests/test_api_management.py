@@ -36,6 +36,61 @@ class ApiManagementTests(unittest.TestCase):
         self.assertNotIn("private-new-name", json.dumps(result["summary"]))
         self.assertTrue(result["changes"][0]["litellm_params"]["use_litellm_proxy"])
 
+    def test_routing_groups_replace_declared_and_keep_others(self):
+        before = [
+            {"group_name": "ui-only", "models": ["x"], "routing_strategy": "priority", "routing_strategy_args": None},
+            {"group_name": "tier", "models": ["a"], "routing_strategy": "simple-shuffle", "routing_strategy_args": None},
+        ]
+        desired = [{"group_name": "tier", "models": ["a", "b"], "routing_strategy": "simple-shuffle"}]
+        original = copy.deepcopy(before)
+        result = API.litellm_routing_group_plan(desired, before)
+        self.assertEqual(result["changes"]["routing_groups"], [
+            {"group_name": "ui-only", "models": ["x"], "routing_strategy": "priority"},
+            {"group_name": "tier", "models": ["a", "b"], "routing_strategy": "simple-shuffle"},
+        ])
+        self.assertEqual(result["summary"], [{"group_name": "tier", "fields": ["models"]}])
+        self.assertEqual(before, original)
+        before[1]["models"] = ["a", "b"]
+        self.assertEqual(API.litellm_routing_group_plan(desired, before), {"changes": {}, "summary": []})
+
+    def test_routing_groups_reject_shared_models_outside_priority(self):
+        before = [
+            {"group_name": "one", "models": ["a"], "routing_strategy": "priority"},
+            {"group_name": "two", "models": ["a"], "routing_strategy": "priority"},
+        ]
+        shuffled = [{"group_name": "one", "models": ["a"], "routing_strategy": "simple-shuffle"}]
+        self.assertEqual(len(API.litellm_routing_group_plan(shuffled, before)["summary"]), 1)
+        both = shuffled + [{"group_name": "two", "models": ["a"], "routing_strategy": "simple-shuffle"}]
+        with self.assertRaises(API.AnsibleFilterError):
+            API.litellm_routing_group_plan(both, before)
+
+    def test_routing_groups_reject_missing_or_duplicate_names(self):
+        group = {"group_name": "tier", "models": ["a"], "routing_strategy": "priority"}
+        with self.assertRaises(API.AnsibleFilterError):
+            API.litellm_routing_group_plan([group], None)
+        with self.assertRaises(API.AnsibleFilterError):
+            API.litellm_routing_group_plan([group, group], [group])
+
+    def test_fallbacks_replace_declared_and_keep_other_routes(self):
+        groups = [{"group_name": name} for name in ("a", "b", "c")]
+        before = [{"c": ["a"]}, {"model-x": ["model-y"], "extra": []}, {"a": ["c"]}]
+        original = copy.deepcopy(before)
+        result = API.litellm_fallback_plan([{"a": ["b"]}, {"b": ["a", "c"]}], before, groups)
+        self.assertEqual(result["changes"]["fallbacks"], [
+            {"c": ["a"]}, {"model-x": ["model-y"], "extra": []}, {"a": ["b"]}, {"b": ["a", "c"]}])
+        self.assertEqual(result["summary"], [
+            {"group_name": "a", "fields": ["fallbacks"]}, {"group_name": "b", "fields": ["fallbacks"]}])
+        self.assertEqual(before, original)
+        self.assertEqual(API.litellm_fallback_plan([{"c": ["a"]}], before, groups), {"changes": {}, "summary": []})
+        self.assertEqual(API.litellm_fallback_plan([], None, groups), {"changes": {}, "summary": []})
+
+    def test_fallbacks_reject_invalid_declarations(self):
+        groups = [{"group_name": name} for name in ("a", "b")]
+        for desired in ([{"a": ["b"], "b": ["a"]}], [{"a": ["b"]}, {"a": ["b"]}], [{"a": []}],
+                        [{"a": ["a"]}], [{"a": "b"}], [{"a": ["missing"]}], [{"missing": ["a"]}]):
+            with self.assertRaises(API.AnsibleFilterError):
+                API.litellm_fallback_plan(desired, [], groups)
+
     def test_resolve_keys_preserves_precedence_alias_and_inputs(self):
         desired = [
             {"name": "client", "settings": {"key_alias": "client", "models": ["model"]}},

@@ -60,6 +60,75 @@ def litellm_model_plan(desired, current):
     return {"changes": changes, "summary": summary}
 
 
+def _without_none(value):
+    if isinstance(value, dict):
+        return {key: _without_none(item) for key, item in value.items() if item is not None}
+    if isinstance(value, list):
+        return [_without_none(item) for item in value]
+    return value
+
+
+def litellm_routing_group_plan(desired, current):
+    """宣言したグループだけを置き換え、画面で足したグループと並び順を保つ。"""
+    declared = _index(desired, lambda row: row["group_name"])
+    existing = _index(current or [], lambda row: row["group_name"])
+    summary = []
+    for name, record in declared.items():
+        before = _without_none(_current(existing, name))
+        if before != record:
+            fields = sorted(key for key in set(before) | set(record) if before.get(key) != record.get(key))
+            summary.append({"group_name": name, "fields": fields})
+    if not summary:
+        return {"changes": {}, "summary": []}
+    groups = [declared.get(row["group_name"], _without_none(row)) for row in current]
+    # LiteLLM は、priority 以外のグループどうしで同じモデルを共有すると更新を拒否する。
+    owners = {}
+    for row in groups:
+        if row.get("routing_strategy") != "priority":
+            for model in row.get("models", []):
+                if model in owners:
+                    raise AnsibleFilterError(
+                        "priority 以外のルーティンググループ "
+                        + owners[model] + " と " + row["group_name"] + " が同じモデルを含んでいます"
+                    )
+                owners[model] = row["group_name"]
+    return {"changes": {"routing_groups": groups}, "summary": summary}
+
+
+def litellm_fallback_plan(desired, current, groups):
+    """宣言したグループのフォールバックだけを置き換え、ほかの経路と並び順を保つ。"""
+    known = {row["group_name"] for row in groups or []}
+    declared = {}
+    for record in desired:
+        if not isinstance(record, dict) or len(record) != 1:
+            raise AnsibleFilterError("フォールバックは、グループ名1つをキーにした辞書で宣言します")
+        (source, targets), = record.items()
+        if source in declared:
+            raise AnsibleFilterError("フォールバックのグループ名が重複しています")
+        if not isinstance(targets, list) or not targets or source in targets:
+            raise AnsibleFilterError("フォールバック先は、自分以外のグループの空でない一覧にします")
+        unknown = sorted({source, *targets} - known)
+        if unknown:
+            raise AnsibleFilterError("フォールバックに、存在しないルーティンググループ " + ", ".join(unknown) + " があります")
+        declared[source] = targets
+    rows = current or []
+    existing = {key: value for row in rows if isinstance(row, dict) and len(row) == 1 for key, value in row.items()}
+    summary = [
+        {"group_name": source, "fields": ["fallbacks"]}
+        for source, targets in declared.items()
+        if existing.get(source) != targets
+    ]
+    if not summary:
+        return {"changes": {}, "summary": []}
+    merged = [
+        {source: declared[source]} if isinstance(row, dict) and len(row) == 1 and (source := next(iter(row))) in declared
+        else row
+        for row in rows
+    ]
+    merged += [{source: targets} for source, targets in declared.items() if source not in existing]
+    return {"changes": {"fallbacks": merged}, "summary": summary}
+
+
 def litellm_resolve_keys(desired, material):
     """宣言と秘密の台帳を結びつけ、同じキーへの重複した更新を拒否する。"""
     _index(desired, lambda row: row["name"])
@@ -117,6 +186,8 @@ class FilterModule:
     def filters(self):
         return {
             "litellm_model_plan": litellm_model_plan,
+            "litellm_routing_group_plan": litellm_routing_group_plan,
+            "litellm_fallback_plan": litellm_fallback_plan,
             "litellm_resolve_keys": litellm_resolve_keys,
             "litellm_key_plan": litellm_key_plan,
             "authentik_application_plan": authentik_application_plan,

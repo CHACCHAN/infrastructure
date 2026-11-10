@@ -96,6 +96,14 @@ argument_specs:
         elements: dict
         no_log: true
         description: inventory に宣言する既存モデルの ID・名前・非機密の接続設定
+      litellm_managed_routing_groups:
+        type: list
+        elements: dict
+        description: inventory に宣言する既存のルーティンググループ(グループ名で識別する)
+      litellm_managed_fallbacks:
+        type: list
+        elements: dict
+        description: ルーティンググループ名をキーにした、失敗したときに順に試すグループの一覧
       litellm_managed_keys:
         type: list
         elements: dict
@@ -110,6 +118,10 @@ argument_specs:
         type: list
         elements: str
         description: 認証情報を含まない、更新を許可するモデル設定のフィールド
+      litellm_managed_routing_group_fields:
+        type: list
+        elements: str
+        description: 更新を許可するルーティンググループのフィールド
       litellm_managed_key_fields:
         type: list
         elements: str
