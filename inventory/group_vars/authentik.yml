@@ -43,6 +43,10 @@ authentik_oidc_clients:
     slug: gravitee-am
     redirect_uris:
       - https://{{ gravitee_host }}/auth/apim/login/callback
+  - name: Touge
+    slug: touge
+    redirect_uris:
+      - https://touge.{{ lab_domain }}/auth/callback
 
 authentik_proxy_apps:
   - name: Longhorn
