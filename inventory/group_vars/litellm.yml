@@ -1012,7 +1012,7 @@ litellm_managed_models:
       reasoning_effort: high
     model_info:
       id: 7aa8b0f3-cea3-4ec1-ac2f-7bbc5f4f9391
-  - model_name: Gemini 4 Hydrogen Low CLIProxy
+  - model_name: Gemini 3.8 Flash High CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
       custom_llm_provider: openai
@@ -1021,8 +1021,8 @@ litellm_managed_models:
       use_litellm_proxy: false
       use_xai_oauth: false
       merge_reasoning_content_in_choices: false
-      model: gemini-4-hydrogen-xhigh
-      reasoning_effort: low
+      model: gemini-3.8-flash-high
+      reasoning_effort: high
     model_info:
       id: d9dc96db-74be-49ce-9879-1646b60a42b4
   - model_name: Gemini 4 Hydrogen High CLIProxy
@@ -1719,13 +1719,13 @@ litellm_managed_routing_groups:
   - group_name: cc-medium
     models:
       - ChatGPT 6 Luna Max CLIProxy
-      - Gemini 4 Hydrogen Low CLIProxy
+      - Gemini 3.8 Flash High CLIProxy
       - GLM 5.3 Flash Max Mistral Vibe
       - DeepSeek V4.1 Flash Max OpenCode Go 2
     routing_strategy: priority
     model_priorities:
       ChatGPT 6 Luna Max CLIProxy: 1
-      Gemini 4 Hydrogen Low CLIProxy: 1
+      Gemini 3.8 Flash High CLIProxy: 1
       GLM 5.3 Flash Max Mistral Vibe: 1
       DeepSeek V4.1 Flash Max OpenCode Go 2: 1
   - group_name: cc-simple
@@ -1767,13 +1767,13 @@ litellm_managed_routing_groups:
   - group_name: cc-max-simple
     models:
       - ChatGPT 6 Luna Max CLIProxy
-      - Gemini 4 Hydrogen Low CLIProxy
+      - Gemini 3.8 Flash High CLIProxy
       - GLM 5.3 Flash Max Mistral Vibe
       - DeepSeek V4.1 Flash Max OpenCode Go 2
     routing_strategy: priority
     model_priorities:
       ChatGPT 6 Luna Max CLIProxy: 1
-      Gemini 4 Hydrogen Low CLIProxy: 1
+      Gemini 3.8 Flash High CLIProxy: 1
       GLM 5.3 Flash Max Mistral Vibe: 1
       DeepSeek V4.1 Flash Max OpenCode Go 2: 1
   - group_name: cc-reasoning
@@ -1822,12 +1822,12 @@ litellm_managed_routing_groups:
       Claude Sonnet 5.5 High CLIProxy: 1
   - group_name: hermes-agent-medium
     models:
-      - Gemini 4 Hydrogen Low CLIProxy
+      - Gemini 3.8 Flash High CLIProxy
       - ChatGPT 6 Luna Max CLIProxy
       - DeepSeek V4.1 Flash Max OpenCode Go 2
     routing_strategy: priority
     model_priorities:
-      Gemini 4 Hydrogen Low CLIProxy: 1
+      Gemini 3.8 Flash High CLIProxy: 1
       ChatGPT 6 Luna Max CLIProxy: 1
       DeepSeek V4.1 Flash Max OpenCode Go 2: 1
   - group_name: hermes-agent-simple

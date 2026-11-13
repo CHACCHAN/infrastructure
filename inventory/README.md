@@ -38,6 +38,8 @@ ansible k3s01 -c local -m ansible.builtin.debug -a 'var=vmid'    # 導出され�
 ansible-playbook playbooks/k3s/litellm_manage.yml --check --diff 2>&1 | cat
 ```
 
+`cc-medium`・`cc-max-simple`・`hermes-agent-medium` は、推論の強さを `high` に固定した共通の `Gemini 3.8 Flash High CLIProxy` を振り分け先に含める。
+
 プロバイダーの API キー・認証ヘッダー・発行済みキーのハッシュと取得記録は Vault に保管する。API の再取得では、このモデル宣言は書き換えない。
 
 Authentik のアプリ設定は [group_vars/authentik.yml](group_vars/authentik.yml)で編集し、`playbooks/k3s/authentik_manage.yml --check --diff` で slug と変更項目名を確認する。OIDC プロバイダーと認証プロキシの接続設定は Blueprint が同じ inventory から読む([手順](../roles/k3s_authentik/README.md))。
