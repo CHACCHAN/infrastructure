@@ -931,19 +931,6 @@ litellm_managed_models:
       reasoning_effort: high
     model_info:
       id: d63febfe-86cb-46c4-8c85-6e385a8733ec
-  - model_name: Gemini 3.8 Flash High CLIProxy
-    litellm_params:
-      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
-      custom_llm_provider: openai
-      allow_client_keepalive_override: false
-      use_in_pass_through: false
-      use_litellm_proxy: false
-      use_xai_oauth: false
-      merge_reasoning_content_in_choices: false
-      model: gemini-3.8-flash-high
-      reasoning_effort: high
-    model_info:
-      id: 77933f1c-6756-4e6e-baeb-4317c8793c8a
   - model_name: Grok 4.7 XHigh CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
@@ -1011,6 +998,32 @@ litellm_managed_models:
       reasoning_effort: high
     model_info:
       id: 7aa8b0f3-cea3-4ec1-ac2f-7bbc5f4f9391
+  - model_name: Gemini 4 Hydrogen Low CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini-4-hydrogen-xhigh
+      reasoning_effort: low
+    model_info:
+      id: d9dc96db-74be-49ce-9879-1646b60a42b4
+  - model_name: Gemini 4 Hydrogen High CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      model: gemini-4-hydrogen-xhigh
+      reasoning_effort: high
+    model_info:
+      id: 58d9eba7-7bd3-4540-ac7e-4c8eac523938
   - model_name: ChatGPT 6.1 Terra Medium CLIProxy
     litellm_params:
       api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
@@ -1686,13 +1699,13 @@ litellm_managed_routing_groups:
   - group_name: cc-medium
     models:
       - ChatGPT 6 Luna Max CLIProxy
-      - Gemini 3.8 Flash High CLIProxy
+      - Gemini 4 Hydrogen Low CLIProxy
       - GLM 5.3 Flash Max Mistral Vibe
       - DeepSeek V4.1 Flash Max OpenCode Go 2
     routing_strategy: priority
     model_priorities:
       ChatGPT 6 Luna Max CLIProxy: 1
-      Gemini 3.8 Flash High CLIProxy: 1
+      Gemini 4 Hydrogen Low CLIProxy: 1
       GLM 5.3 Flash Max Mistral Vibe: 1
       DeepSeek V4.1 Flash Max OpenCode Go 2: 1
   - group_name: cc-simple
@@ -1715,10 +1728,12 @@ litellm_managed_routing_groups:
     models:
       - ChatGPT 6.1 Sol High CLIProxy
       - Gemini 4 Argon High CLIProxy
+      - Gemini 4 Hydrogen High CLIProxy
     routing_strategy: priority
     model_priorities:
       ChatGPT 6.1 Sol High CLIProxy: 1
       Gemini 4 Argon High CLIProxy: 1
+      Gemini 4 Hydrogen High CLIProxy: 1
   - group_name: cc-max-medium
     models:
       - ChatGPT 6.1 Terra Medium CLIProxy
@@ -1732,22 +1747,24 @@ litellm_managed_routing_groups:
   - group_name: cc-max-simple
     models:
       - ChatGPT 6 Luna Max CLIProxy
-      - Gemini 3.8 Flash High CLIProxy
+      - Gemini 4 Hydrogen Low CLIProxy
       - GLM 5.3 Flash Max Mistral Vibe
       - DeepSeek V4.1 Flash Max OpenCode Go 2
     routing_strategy: priority
     model_priorities:
       ChatGPT 6 Luna Max CLIProxy: 1
-      Gemini 3.8 Flash High CLIProxy: 1
+      Gemini 4 Hydrogen Low CLIProxy: 1
       GLM 5.3 Flash Max Mistral Vibe: 1
       DeepSeek V4.1 Flash Max OpenCode Go 2: 1
   - group_name: cc-reasoning
     models:
       - Gemini 4 Argon High CLIProxy
+      - Gemini 4 Hydrogen High CLIProxy
       - ChatGPT 6.1 Sol High CLIProxy
     routing_strategy: priority
     model_priorities:
       Gemini 4 Argon High CLIProxy: 1
+      Gemini 4 Hydrogen High CLIProxy: 1
       ChatGPT 6.1 Sol High CLIProxy: 1
   - group_name: cc-max-reasoning
     models:
@@ -1767,10 +1784,12 @@ litellm_managed_routing_groups:
     models:
       - ChatGPT 6.1 Sol High CLIProxy
       - Gemini 4 Argon High CLIProxy
+      - Gemini 4 Hydrogen High CLIProxy
     routing_strategy: priority
     model_priorities:
       ChatGPT 6.1 Sol High CLIProxy: 1
       Gemini 4 Argon High CLIProxy: 1
+      Gemini 4 Hydrogen High CLIProxy: 1
   - group_name: hermes-agent-complex
     models:
       - ChatGPT 6.1 Terra High CLIProxy
@@ -1783,12 +1802,12 @@ litellm_managed_routing_groups:
       Claude Sonnet 5.5 High CLIProxy: 1
   - group_name: hermes-agent-medium
     models:
-      - Gemini 3.8 Flash High CLIProxy
+      - Gemini 4 Hydrogen Low CLIProxy
       - ChatGPT 6 Luna Max CLIProxy
       - DeepSeek V4.1 Flash Max OpenCode Go 2
     routing_strategy: priority
     model_priorities:
-      Gemini 3.8 Flash High CLIProxy: 1
+      Gemini 4 Hydrogen Low CLIProxy: 1
       ChatGPT 6 Luna Max CLIProxy: 1
       DeepSeek V4.1 Flash Max OpenCode Go 2: 1
   - group_name: hermes-agent-simple
@@ -1842,6 +1861,8 @@ litellm_values:
   proxy_config:
     litellm_settings:
       drop_params: true
+      # ストリーミングで最初の応答が届くまで、SSE のコメントを送り続け、Cloudflare などの中継の時間切れを防ぐ
+      sse_keepalive_ping_interval_seconds: 15
   affinity:
     nodeAffinity: "{{ heavy_workload_node_affinity }}"
 
@@ -1861,8 +1882,6 @@ litellm_managed_keys:
       key_alias: OpenWebUI
       models:
         - grok-4.7
-      # ストリーミングで最初の応答が届くまで、SSE のコメントを送り続け、Cloudflare などの中継の時間切れを防ぐ
-      sse_keepalive_ping_interval_seconds: 15
         - gpt-6-luna
         - gpt-6.1-sol
         - mimo-v2.6-pro
