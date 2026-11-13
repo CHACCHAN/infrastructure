@@ -170,6 +170,20 @@ litellm_managed_models:
       guardrails: []
     model_info:
       id: ea7687f8-43ae-4905-8b02-3d981d2894e8
+  - model_name: Gemini 4 Hydrogen CLIProxy
+    litellm_params:
+      api_base: http://cliproxy.cliproxy.svc.cluster.local:8317/v1
+      custom_llm_provider: openai
+      allow_client_keepalive_override: false
+      use_in_pass_through: false
+      use_litellm_proxy: false
+      use_xai_oauth: false
+      merge_reasoning_content_in_choices: false
+      tags: []
+      model: gemini-4-hydrogen-xhigh
+      guardrails: []
+    model_info:
+      id: 369ba331-796c-4080-939d-471ccabae1b5
   - model_name: Gemini 3.8 Flash Google AI Studio API (chacchan.global)
     litellm_params:
       custom_llm_provider: gemini
@@ -1444,6 +1458,12 @@ litellm_managed_routing_groups:
     routing_strategy: priority
     model_priorities:
       Gemini 4 Argon CLIProxy: 1
+  - group_name: gemini-4-hydrogen
+    models:
+      - Gemini 4 Hydrogen CLIProxy
+    routing_strategy: priority
+    model_priorities:
+      Gemini 4 Hydrogen CLIProxy: 1
   - group_name: mimo-v2.6-pro
     models:
       - MiMo V2.6 Pro OpenCode Go 2
@@ -1881,66 +1901,7 @@ litellm_managed_keys:
     settings:
       key_alias: OpenWebUI
       models:
-        - grok-4.7
-        - gpt-6-luna
-        - gpt-6.1-sol
-        - mimo-v2.6-pro
-        - gemini-4-argon
-        - claude-opus-4.6
-        - claude-opus-5.5
-        - claude-haiku-5.5
-        - claude-sonnet-4.6
-        - gpt-oss-120b-medium
-        - gemini-4-argon-contributor
-        - deepseek-v4.1-flash
-        - gemini-3.8-flash
-        - gemini-3.5-flash-lite
-        - mimo-v2.6-flash
-        - muse-spark-1.3-contributor
-        - glm-4.5-flash
-        - glm-4.7-flash
-        - glm-4.6v-flash
-        - claude-sonnet-5.5
-        - gpt-6-astra
-        - gpt-oss-120b
-        - qwen-3.8-27b
-        - gemini-3.5-flash-lite-free
-        - gemini-3.8-flash-free
-        - gpt-image-2.5-sunburst-generate
-        - gpt-image-2.5-sunburst-edit
-        - gpt-image-2.5-flare-edit
-        - gpt-image-2.5-flare-generate
-        - kimi-k3.1-pro
-        - sarashina-3-mini
-        - sarashina-3-nano
-        - beam-1.0
-        - glm-5.3-flash
-        - glm-5.3
-        - nemotron-3-ultra
-        - nemotron-3.5-super
-        - nemotron-3.5-lightning
-        - nemotron-3.5-bolt
-        - minmax-m3.1-flash
-        - step-5-preview
-        - laguna-xs-2.1
-        - muse-glimmer-30b
-        - gemma-4-31b
-        - diffusion-gemma-26b
-        - gpt-oss-20b
-        - nemotron-3-nano-omni
-        - llama-3.2-11b
-        - llama-3.2-90b
-        - grok-4.6
-        - grok-4.5
-        - swe-1.6-slow
-        - gpt-5.6-sol
-        - gpt-5.6-terra
-        - gpt-5.6-luna
-        - gpt-6-sol
-        - cc
-        - cc-max
-        - gpt-6.1-terra
-        - iceman-contributor-free
+        - all-proxy-models
 
 # 段階のグループが失敗したときに順に試すグループ。上位の段階を先に試し、無ければ下位へ下げる。判定用(*-judge)には置かない
 litellm_managed_fallbacks:
