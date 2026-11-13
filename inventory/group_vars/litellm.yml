@@ -1861,6 +1861,8 @@ litellm_managed_keys:
       key_alias: OpenWebUI
       models:
         - grok-4.7
+      # ストリーミングで最初の応答が届くまで、SSE のコメントを送り続け、Cloudflare などの中継の時間切れを防ぐ
+      sse_keepalive_ping_interval_seconds: 15
         - gpt-6-luna
         - gpt-6.1-sol
         - mimo-v2.6-pro
