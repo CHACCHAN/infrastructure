@@ -29,7 +29,6 @@ __cliproxy_secrets:
       config.yaml: "{{ __cliproxy_seed_config | to_nice_yaml | b64encode }}"
 __cliproxy_labels:
   app.kubernetes.io/name: cliproxy
-__cliproxy_config_file: /CLIProxyAPI/config/config.yaml
 __cliproxy_security_context:
   allowPrivilegeEscalation: false
   capabilities:
@@ -88,11 +87,6 @@ __cliproxy_manifests:
             - name: cliproxy
               image: "{{ cliproxy_image }}:{{ cliproxy_version }}"
               imagePullPolicy: IfNotPresent
-              command:
-                - ./CLIProxyAPI
-              args:
-                - --config
-                - "{{ __cliproxy_config_file }}"
               envFrom:
                 - secretRef:
                     name: cliproxy-env
@@ -118,8 +112,8 @@ __cliproxy_manifests:
               securityContext: "{{ __cliproxy_security_context }}"
               volumeMounts:
                 - name: data
-                  mountPath: /CLIProxyAPI/config
-                  subPath: config
+                  mountPath: /CLIProxyAPI/config.yaml
+                  subPath: config/config.yaml
                 # 認証情報の既定の置き場(auth-dir の既定の ~/.cli-proxy-api)
                 - name: data
                   mountPath: /root/.cli-proxy-api

@@ -36,7 +36,7 @@ Authentik が使えないときは、k3s01 に SSH で入り、`sudo k3s kubectl
 
 ## 注意
 
-- 設定ファイル・認証情報(プロバイダーの OAuth のトークン)・入れたプラグインは、Longhorn のボリューム(`cliproxy_storage_size`)に置く(状態。バックアップは無い)。
+- 設定ファイル・認証情報(プロバイダーの OAuth のトークン)・入れたプラグインは、Longhorn のボリューム(`cliproxy_storage_size`)に置く(状態。バックアップは無い)。コンテナ内のパスは、公式の `/CLIProxyAPI/config.yaml`・`/root/.cli-proxy-api`・`/CLIProxyAPI/plugins` を使う。設定は PVC 内の `config/config.yaml` を `subPath` でマウントする。
 - 設定の初期値(`vault_cliproxy_api_keys`、`cliproxy_trusted_proxies` など)は、設定ファイルが無いとき(最初の起動)だけ使われる。以降は、管理画面で変えた内容が残り、Ansible は上書きしない。vault の API キーを変えても、動いている設定には効かない(管理画面で変える)。
 - 管理画面のファイル(`management.html`)は、CLIProxyAPI が起動後に GitHub の最新のリリースから取得する。CLIProxyAPI は取得先を最新のリリースに固定しているため、バージョンを固定できない。
 - ログと管理画面のファイルは、作業用のディレクトリ(`cliproxy_work_size`)に置き、Pod を作り直すと消える。
