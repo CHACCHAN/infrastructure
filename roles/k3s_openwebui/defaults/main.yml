@@ -2,7 +2,7 @@
 # 秘密情報と、公開ホスト名(openwebui_host、authentik_host)、緊急用の管理者のメールアドレス(openwebui_admin_email)は、既定値を持たない。
 ---
 # チャートのバージョン
-openwebui_chart_version: "16.6.0"
+openwebui_chart_version: "18.3.0"
 openwebui_chart_repo_url: https://helm.openwebui.com
 openwebui_release_name: open-webui
 openwebui_namespace: open-webui

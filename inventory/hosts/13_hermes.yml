@@ -1,4 +1,4 @@
-# VLAN13 172.16.13.0/24: Hermes Agent(AI専用)。1組織に VM を1つ(docs/design/hermes.md)
+# VLAN13 172.16.13.0/24: Hermes Agent 用の VM(docs/design/hermes.md)
 ---
 hermes:
   vars:
@@ -7,50 +7,40 @@ hermes:
     hermes01:
       id: 1
       node: pve02
-      pve_vm_description: 受付
       # qemu-guest-agent が入っている VM だけ有効にする(docs/design/pve.md)
       pve_vm_agent: 1
-      # 依頼を通すだけで、コンテナで重い処理を動かさない(メモリは、導入に要る既定のまま)
       pve_vm_cores: 2
       pve_vm_disk_size: 32
     hermes02:
       id: 2
       node: pve02
-      pve_vm_description: 本社
       pve_vm_agent: 1
     hermes03:
       id: 3
       node: pve02
-      pve_vm_description: ライン子会社
       pve_vm_agent: 1
     hermes04:
       id: 4
       node: pve01
-      pve_vm_description: ディスコード子会社
       pve_vm_agent: 1
     hermes05:
       id: 5
       node: pve01
-      pve_vm_description: 秘書会社
       pve_vm_agent: 1
     hermes06:
       id: 6
       node: pve01
-      pve_vm_description: 社内サービス会社
       pve_vm_agent: 1
-      # Android エミュレータをコンテナで動かす(VM の /dev/kvm をコンテナに渡す)
       pve_vm_cores: 8
       pve_vm_memory: 16384
       pve_vm_disk_size: 128
     hermes07:
       id: 7
       node: pve01
-      pve_vm_description: Nextcloud Hub の管理
       pve_vm_agent: 1
     hermes08:
       id: 8
       node: pve03
-      pve_vm_description: 家のセキュリティ
       pve_vm_agent: 1
       # pve03 には ssd03 が無いため、空いている ssd02 に置く
       pve_vm_storage: ssd02

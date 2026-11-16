@@ -23,6 +23,8 @@
 
 [ネットワーク設計](../docs/design/network.md)の VLAN・ID の規則に従う。ホストが宣言するのは `id`・`node` と、既定値との差分だけ。VMID・IP・ゲートウェイは書かない。
 
+Hermes VM の組織名や役割は Hermes 側で管理し、インベントリには記録しない。
+
 ## 確かめる
 
 ```sh
@@ -38,7 +40,15 @@ ansible k3s01 -c local -m ansible.builtin.debug -a 'var=vmid'    # 導出され�
 ansible-playbook playbooks/k3s/litellm_manage.yml --check --diff 2>&1 | cat
 ```
 
-`cc-medium`・`cc-max-simple`・`hermes-agent-medium` は、推論の強さを `high` に固定した共通の `Gemini 3.8 Flash High CLIProxy` を振り分け先に含める。
+FreeHub の NVIDIA の無料 API モデルと Mistral のサブスクリプションモデルは CLIProxy 経由で接続する。公開モデル名には NVIDIA の無料 API モデルは NVIDIA 自社モデルを除いて `-free` を付け、Mistral のサブスクリプションモデルには付けない。同じモデルを指す重複エイリアスは集約し、接続確認のタイムアウトだけでは登録対象から除外しない。プレビュー・Playground のみで API が提供されないモデルは対象外とする。互換性がある場合は開発元の LiteLLM プロバイダー、それ以外は Custom OpenAI を使う。接続先が開発元と異なる応答形式を返す場合は、その形式に対応するプロバイダーを使う。モデルの作成と認証情報の登録は管理 UI/API で済ませてから、既存モデルの ID を inventory に追加する。`playbooks/k3s/litellm_manage.yml` は既存モデルの更新だけを行い、モデルを作成しない。
+
+Google AI Studio の無料枠 Gemini 接続は公開しない。CLIProxy 経由の短名の Gemini モデル登録は維持する。
+
+公開名に空白を含むプロバイダー名付きの長名モデル登録と、それを参照する旧ルーティンググループは公開しない。参照先のモデルが存在しない旧グループも残さない。Claude 系を含め、短名のモデル登録は維持する。
+
+`cc-` 系のルーティンググループは短名のモデルを参照し、判定用の `cc-judge`・`cc-max-judge` を含め、Gemini を振り分け先に含めない。`cc-simple` は `nemotron-3.5-super-vl` だけを使う。`cc-reasoning`・`cc-max-complex` は `gpt-6.1-terra` と `kimi-k3.1-pro`、`cc-max-reasoning` は `gpt-6.1-sol` と `claude-sonnet-5.5` を使う。利用枠の上限や障害時は既存の段階間フォールバックを使う。
+
+`HermesAgent`(`client_02`) の仮想キーは、Web UI の実態に合わせて `all-proxy-models` を許可している。全プロキシモデルを利用できるため、想定外のモデルや高コスト・高消費枠のモデルへ到達し得るリスクがある。
 
 プロバイダーの API キー・認証ヘッダー・発行済みキーのハッシュと取得記録は Vault に保管する。API の再取得では、このモデル宣言は書き換えない。
 
