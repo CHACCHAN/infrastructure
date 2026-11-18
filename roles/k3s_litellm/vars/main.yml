@@ -38,7 +38,7 @@ __litellm_values:
   masterkeySecretName: litellm-masterkey
   masterkeySecretKey: masterkey
   environmentSecrets: "{{ ['litellm-salt', 'litellm-oidc', 'litellm-ui'] + (['litellm-provider-keys'] if litellm_provider_keys | length > 0 else []) }}"
-  # Authentik の OIDC でログインする。グループ(groups クレーム)が litellm_admin_group のユーザーを、管理者にする
+  # Authentik の OIDC でログインする。グループ(groups クレーム)が litellm_admin_groups のどれかのユーザーを、管理者にする
   envVars:
     PROXY_BASE_URL: "https://{{ litellm_host }}"
     GENERIC_AUTHORIZATION_ENDPOINT: "https://{{ authentik_host }}/application/o/authorize/"
@@ -46,7 +46,7 @@ __litellm_values:
     GENERIC_USERINFO_ENDPOINT: "https://{{ authentik_host }}/application/o/userinfo/"
     GENERIC_SCOPE: "openid email profile"
     GENERIC_ROLE_MAPPINGS_GROUP_CLAIM: groups
-    GENERIC_ROLE_MAPPINGS_ROLES: "{{ {'proxy_admin': [litellm_admin_group]} | to_json }}"
+    GENERIC_ROLE_MAPPINGS_ROLES: "{{ {'proxy_admin': litellm_admin_groups} | to_json }}"
     GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE: internal_user_viewer
   db:
     useExisting: true

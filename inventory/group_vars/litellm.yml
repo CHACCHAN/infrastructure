@@ -372,6 +372,11 @@ litellm_managed_routing_groups:
 
 litellm_host: "litellm.{{ lab_domain }}"
 
+# 管理者(proxy_admin)にするグループ。services は Hermes Agent(HermesAgent)が自動で管理するためのグループ
+litellm_admin_groups:
+  - admins
+  - services
+
 litellm_values:
   proxy_config:
     litellm_settings:
