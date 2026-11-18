@@ -14,8 +14,9 @@ authentik_db_name: authentik
 authentik_oidc_clients: []
 # 認証プロキシ(forward auth)で守るアプリケーション。自前のログインを持たない画面(と、ログインが共有の鍵だけの画面)を、Traefik のミドルウェア(authentik_forward_auth_middleware)で守る
 authentik_proxy_apps: []
-# 認証プロキシで守る画面を使える Authentik のグループ(グループ自体と所属は、Authentik の画面で作る)
-authentik_proxy_access_group: admins
+# 認証プロキシで守る画面を使える Authentik のグループ(どれかのメンバーなら通す。グループ自体と所属は、Authentik の画面で作る)
+authentik_proxy_access_groups:
+  - admins
 # 認証プロキシのミドルウェアの名前。Ingress からは <namespace>-<名前>@kubernetescrd で参照する
 authentik_forward_auth_middleware: forward-auth
 # IP ごとに、ログインの失敗が成功をこの回数だけ上回ると、その IP からのログインを拒否する。0 なら制限しない

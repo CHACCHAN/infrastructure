@@ -70,9 +70,10 @@ argument_specs:
         required: true
         no_log: true
         description: "OIDC の client_secret(vault/litellm.yml。Authentik にも同じ値を渡す)"
-      litellm_admin_group:
-        type: str
-        description: "管理者(proxy_admin)にする Authentik のグループの名前(グループ自体は Authentik の画面で作る)"
+      litellm_admin_groups:
+        type: list
+        elements: str
+        description: "管理者(proxy_admin)にする Authentik のグループの名前(どれかのメンバーなら管理者にする。グループ自体は Authentik の画面で作る)"
       litellm_provider_keys:
         type: dict
         no_log: true

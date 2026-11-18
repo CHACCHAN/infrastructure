@@ -11,7 +11,8 @@ litellm_db_namespace: litellm-db
 litellm_db_host: "{{ litellm_db_namespace }}-rw.{{ litellm_db_namespace }}.svc.cluster.local"
 litellm_db_name: litellm
 # 管理者(proxy_admin)にする Authentik のグループの名前(グループ自体は Authentik の画面で作る)
-litellm_admin_group: admins
+litellm_admin_groups:
+  - admins
 # OIDC の client_id(Authentik の OIDC クライアントの slug と同じ)
 litellm_oidc_client_id: litellm
 # 緊急用の管理者(管理画面のパスワードでのログイン。パスワードは vault)
@@ -55,6 +56,7 @@ litellm_managed_model_fields:
   - rpm
   - tpm
   - weight
+  - order
   - tags
   - guardrails
   - allowed_openai_params

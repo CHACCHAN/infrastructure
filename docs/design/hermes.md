@@ -57,13 +57,15 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 - `hermes` を `docker` グループに入れ、Docker を自由に使わせる(`hermes_groups`)。`docker` グループのユーザーは、ホストのファイルをコンテナにマウントでき、その VM の root と同じことができる。Hermes VM ごとに分けているので、これを認め、次の前提に立つ。
   - 隔離の境界は VM にする。VM の中は、その VM を使う Hermes のものとして扱う。ラボは、Hermes の VLAN とほかの VLAN との間の通信の制限で守る([network.md](network.md) の未決)。Hermes は、その VLAN の中で IP や MAC を偽れるため、VLAN の中の送信元の IP を、利用者の識別には使わない。
   - 「ホームの外は Ansible が再現する」は、導入した時点の状態を指す。Hermes は、Docker を通せばホームの外も書き換えられる。sudo を渡さないのは、誤って OS を書き換えるのを防ぐためで、権限の境界にはならない。
-  - VM の中に、ラボの秘密情報(vault の中身、ほかの機器の認証情報)を置かない。置くのは、その VM を使う Hermes が自分で使う認証情報だけにする。
+  - インフラを操作させる Hermes(オーナーが決める。いまは `hermes06`)の VM には、このリポジトリの複製と vault のパスワードを置く(オーナーの決定。Proxmox・OPNsense・k3s も Hermes に管理させるため)。この VM は、ラボの秘密情報をすべて読めるものとして扱う。ほかの Hermes VM には、ラボの秘密情報を置かず、その VM を使う Hermes が自分で使う認証情報だけを置く。
 
 ### Nextcloud との接続
 
 - Hermes Agent は、Authentik のユーザー `HermesAgent` で、MCP for Cloud(Nextcloud のアプリ `mcp`)から Nextcloud を操作する。ほかの人と同じく Authentik の SSO(`user_oidc`)で作る Nextcloud のユーザーにし、Nextcloud のローカルのユーザーは置かない(ほかのアプリへ OIDC で広げるときも、アカウントを Authentik の1か所で管理するため)。Nextcloud のユーザー ID は `user_oidc` が作るハッシュになる。ユーザーとグループの所属は Authentik の画面で設定する(状態)。
-- `HermesAgent` は Authentik のグループ `services` にだけ入れ、`admins` には入れない(`admins` は Authentik の superuser で、認証プロキシで守る画面と各アプリの管理者の権限を持つため)。Authentik では、`services` を Nextcloud のアプリケーションにだけ結びつける(状態)。緊急用の `admin` は渡さず、Nextcloud の `admin` グループにも入れない(Nextcloud の管理者は、アプリを入れて k3s の中の Nextcloud の Pod でコードを動かせるため)。
-- Authentik のログインのパスワードは機械的に作った値で、`vault/nextcloud_hermes.yml` に置き、Hermes には渡さない。最初のログインで登録する MFA(TOTP)はオーナーが持つ。Nextcloud のユーザーを作るとき(最初のログイン)と、アプリパスワードを作り直すとき以外は、Authentik のログインを使わない。
+- `HermesAgent` は Authentik のグループ `services` にだけ入れ、`admins` には入れない(`admins` は Authentik の superuser で、認証プロキシで守る画面と各アプリの管理者の権限を持つため)。`services` は Hermes Agent が自動で管理するためのグループで、認証プロキシで守る画面(`authentik_proxy_access_groups`。Longhorn・CLIProxyAPI・AM・APIM のコンソール)と LiteLLM の管理者(`litellm_admin_groups`)に入れる(宣言)。ほかに Authentik で結びつけるのは Nextcloud のアプリケーション(状態)。緊急用の `admin` は渡さず、Nextcloud の `admin` グループにも入れない(Nextcloud の管理者は、アプリを入れて k3s の中の Nextcloud の Pod でコードを動かせるため)。
+- Authentik のログインのパスワードは機械的に作った値で、`vault/nextcloud_hermes.yml` に置く。MFA は TOTP で、その種(`vault_authentik_hermes_agent_totp_secret`)も同じファイルに置く。インフラを操作させる Hermes は、vault からこの2つを読んで、自分で Authentik にログインする(LiteLLM の管理画面、認証プロキシで守る画面)。メールアドレスは `hermes@cc-chacchan.com`(LiteLLM の SSO は、メールアドレスが空のユーザーを受け付けない)。
+- LiteLLM のアプリケーションには、Authentik の画面で `admins` と `services` のグループを結びつけている(状態。Ansible では管理しない)。
+- OPNsense も Hermes Agent が管理する。OPNsense のアプリケーションには、Authentik で `admins` と `services` のグループを結びつけている(状態。Ansible では管理しない)。`HermesAgent` は OIDC で OPNsense にログインして作られたユーザーで、自分の API キーを持つ(`vault/opnsense.yml` の `vault_opnsense_hermes_api_key` / `vault_opnsense_hermes_api_secret`)。
 - 認証は、`HermesAgent` のアプリパスワードでの Basic 認証にする(Nextcloud はクライアントにアプリパスワードだけを許す。[k3s.md](k3s.md))。SSO のユーザーはログインのパスワードを Nextcloud に持たないため、Authentik のパスワードを変えてもアプリパスワードは無効にならない。`<Nextcloud のユーザー ID>:<アプリパスワード>` を base64 にした値は、Hermes Agent が使う認証情報として、Hermes の側の MCP の設定に入れる(「コンテナ」の、VM に置いてよい認証情報)。控えは `vault/nextcloud_hermes.yml` に、base64 にした値とアプリパスワードそのものの両方を置き(作り直すときは両方を更新する)、どの playbook も読まない。漏れたときは、アプリパスワードを取り消して作り直す。
 - MCP for Cloud の権限は、すべての操作を許す(削除・共有・公開リンク・Talk の会話の作成を含む)。サーバーのログは管理者用のため付けない。Nextcloud の中での権限は普通のユーザーと同じで、管理させるもの(Deck のボード、カレンダー、フォルダなど)は人が `HermesAgent` に共有する。コレクティブは、`services` のグループを普通のメンバーとして足す。
 - ユーザー・アプリパスワード・MCP for Cloud の導入と権限は、Nextcloud の状態で、Ansible では管理しない。
@@ -89,8 +91,8 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 
 ## 未決
 
-- インフラ(このリポジトリ、Proxmox、k3s)を操作させる権限と隔離の境界をどう設計するか。
-- Hermes にインフラを操作させるとき、何を見て、何を操作してよいか(例: OPNsense のログや設定、ほかの機器)。「VM の中に、ラボの秘密情報(vault の中身、ほかの機器の認証情報)を置かない」という前提と、どう両立させるか。上の権限と隔離の境界の設計とも関わる。
+- Hermes に Proxmox・OPNsense・k3s を管理させるときの、権限の細かさ(API トークンの権限の範囲、OPNsense の管理者のユーザーを分けるか)。管理させることは決まっている。
+- vault のパスワードを持つ Hermes VM が乗っ取られたときの影響を、どこで抑えるか(VLAN 間の FW、監査のログ)。
 - Hermes VM から Nextcloud へ届く経路(LAN 用の入口の `172.16.12.5` を VLAN 間の FW で通すか、Cloudflare Tunnel か)。
 - VM が動いていることの監視(Hermes 同士の監視とは別に、インフラの側で持つか)。
 - LLM の接続先(LiteLLM の `hermes_llm`。[k3s.md](k3s.md))と、仮想キーと予算を Hermes VM ごとに分けるか。VM に置いた鍵は、その VM を使う Hermes が自由に使えるものとして扱う(共通の鍵を置くと、すべての VM で同じ鍵を使う)。

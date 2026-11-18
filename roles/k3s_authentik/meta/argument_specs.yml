@@ -98,9 +98,10 @@ argument_specs:
             type: str
             required: true
             description: "守る画面の公開ホスト名"
-      authentik_proxy_access_group:
-        type: str
-        description: "認証プロキシで守る画面を使える Authentik のグループの名前"
+      authentik_proxy_access_groups:
+        type: list
+        elements: str
+        description: "認証プロキシで守る画面を使える Authentik のグループの名前(どれかのメンバーなら通す)"
       authentik_forward_auth_middleware:
         type: str
         description: "認証プロキシの Traefik のミドルウェアの名前"

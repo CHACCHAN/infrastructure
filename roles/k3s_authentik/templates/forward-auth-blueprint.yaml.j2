@@ -11,7 +11,7 @@ entries:
       name: forward-auth-access
     attrs:
       expression: |
-        return ak_is_group_member(request.user, name={{ authentik_proxy_access_group | to_json }})
+        return any(ak_is_group_member(request.user, name=group) for group in {{ authentik_proxy_access_groups | to_json }})
 {% for app in authentik_proxy_apps %}
   # 認証プロキシで守るアプリケーション。Traefik からの問い合わせに答えるだけで、通信そのものは中継しない
   - model: authentik_providers_proxy.proxyprovider

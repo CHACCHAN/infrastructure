@@ -48,6 +48,11 @@ authentik_oidc_clients:
     redirect_uris:
       - https://touge.{{ lab_domain }}/auth/callback
 
+# 認証プロキシで守る画面を使えるグループ。services は Hermes Agent(HermesAgent)が自動で管理するためのグループ
+authentik_proxy_access_groups:
+  - admins
+  - services
+
 authentik_proxy_apps:
   - name: Longhorn
     slug: longhorn
