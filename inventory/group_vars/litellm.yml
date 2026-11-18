@@ -742,14 +742,6 @@ litellm_managed_models:
       model: devin/kimi-k3-1-pro
     model_info:
       id: f7a0dd63-ab54-46d5-b30c-979996ce2f06
-  - model_name: glm-5
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: mistral
-      stream_timeout: 60
-      model: mistral/mistral/zai-glm-5
-    model_info:
-      id: 5fc6fe39-e411-4714-ae2f-40a4911ec1e5
   - model_name: glm-5.2
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
