@@ -2,6 +2,11 @@
 
 このリポジトリで書くコードとドキュメントの決まりごと。人間もエージェントも同じ規約に従う。
 
+## 管理の対象と実行者
+
+- ラボのインフラ全体(Proxmox・OPNsense・k3s と、それらの上のアプリ)は Hermes Agent が管理する(設計は [design/hermes.md](design/hermes.md))。このリポジトリは、hermes06 の VM 上の複製と vault のパスワードを持つ Hermes が、宣言として読み書きする。
+- OPNsense の VLAN 間のファイアウォール・ポリシーと、Hermes の帯域の分離は OPNsense で管理する([design/network.md](design/network.md))。ネットの見張りは Hermes の側の cron が行う。
+
 ## 言語
 
 - ドキュメント・コメント・タスク名・コミットメッセージは日本語で書く。
