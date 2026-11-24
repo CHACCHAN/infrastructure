@@ -38,6 +38,9 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
   - Hermes のコールバックのパスは Hermes の側で決まるため、Authentik は `https://hermes.<lab_domain>/` の下のパスをすべて許可する(正規表現)。パスが決まったら、完全一致に絞る。
   - 必要な通信は、k3s の全ノード(VLAN12)から `172.16.13.6:9120` と、hermes06 から Authentik(`172.16.12.5:443`)。VLAN 間の FW ポリシー([network.md](network.md) の未決)で、この2つを通す。
   - Hermes は k3s のアプリではないため、[k3s.md](k3s.md) の緊急用のユーザーの規則の対象外。ログインの方法は Hermes 側の状態。
+- パーソナルの Hermes(開発専用機 ubuntu-dev `172.16.11.1` の `hermes` ユーザー)の管理画面(9120番)を、`hermes-main.<lab_domain>` で同じ形で公開する。OIDC クライアントは `hermes` を共用し、Authentik は両方のホスト名の下を許可する。開発専用機はインベントリに無いため、`lan_proxy_extra_services` に IP を直接書く。
+  - 開発専用機の ufw で、k3s の全ノード(`172.16.12.1`〜`.3`)から 9120番だけを通す(開発専用機の側の状態)。
+  - hermes06 を防御用に作り直すときは、クライアントを分けて、シークレットを共用しないようにする。
 - VM に入れるのは、上の表で Ansible が持つもの(共通のパッケージ、ZRAM、QEMU Guest Agent、Docker、Hermes)だけで、すべての Hermes VM でそろえる。ブラウザの自動操作(Chromium)、Computer Use、Android エミュレータなどの道具は VM に入れず(`hermes_skip_browser`・`hermes_skip_computer_use`)、要るときは Hermes がコンテナで動かす。ホームの中は Hermes のものなので、Ansible はこれを強制しない(Hermes の側で守る)。
 
 ### ユーザーと権限

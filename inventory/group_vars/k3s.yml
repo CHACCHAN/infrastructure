@@ -18,6 +18,8 @@ ansible_user: debian
 openwebui_host: "ai.{{ lab_domain }}"
 longhorn_host: "longhorn.{{ lab_domain }}"
 hermes_host: "hermes.{{ lab_domain }}"
+# パーソナルの Hermes Agent(開発専用機 ubuntu-dev の hermes ユーザー)の管理画面
+hermes_main_host: "hermes-main.{{ lab_domain }}"
 opnsense_host: "opnsense.{{ lab_domain }}"
 cliproxy_host: "cliproxy.{{ lab_domain }}"
 nextcloud_host: "nextcloud.{{ lab_domain }}"
@@ -87,6 +89,12 @@ lan_proxy_extra_services:
   - name: hermes
     host: "{{ hermes_host }}"
     address: "{{ hostvars['hermes06'].ansible_host }}"
+    port: 9120
+    scheme: http
+  # パーソナルの Hermes Agent(開発専用機 ubuntu-dev)の管理画面。開発専用機はインベントリに無いため、IP を直接書く。ログインは hermes と同じ OIDC クライアント
+  - name: hermes-main
+    host: "{{ hermes_main_host }}"
+    address: 172.16.11.1
     port: 9120
     scheme: http
   # ルータ(OPNsense)の管理画面。ルータはインベントリに無いため、IP を直接書く。ログインは OPNsense 側の OIDC(Authentik のクライアント opnsense)

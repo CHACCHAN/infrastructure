@@ -18,7 +18,7 @@
 
 - 既定では、インベントリの `pve` グループの全ノードを対象にする。公開ホスト名は `<ノード名>.<lab_domain>`、宛先はノードの IP の 8006 番。ノードをインベントリに足したら、この playbook を実行する。
 - Proxmox 以外の宛先は、`lan_proxy_extra_services` に足す(インベントリの `inventory/group_vars/k3s.yml`)。
-- Hermes の管理画面は `hermes06` の9120番へ転送する。宛先を変えたときは、Hermes 側で管理画面が待ち受けていることと、k3s ノードから届くことを確認し、`playbooks/k3s/lan_proxy.yml` を実行する。
+- Hermes の管理画面は `hermes06` の9120番へ、パーソナルの Hermes の管理画面(`hermes-main`)は開発専用機 `172.16.11.1` の9120番へ転送する。宛先を変えたときは、Hermes 側で管理画面が待ち受けていることと、k3s ノードから届くことを確認し、`playbooks/k3s/lan_proxy.yml` を実行する。
 - 宛先の証明書が自己署名のときは、検証しない(`insecure_skip_verify`)。Proxmox の管理 UI は自己署名のため、検証しない。
 
 ## 注意

@@ -29,7 +29,7 @@ authentik_oidc_clients:
   - name: Hermes
     slug: hermes
     redirect_uris: []
-    redirect_uri_regex: ^https://{{ hermes_host | regex_escape }}/.*$
+    redirect_uri_regex: ^https://({{ hermes_host | regex_escape }}|{{ hermes_main_host | regex_escape }})/.*$
   - name: OPNsense
     slug: opnsense
     redirect_uris:
