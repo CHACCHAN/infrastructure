@@ -21,6 +21,8 @@
       nextcloud: "{{ vault_nextcloud_oidc_client_secret }}"
       litellm: "{{ vault_litellm_oidc_client_secret }}"
       hermes: "{{ vault_hermes_oidc_client_secret }}"
+      hermes-security: "{{ vault_hermes_security_oidc_client_secret }}"
+      hermes-platform: "{{ vault_hermes_platform_oidc_client_secret }}"
       opnsense: "{{ vault_opnsense_oidc_client_secret }}"
       proxmox: "{{ vault_proxmox_oidc_client_secret }}"
       gravitee-am: "{{ vault_gravitee_am_oidc_client_secret }}"

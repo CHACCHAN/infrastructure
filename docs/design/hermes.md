@@ -6,11 +6,11 @@ Hermes Agent の VM(`vm_hermes`)の設計。ネットワークは [network.md](n
 
 ### インスタンス
 
-- Hermes Agent の VM を8台置く。組織の名称・役割・関係は Hermes 側で管理し、このリポジトリには記録しない。
+- Hermes Agent の VM を6台置く。組織の名称・役割・関係は Hermes 側で管理し、このリポジトリには記録しない。
 - 組織同士の関係(やり取りの方式、互いをどこまで信用するか、相互の監視)は、Hermes が自分で設計する。Ansible と、このリポジトリの設計では決めない。
 - Hermes の VM には、専用の VLAN13(`172.16.13.0/24`。[network.md](network.md))を与える。ブリッジは、配置先のノードの LAN 側の NIC の VLAN13(pve02・pve03 は `vmbr113`、pve01 は `vmbr013`。ホストは、この VLAN に IP を持たない)。ほかの VLAN との分離は、VM の外(OPNsense。[network.md](network.md))で行う。同じ VLAN の中の Hermes 同士の通信は、インフラの側では絞らない。
-- ノードは pve02(hermes01〜hermes03)と pve01(hermes04〜hermes07)と pve03(hermes08)。配置はインベントリの `node` に書く([hardware.md](hardware.md))。
-- ホスト名は番号で `hermes01`〜`hermes08`(VLAN13 の ID 1〜8)。VM の説明欄に組織名を宣言しない。
+- ノードは pve02(hermes03)と pve01(hermes04〜hermes06)と pve03(hermes-security・hermes-platform)。配置はインベントリの `node` に書く([hardware.md](hardware.md))。
+- ホスト名は、番号の `hermes03`〜`hermes06`(VLAN13 の ID 3〜6)と、役割の名前の `hermes-security`(ID 1)・`hermes-platform`(ID 2)。管理画面は `hermes-security.cc-chacchan.com`・`hermes-platform.cc-chacchan.com`。
 
 ### VM のサイズ
 
@@ -67,6 +67,7 @@ Hermes には、自分で成長させる(スキルやメモリだけでなく、
 - Hermes Agent は、Authentik のユーザー `HermesAgent` で、MCP for Cloud(Nextcloud のアプリ `mcp`)から Nextcloud を操作する。ほかの人と同じく Authentik の SSO(`user_oidc`)で作る Nextcloud のユーザーにし、Nextcloud のローカルのユーザーは置かない(ほかのアプリへ OIDC で広げるときも、アカウントを Authentik の1か所で管理するため)。Nextcloud のユーザー ID は `user_oidc` が作るハッシュになる。ユーザーとグループの所属は Authentik の画面で設定する(状態)。
 - `HermesAgent` は Authentik のグループ `services` にだけ入れ、`admins` には入れない(`admins` は Authentik の superuser で、認証プロキシで守る画面と各アプリの管理者の権限を持つため)。`services` は Hermes Agent が自動で管理するためのグループで、認証プロキシで守る画面(`authentik_proxy_access_groups`。Longhorn・CLIProxyAPI・AM・APIM のコンソール)と LiteLLM の管理者(`litellm_admin_groups`)に入れる(宣言)。ほかに Authentik で結びつけるのは Nextcloud のアプリケーション(状態)。緊急用の `admin` は渡さず、Nextcloud の `admin` グループにも入れない(Nextcloud の管理者は、アプリを入れて k3s の中の Nextcloud の Pod でコードを動かせるため)。
 - Authentik のログインのパスワードは機械的に作った値で、`vault/nextcloud_hermes.yml` に置く。MFA は TOTP で、その種(`vault_authentik_hermes_agent_totp_secret`)も同じファイルに置く。インフラを操作させる Hermes は、vault からこの2つを読んで、自分で Authentik にログインする(LiteLLM の管理画面、認証プロキシで守る画面)。メールアドレスは `hermes@cc-chacchan.com`(LiteLLM の SSO は、メールアドレスが空のユーザーを受け付けない)。
+- `hermes-security`・`hermes-platform` の Hermes は、それぞれ Authentik のユーザー `HermesSecurity`・`HermesPlatform`(メールアドレスは `hermes-security@cc-chacchan.com`・`hermes-platform@cc-chacchan.com`)を使い、`HermesAgent` を共用しない(状態。Ansible では管理しない)。作った時点ではどのグループにも入れていない。役割に要る分だけ、後から足す。パスワードは `vault/hermes.yml` に置く。
 - LiteLLM のアプリケーションには、Authentik の画面で `admins` と `services` のグループを結びつけている(状態。Ansible では管理しない)。
 - OPNsense も Hermes Agent が管理する。OPNsense のアプリケーションには、Authentik で `admins` と `services` のグループを結びつけている(状態。Ansible では管理しない)。`HermesAgent` は OIDC で OPNsense にログインして作られたユーザーで、自分の API キーを持つ(`vault/opnsense.yml` の `vault_opnsense_hermes_api_key` / `vault_opnsense_hermes_api_secret`)。
 - 認証は、`HermesAgent` のアプリパスワードでの Basic 認証にする(Nextcloud はクライアントにアプリパスワードだけを許す。[k3s.md](k3s.md))。SSO のユーザーはログインのパスワードを Nextcloud に持たないため、Authentik のパスワードを変えてもアプリパスワードは無効にならない。`<Nextcloud のユーザー ID>:<アプリパスワード>` を base64 にした値は、Hermes Agent が使う認証情報として、Hermes の側の MCP の設定に入れる(「コンテナ」の、VM に置いてよい認証情報)。控えは `vault/nextcloud_hermes.yml` に、base64 にした値とアプリパスワードそのものの両方を置き(作り直すときは両方を更新する)、どの playbook も読まない。漏れたときは、アプリパスワードを取り消して作り直す。

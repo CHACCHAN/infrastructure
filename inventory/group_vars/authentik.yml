@@ -30,6 +30,15 @@ authentik_oidc_clients:
     slug: hermes
     redirect_uris: []
     redirect_uri_regex: ^https://({{ hermes_host | regex_escape }}|{{ hermes_main_host | regex_escape }})/.*$
+  # hermes-security・hermes-platform は、シークレットを共用しないようにクライアントを分ける
+  - name: Hermes Security
+    slug: hermes-security
+    redirect_uris: []
+    redirect_uri_regex: ^https://{{ hermes_security_host | regex_escape }}/.*$
+  - name: Hermes Platform
+    slug: hermes-platform
+    redirect_uris: []
+    redirect_uri_regex: ^https://{{ hermes_platform_host | regex_escape }}/.*$
   - name: OPNsense
     slug: opnsense
     redirect_uris:

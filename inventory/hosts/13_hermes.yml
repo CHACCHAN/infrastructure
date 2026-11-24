@@ -4,20 +4,11 @@ hermes:
   vars:
     vlan: 13
   hosts:
-    hermes01:
-      id: 1
-      node: pve02
-      # qemu-guest-agent が入っている VM だけ有効にする(docs/design/pve.md)
-      pve_vm_agent: 1
-      pve_vm_cores: 2
-      pve_vm_disk_size: 32
-    hermes02:
-      id: 2
-      node: pve02
-      pve_vm_agent: 1
+    # ID 1・2 は hermes-security・hermes-platform が使う(下)
     hermes03:
       id: 3
       node: pve02
+      # qemu-guest-agent が入っている VM だけ有効にする(docs/design/pve.md)
       pve_vm_agent: 1
     hermes04:
       id: 4
@@ -34,13 +25,17 @@ hermes:
       pve_vm_cores: 8
       pve_vm_memory: 16384
       pve_vm_disk_size: 128
-    hermes07:
-      id: 7
-      node: pve01
-      pve_vm_agent: 1
-    hermes08:
-      id: 8
+    # hermes-security・hermes-platform は pve03 に置く(pve01 の hermes06 が倒れても残るように、ノードを分ける)
+    hermes-security:
+      id: 1
       node: pve03
       pve_vm_agent: 1
+      pve_vm_memory: 6144
       # pve03 には ssd03 が無いため、空いている ssd02 に置く
+      pve_vm_storage: ssd02
+    hermes-platform:
+      id: 2
+      node: pve03
+      pve_vm_agent: 1
+      pve_vm_memory: 6144
       pve_vm_storage: ssd02

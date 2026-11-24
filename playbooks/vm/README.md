@@ -25,6 +25,8 @@ VM の中を SSH で設定する。VM の作成は [playbooks/pve](../pve/README
 
 秘密鍵は、開発マシンの `~/.ssh` ではなく vault から取り出す。実行の間だけ `/dev/shm` に 0600 で書き出し、終わると消す。消せなかった場合は、次の実行の初めに消す。
 
+ホスト鍵は自動では登録しない。新しく作った VM や、作り直した VM に初めて流す前に、実行する側の known_hosts(ssh が読むのはユーザーのホーム。`$HOME` と違うことがある)の古い行を `ssh-keygen -R <IP>` で消し、`ssh-keyscan <IP> >> ~/.ssh/known_hosts` で足す。登録が無いと「VM に入れるようになるまで待つ」が `Host key verification failed` のまま 10 分待って止まる。
+
 ## 確かめる
 
 ```sh
