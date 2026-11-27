@@ -87,7 +87,7 @@ litellm_managed_models:
   # CLIProxy 経由のモデル。Hermes の自動追加(llm-models-autosync)が実際に呼べたものを登録し、
   # この一覧は litellm_inventory_export.py で LiteLLM の現在の状態から書き出す。
   # 公開名は 1 モデル 1 つ(-latest や日付を付けない)。同じモデルを複数の契約先で使える時は同じ名前に
-  # 経路を並べ、order の小さい方を先に使う(codex > devin、DeepSeek は Mistral > OpenDesign > devin)。
+  # 経路を並べ、order の小さい方を先に使う(codex > devin、DeepSeek は Mistral = OpenDesign(同順位で分散) > devin)。
   # LiteLLM が先頭の mistral/ を除去しても CLIProxy の接頭辞を残すため、mistral/mistral/ と二重に付ける。
   - model_name: claude-fable-5
     litellm_params:
@@ -647,6 +647,15 @@ litellm_managed_models:
   - model_name: deepseek-v4.1-flash
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
+      custom_llm_provider: deepseek
+      stream_timeout: 60
+      model: opendesign/deepseek-v4.1-flash-eco
+      order: 1
+    model_info:
+      id: d4747bd3-b016-4575-b835-67528e45ab75
+  - model_name: deepseek-v4.1-flash
+    litellm_params:
+      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
       custom_llm_provider: mistral
       model: mistral/mistral/deepseek-v4-1-flash-1017
       order: 1
@@ -657,17 +666,8 @@ litellm_managed_models:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
       custom_llm_provider: deepseek
       stream_timeout: 60
-      model: opendesign/deepseek-v4.1-flash-eco
-      order: 2
-    model_info:
-      id: d4747bd3-b016-4575-b835-67528e45ab75
-  - model_name: deepseek-v4.1-flash
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: deepseek
-      stream_timeout: 60
       model: devin/deepseek-v4-1-flash-1017
-      order: 3
+      order: 2
     model_info:
       id: fe10baa7-1965-4848-8f8f-d9c66f20d763
   - model_name: deepseek-v4.1-flash-free
