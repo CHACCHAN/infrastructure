@@ -87,7 +87,7 @@ litellm_managed_models:
   # CLIProxy 経由のモデル。Hermes の自動追加(llm-models-autosync)が実際に呼べたものを登録し、
   # この一覧は litellm_inventory_export.py で LiteLLM の現在の状態から書き出す。
   # 公開名は 1 モデル 1 つ(-latest や日付を付けない)。同じモデルを複数の契約先で使える時は同じ名前に
-  # 経路を並べ、order の小さい方を先に使う(codex > devin、DeepSeek は OpenCode Go > Mistral > devin)。
+  # 経路を並べ、order の小さい方を先に使う(codex > devin、DeepSeek は Mistral > OpenDesign > devin)。
   # LiteLLM が先頭の mistral/ を除去しても CLIProxy の接頭辞を残すため、mistral/mistral/ と二重に付ける。
   - model_name: claude-fable-5
     litellm_params:
@@ -266,6 +266,14 @@ litellm_managed_models:
       order: 2
     model_info:
       id: 6290c43f-b99d-4c0a-842a-ea0519bcf05c
+  - model_name: gpt-6-chat-thinking
+    litellm_params:
+      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
+      custom_llm_provider: openai
+      stream_timeout: 60
+      model: gpt-6-chat-thinking
+    model_info:
+      id: 9205b7f9-ab97-4b55-b70d-a4cdcf7caa44
   - model_name: gpt-6-luna
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -502,6 +510,22 @@ litellm_managed_models:
       model: devin/gemini-4-carbon
     model_info:
       id: 296520a2-67a8-4aa5-916e-6535c0c1dc2a
+  - model_name: gemini-4-hydrogen
+    litellm_params:
+      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1beta"
+      custom_llm_provider: gemini
+      stream_timeout: 60
+      model: devin/gemini-4-hydrogen
+    model_info:
+      id: d1d60812-0e37-4e23-b97b-f71730079249
+  - model_name: gemini-4-neon
+    litellm_params:
+      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1beta"
+      custom_llm_provider: gemini
+      stream_timeout: 60
+      model: devin/gemini-4-neon
+    model_info:
+      id: 903a6dc8-41be-4e0e-ab59-51c24a292a19
   - model_name: gemma-4-31b-it-free
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -591,20 +615,6 @@ litellm_managed_models:
       model: nvidia/meta/muse-glimmer-30b
     model_info:
       id: 3b4c3b44-6880-442e-9cfa-be5b5b2f2b62
-  - model_name: muse-spark-1.2-contributor
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: meta_llama
-      model: opencode-go/muse-spark-1.2-contributor
-    model_info:
-      id: 0e3dcb03-774d-4eb8-8048-5889d2f27e56
-  - model_name: muse-spark-1.3-contributor
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: meta_llama
-      model: opencode-go/muse-spark-1.3-contributor
-    model_info:
-      id: eedd221b-881a-44f9-aace-1210607c2a0a
   - model_name: muse-wonder-1.0
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -619,6 +629,14 @@ litellm_managed_models:
       model: devin/deepseek-v4-flash
     model_info:
       id: 0b90cc62-9036-4414-a290-5228ad655b5d
+  - model_name: deepseek-v4-flash-vision-exp
+    litellm_params:
+      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
+      custom_llm_provider: deepseek
+      stream_timeout: 60
+      model: deepseek-v4-flash-vision-exp
+    model_info:
+      id: 7f9c007b-b190-4a66-908c-46c60172682b
   - model_name: deepseek-v4-pro
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -629,19 +647,20 @@ litellm_managed_models:
   - model_name: deepseek-v4.1-flash
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: deepseek
-      model: opencode-go/deepseek-v4.1-flash
+      custom_llm_provider: mistral
+      model: mistral/mistral/deepseek-v4-1-flash-1017
       order: 1
     model_info:
-      id: 0e4a3194-9141-47b2-b61c-72a2564fc6a1
+      id: e9ba2c2a-d571-44c3-902d-8f078e4c3811
   - model_name: deepseek-v4.1-flash
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: mistral
-      model: mistral/mistral/deepseek-v4-1-flash-1017
+      custom_llm_provider: deepseek
+      stream_timeout: 60
+      model: opendesign/deepseek-v4.1-flash-eco
       order: 2
     model_info:
-      id: e9ba2c2a-d571-44c3-902d-8f078e4c3811
+      id: d4747bd3-b016-4575-b835-67528e45ab75
   - model_name: deepseek-v4.1-flash
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -665,13 +684,6 @@ litellm_managed_models:
       model: deepseek-v4.1-flash-free
     model_info:
       id: e8b571a7-0508-4bbe-8f5e-2248b8025812
-  - model_name: qwen3.7-plus
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: qwencloud
-      model: opencode-go/qwen3.7-plus
-    model_info:
-      id: e40ca5b3-00ba-4a51-b08b-c3b30d3c7f59
   - model_name: qwen3.8-27b
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -679,20 +691,6 @@ litellm_managed_models:
       model: groq/qwen/qwen3.8-27b
     model_info:
       id: d7d92677-eb11-43ea-b911-71e9df0eea7c
-  - model_name: qwen3.8-flash
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: qwencloud
-      model: opencode-go/qwen3.8-flash
-    model_info:
-      id: d027c5b0-ca00-4a58-900d-71777f6b7cdd
-  - model_name: qwen3.8-max
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: qwencloud
-      model: opencode-go/qwen3.8-max
-    model_info:
-      id: 88428d45-0ec7-4ee1-b628-6f517b66594a
   - model_name: kimi-k2.6
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -710,17 +708,11 @@ litellm_managed_models:
   - model_name: kimi-k2.7-code
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: moonshot
-      model: opencode-go/kimi-k2.7-code
+      custom_llm_provider: custom_openai
+      stream_timeout: 60
+      model: kimi-k2.7-code
     model_info:
-      id: c1785a44-a8a1-49ff-a733-754350877436
-  - model_name: kimi-k3
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: moonshot
-      model: opencode-go/kimi-k3
-    model_info:
-      id: 3c0e1f3e-c41e-4379-bd1c-909fe771c2c1
+      id: f04a1b1f-ecdf-4a32-9dc1-757b2696a348
   - model_name: kimi-k3
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -732,16 +724,17 @@ litellm_managed_models:
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
       custom_llm_provider: moonshot
-      model: opencode-go/kimi-k3.1-pro
-    model_info:
-      id: 39aca979-5e0d-489b-bb51-4043766a618b
-  - model_name: kimi-k3.1-pro
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: moonshot
       model: devin/kimi-k3-1-pro
     model_info:
       id: f7a0dd63-ab54-46d5-b30c-979996ce2f06
+  - model_name: kimi-k3.1-pro-free
+    litellm_params:
+      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
+      custom_llm_provider: custom_openai
+      stream_timeout: 60
+      model: nvidia/moonshotai/kimi-k3.1-pro
+    model_info:
+      id: c0f55dbc-808f-4b9f-bb11-4ba00e5f6f96
   - model_name: glm-5.2
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -808,20 +801,22 @@ litellm_managed_models:
       model: glm-5.3-flash-free
     model_info:
       id: 88db54b5-e5d3-43eb-a806-6e3a0bfa7791
-  - model_name: minimax-m3
+  - model_name: glm-5.3-flashx
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: minimax
-      model: opencode-go/minimax-m3
+      custom_llm_provider: custom_openai
+      stream_timeout: 60
+      model: glm-5.3-flashx
     model_info:
-      id: 01edd3aa-d681-4d9a-ab80-7c6945439370
+      id: 4cd50172-3039-470b-8c40-7dd3bd221be9
   - model_name: minimax-m3.1-flash
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: minimax
-      model: opencode-go/minimax-m3.1-flash
+      custom_llm_provider: custom_openai
+      stream_timeout: 60
+      model: minimax-m3.1-flash
     model_info:
-      id: f88305d6-90c3-4d3c-bca8-c342005ffb4c
+      id: 06344a32-8df2-406a-8d87-bf05c900cdfe
   - model_name: minimax-m3.1-flash-free
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -841,9 +836,10 @@ litellm_managed_models:
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
       custom_llm_provider: custom_openai
-      model: opencode-go/mimo-v2.6-flash
+      stream_timeout: 60
+      model: mimo-v2.6-flash
     model_info:
-      id: 01c2c088-74ca-4468-975a-052425e6de2a
+      id: de6c7f23-ada1-4b2e-a7a9-756881e3c952
   - model_name: mimo-v2.6-flash-free
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -855,16 +851,10 @@ litellm_managed_models:
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
       custom_llm_provider: custom_openai
-      model: opencode-go/mimo-v2.6-pro
+      stream_timeout: 60
+      model: mimo-v2.6-pro
     model_info:
-      id: 5a0c2191-b3af-4874-80c0-d7b085472119
-  - model_name: step-5-preview
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: custom_openai
-      model: opencode-go/step-5-preview
-    model_info:
-      id: 99b223ed-2702-4cde-a11f-819e315eb53e
+      id: 2c4b5fd6-fc4d-42b6-b6d0-3c2eb40cf5da
   - model_name: step-5-preview-free
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -873,41 +863,14 @@ litellm_managed_models:
       model: nvidia/stepfun-ai/step-5-preview
     model_info:
       id: 56d19055-ff0a-43c9-b9a4-b12b96723178
-  - model_name: hy3
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: tencent
-      model: opencode-go/hy3
-    model_info:
-      id: 7ac4d7dc-01e7-4323-a934-3707cd786ec9
-  - model_name: hy4
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: tencent
-      model: opencode-go/hy4
-    model_info:
-      id: 75ef0d12-c05d-4408-9154-62d5b4bfee80
   - model_name: hy4-preview
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: tencent
-      model: opencode-go/hy4-preview
-    model_info:
-      id: defb1922-925f-404e-a53f-89f8e36f8484
-  - model_name: longcat-2.0
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
       custom_llm_provider: custom_openai
-      model: opencode-go/longcat-2.0
+      stream_timeout: 60
+      model: hy4-preview
     model_info:
-      id: 9433c7aa-545f-49e9-bfa9-c3d1ec8f1277
-  - model_name: longcat-2.5
-    litellm_params:
-      api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
-      custom_llm_provider: custom_openai
-      model: opencode-go/longcat-2.5-free
-    model_info:
-      id: c2bc5ed4-1561-4535-9efb-b253278114c9
+      id: 5035f2fa-4775-48f8-a7f4-4c9fb6b62849
   - model_name: longcat-2.5-free
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
@@ -1249,13 +1212,14 @@ litellm_managed_models:
       model: "kilo/cohere/north-mini-code:free"
     model_info:
       id: 3aba06bc-28a1-4a4a-8953-a35eae1fc231
-  - model_name: beam-1.0
+  - model_name: flint-v1.0-free
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
       custom_llm_provider: custom_openai
-      model: opencode-go/beam-free
+      stream_timeout: 60
+      model: "kilo/recursive/flint-v1.0:free"
     model_info:
-      id: c23206f0-781e-4c97-bc39-101d0c2fbe53
+      id: d79db12b-8da0-4ec3-9afa-a3eb17b4ccad
   - model_name: beam-1.0-free
     litellm_params:
       api_base: "http://cliproxy.cliproxy.svc.cluster.local:8317/v1"
