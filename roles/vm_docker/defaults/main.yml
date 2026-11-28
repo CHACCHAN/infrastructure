@@ -1,8 +1,0 @@
-# Docker を入れるロールの既定値。
----
-# 入れるパッケージ(Debian のもの)。docker-compose は `docker compose`、docker-buildx は `docker buildx` の実体
-docker_packages:
-  - docker.io
-  - docker-cli
-  - docker-compose
-  - docker-buildx

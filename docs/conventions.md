@@ -2,11 +2,6 @@
 
 このリポジトリで書くコードとドキュメントの決まりごと。人間もエージェントも同じ規約に従う。
 
-## 管理の対象と実行者
-
-- ラボのインフラ全体(Proxmox・OPNsense・k3s と、それらの上のアプリ)は Hermes Agent が管理する(設計は [design/hermes.md](design/hermes.md))。このリポジトリは、hermes06 の VM 上の複製と vault のパスワードを持つ Hermes が、宣言として読み書きする。
-- OPNsense の VLAN 間のファイアウォール・ポリシーと、Hermes の帯域の分離は OPNsense で管理する([design/network.md](design/network.md))。ネットの見張りは Hermes の側の cron が行う。
-
 ## 言語
 
 - ドキュメント・コメント・タスク名・コミットメッセージは日本語で書く。
@@ -79,7 +74,7 @@ VLAN・ID・VMID・IP の規則は [design/network.md](design/network.md) に書
 - vault のパスワードは、開発マシン以外にも控えを持つ(パスワードマネージャなど)。失うと vault は復号できない。
 - Kubernetes への接続も kubeconfig を使わず、vault のトークンで行う([design/k3s.md](design/k3s.md))。
 - 編集は `ansible-vault edit` で行う。
-- 望む非機密の設定は inventory、秘密値と識別子は Vault、API の取得記録は `<サービス>_snapshot.yml` に分ける。通常適用は取得記録を読まず、取得処理は宣言と秘密の台帳を上書きしない。
+- 管理 API で更新する設定は、非機密の宣言を inventory、秘密値と識別子を Vault に分ける。
 - playbook がロールへ通常の変数として渡す。秘密情報を扱うタスクには `no_log` を付ける。
 - 平文のトークン・パスワード・秘密鍵・kubeconfig をコミットしない。
 

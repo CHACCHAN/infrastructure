@@ -25,11 +25,7 @@ litellm_provider_keys: {}
 litellm_values: {}
 # 管理 API は LAN/VPN 用のホスト名で TLS を検証する
 litellm_management_url: "https://{{ litellm_host }}"
-litellm_managed_models: []
-# 既存のルーティンググループ(router 設定の routing_groups)。グループ名で識別し、宣言したグループだけを置き換える
-litellm_managed_routing_groups: []
-# ルーティンググループのフォールバック(router 設定の fallbacks)。グループ名をキーにし、宣言したものだけを置き換える
-litellm_managed_fallbacks: []
+# 既存の仮想キーの論理名と利用範囲(キーのハッシュは vault/litellm_keys.yml)
 litellm_managed_keys: []
 # キーの識別子と秘密値。通常の設定宣言とは分けて playbook が渡す
 litellm_key_material: {}
@@ -42,40 +38,6 @@ litellm_managed_key_fields:
   - rpm_limit
   - max_parallel_requests
   - metadata
-litellm_export_file: "{{ role_path }}/../../vault/litellm_snapshot.yml"
-litellm_export_overwrite: false
-# 認証情報・ヘッダー・プロバイダー固有の秘密を更新対象へ混ぜない
-litellm_managed_model_fields:
-  - model
-  - api_base
-  - custom_llm_provider
-  - timeout
-  - request_timeout
-  - stream_timeout
-  - max_retries
-  - rpm
-  - tpm
-  - weight
-  - order
-  - tags
-  - guardrails
-  - allowed_openai_params
-  - allow_client_keepalive_override
-  - use_in_pass_through
-  - use_litellm_proxy
-  - use_xai_oauth
-  - merge_reasoning_content_in_choices
-  - reasoning_effort
-  - additional_drop_params
-  - complexity_router_config
-  - complexity_router_default_model
-# ルーティンググループで更新を許可するフィールド
-litellm_managed_routing_group_fields:
-  - group_name
-  - models
-  - routing_strategy
-  - routing_strategy_args
-  - model_priorities
 # ライフサイクル操作では「論理名/操作」を確認値に指定する
 litellm_key_confirm: ""
 litellm_key_file: "{{ role_path }}/../../vault/litellm_keys.yml"

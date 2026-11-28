@@ -66,4 +66,4 @@ Authentik の画面で、アプリケーション `gravitee-am` に、グルー�
 - Authentik が使えないときは、管理画面に届かない。AM は Authentik へ中継するだけで、AM の画面で直せることはない。APIM の管理 API は、ポート転送と APIM の緊急用の `admin` で使う([k3s_gravitee](../k3s_gravitee/README.md))。
 - ドメインの既定の証明書は、`vault_gravitee_am_certificate_key_password` と `vault_gravitee_am_certificate_store_password` で守られる。ドメインを作ったあとに変えると、その証明書が読めなくなる。
 - 技術 API(`services.core.http`)は、Pod の中(`localhost`)だけで開く。パスワードは `vault_gravitee_am_technical_password`。
-- ドメイン・identity provider・アプリケーション・ユーザーは DB に保存される(状態。バックアップは無い)。
+- ドメイン・identity provider・アプリケーション・ユーザーは DB に保存される(状態。Longhorn のバックアップで守る)。

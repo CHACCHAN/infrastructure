@@ -8,13 +8,13 @@ The rules and design decisions are written in Japanese under `docs/`, for humans
 @docs/design/network.md
 @docs/design/k3s.md
 
-Claude Code expands the `@path` lines above. If your agent does not expand them, open those files before starting work. Read [docs/design/hardware.md](docs/design/hardware.md) when a task depends on node capacity or placement, [docs/design/pve.md](docs/design/pve.md) when working on the `pve*` roles, and [docs/design/hermes.md](docs/design/hermes.md) when working on the Hermes Agent VMs.
+Claude Code expands the `@path` lines above. If your agent does not expand them, open those files before starting work. Read [docs/design/hardware.md](docs/design/hardware.md) when a task depends on node capacity or placement, [docs/design/pve.md](docs/design/pve.md) when working on the `pve*` roles, and [docs/design/hermes.md](docs/design/hermes.md) when working on Hermes Agent integration.
 
 ## What this repository is
 
 Home-lab infrastructure managed declaratively with Ansible. The repository root is the Ansible project root (`ansible.cfg`).
 
-The environment is being redesigned for new hardware. **The tree is currently a skeleton**: inventory groups are empty, roles and playbooks are placeholders. Never assume a role, playbook or variable exists; check first.
+The environment runs on new hardware and is still being built out. Some roles are placeholders (for example `pve`). Never assume a role, playbook or variable exists; check first.
 
 | Domain | Roles | Playbooks | Talks to |
 | --- | --- | --- | --- |
@@ -35,10 +35,7 @@ The environment is being redesigned for new hardware. **The tree is currently a 
 - When the user describes a problem or asks a question, report findings first and change files only when asked.
 - When a design decision changes, update the matching file under `docs/` and the affected directory's `README.md` in the same change.
 - Community Ansible skills are installed under `.agents/skills/` (see [.agents/README.md](.agents/README.md)). Use `ansible-new-role` for scaffolding and `ansible-good-practices` for self-review; repository instructions and the owner's decisions take precedence over generic skill recommendations.
-- Delegate self-contained work (implementation, research, exploration, drafting, reviews, second opinions) through Mistral Vibe CLI; keep the main context for decisions. Split independent jobs and run them in parallel. This defines delegation targets, not which product or model serves as the main agent. Use the [job procedure](.agents/README.md#delegated-jobs) and [design](docs/design/agents.md).
-- The main agent retains decisions, integration, validation and all real-infrastructure operations. Read every worker diff before applying or validating it. Delegated jobs must not delegate, access secrets, run validators or touch infrastructure. Use separate working copies for implementation jobs; CLI tool restrictions are not an OS sandbox.
-- Validate every change yourself with the suite below before reporting it as done. Validation never goes to a worker: Ansible evaluates Jinja lookups while parsing, so running its tools on unreviewed files runs their code with your SSH keys and vault password.
-- For non-trivial changes (design documents, new roles, anything spanning several files), obtain an independent read-only review in a separate Mistral Vibe CLI session using the [review brief](.agents/review-brief.md). The reviewer must not be the implementation session. Restrict it to file reading; no editing, delegation, secrets, validators or infrastructure access. Weigh its findings; the decision stays with the owner.
+- Validate every change with the suite below before reporting it as done.
 
 ## Safety: this environment reaches production
 
@@ -53,7 +50,7 @@ The dev container mounts `~/.ssh` and the vault password, so it can reach the re
 
 ## Validation before reporting done
 
-Run the validation suite yourself after reviewing every change. In short:
+Run the validation suite after every change. In short:
 
 ```sh
 ansible-galaxy collection install -r collections/requirements.yml   # once per container

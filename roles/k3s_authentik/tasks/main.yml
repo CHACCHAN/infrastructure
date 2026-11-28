@@ -1,7 +1,4 @@
 ---
-- name: アプリ設定の宣言を確認する
-  ansible.builtin.import_tasks: validate_applications.yml
-
 - name: 専用の PostgreSQL を適用する
   ansible.builtin.include_role:
     name: k3s_postgresql
@@ -30,10 +27,27 @@
   when: authentik_google_client_id | length > 0
   no_log: true
 
+# 属性の値は、ユーザーの決まった項目だけから作る(式を宣言に書かない)
+- name: SAML のアプリケーションの宣言を確認する
+  ansible.builtin.assert:
+    that:
+      - item.slug is match('^[a-z0-9][a-z0-9-]*$')
+      - item.acs_url is match('^https://')
+      - item.access_groups | length > 0
+      - item.attributes | length > 0
+      - item.attributes.values() | difference(['username', 'name', 'email']) | length == 0
+      - item.attributes.keys() | reject('match', '^[A-Za-z0-9_:/.-]+$') | list | length == 0
+    fail_msg: "{{ item.slug }}: acs_url は https、access_groups は1つ以上、attributes の値は username・name・email のどれかにする"
+    quiet: true
+  loop: "{{ authentik_saml_apps }}"
+  loop_control:
+    label: "{{ item.slug }}"
+
 - name: Blueprint を組み立てる
   ansible.builtin.set_fact:
     __authentik_blueprint: "{{ lookup('ansible.builtin.template', 'oidc-blueprint.yaml.j2') }}"
     __authentik_forward_auth_blueprint: "{{ lookup('ansible.builtin.template', 'forward-auth-blueprint.yaml.j2') }}"
+    __authentik_saml_blueprint: "{{ lookup('ansible.builtin.template', 'saml-blueprint.yaml.j2') }}"
 
 - name: Authentik を適用する
   ansible.builtin.include_role:

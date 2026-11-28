@@ -1,0 +1,15 @@
+# TrueCommand(TrueNAS をまとめて管理する画面)を、TrueCharts のチャートで k3s に置くロールの既定値。
+# 公開ホスト名(truecommand_host)は、既定値を持たない。
+---
+# チャートのバージョン(TrueCommand 3.3.0 の公式イメージを使う)
+truecommand_chart_version: "25.0.0"
+truecommand_chart_url: oci://oci.trueforge.org/truecharts/truecommand
+truecommand_release_name: truecommand
+truecommand_namespace: truecommand
+# チャートが作る Service のポート
+truecommand_port: 10031
+# 状態(/data。設定・登録した TrueNAS・ユーザー・収集した統計)を置くボリューム(Longhorn)の大きさ
+truecommand_storage_size: 10Gi
+truecommand_timezone: Asia/Tokyo
+# Helm values の上書き(基本値へ再帰的に合成する)
+truecommand_values: {}

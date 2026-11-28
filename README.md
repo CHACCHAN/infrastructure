@@ -9,7 +9,7 @@
 ```text
 .
 ├── AGENTS.md                AIエージェント向けの運用ガイド(安全規則・作法。docs/ を import)
-├── .agents/                 共通の Ansible スキルと、Vibe CLI のジョブの手順
+├── .agents/                 共通の Ansible スキル
 ├── .claude/                 Claude Code 専用(設定・フック。skills は .agents/ へのリンク)
 ├── .devcontainer/           開発コンテナ(Ansible・kubectl・Helm・エージェントCLI)
 ├── ansible.cfg              共通設定(roles_path / inventory)
@@ -17,12 +17,12 @@
 ├── collections/
 │   └── requirements.yml     使用するコレクション(単一の真実)
 ├── inventory/               ホスト宣言(単一の真実)
-│   ├── hosts/               VLANごとに1ファイル(10_pve / 11_private / 12_k3s / 13_hermes / 14_core)
+│   ├── hosts/               VLANごとに1ファイル(10_pve / 11_private / 12_k3s / 14_core)
 │   ├── group_vars/
 │   │   ├── all/             全ホスト共通(network.yml=VLAN台帳、pve.yml=Proxmox API の共通値)
 │   │   ├── k3s.yml          k3s の共通値
-│   │   ├── litellm.yml      LiteLLM のサービス・モデル・キー利用範囲
-│   │   ├── authentik.yml    Authentik のサービス・アプリ設定
+│   │   ├── litellm.yml      LiteLLM のサービス・仮想キーの利用範囲
+│   │   ├── authentik.yml    Authentik のサービス・OIDC・認証プロキシ
 │   │   └── <group>.yml      グループ(役割)ごとの差分
 │   └── host_vars/           個体差が出たホストだけ
 ├── playbooks/               薄いオーケストレーション(ロジックはロールに置く)
@@ -31,24 +31,24 @@
 │   ├── k3s/                 クラスタ内アプリ(API トークン)
 │   └── utils/               単発ツール(REST API・SSH)
 ├── roles/                   ロール(ドメイン接頭辞: pve / vm / k3s)
+├── filter_plugins/          Ansible のフィルター(LiteLLM の仮想キーの差分計算)
+├── tests/                   フィルターと LiteLLM のキー操作の単体テスト(模擬 API)
 ├── vault/                   暗号化した秘密情報(1ファイル1用途)
 └── docs/
     ├── README.md            案内(領域ごとの使い方と設計)
     ├── conventions.md       規約(命名・変数の層・冪等性・Vault・ドキュメント)
-    └── design/              設計(network / k3s / pve / hermes / hardware)
+    └── design/              設計(network / k3s / pve / hermes / hardware / vault)
 ```
 
 ## ロールの階層
 
 | ロール | 役割 |
 | --- | --- |
-| `pve` | Proxmoxホスト自体の設定(NIC/VLAN・クラスタ) |
+| `pve` | Proxmoxホスト自体の設定(NIC/VLAN・クラスタ。未実装) |
 | `pve_vm` | VMの作成・更新 |
 | `pve_template` | OSテンプレートの作成 |
 | `vm` | 全VM共通のOS設定(Debian 13、SSH、FW) |
 | `vm_k3s` | k3sノードの構築 |
-| `vm_docker` | Dockerの導入 |
-| `vm_hermes` | 未設定のHermes Agentの導入 |
 | `k3s` | クラスタ内アプリを適用する共通処理(Helm) |
 
 サービスVMは `vm_<service>`、クラスタ内アプリは `k3s_<app>` を追加する。変数名は接頭辞の層を落とす(`vm_k3s` → `k3s_*`、`k3s_metallb` → `metallb_*`)。基底の `k3s` ロールだけは `helm_*`。

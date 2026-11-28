@@ -1,0 +1,37 @@
+---
+argument_specs:
+  main:
+    short_description: TrueCommand を TrueCharts のチャートで k3s に置き、LAN に公開する
+    description:
+      - 接続とリリースの適用は k3s ロール(helm_*)に任せる。
+      - 状態(/data)は Longhorn のボリュームに置く。
+      - ログインは Authentik の SAML(TrueCommand の画面で設定する)と、TrueCommand の緊急用の管理者。
+    options:
+      truecommand_chart_version:
+        type: str
+        description: "チャートのバージョン"
+      truecommand_chart_url:
+        type: str
+        description: "チャートの OCI の URL"
+      truecommand_release_name:
+        type: str
+        description: "Helm のリリース名(Service の名前も同じ)"
+      truecommand_namespace:
+        type: str
+        description: "リリースの namespace(インベントリの helm_network_policies にも宣言する)"
+      truecommand_port:
+        type: int
+        description: "チャートが作る Service のポート"
+      truecommand_host:
+        type: str
+        required: true
+        description: "TrueCommand の公開ホスト名(インベントリで宣言する)"
+      truecommand_storage_size:
+        type: str
+        description: "状態を置くボリュームの大きさ(Longhorn。広げられるが縮められない)"
+      truecommand_timezone:
+        type: str
+        description: "コンテナのタイムゾーン"
+      truecommand_values:
+        type: dict
+        description: "Helm values の上書き(基本値へ再帰的に合成する。例: resources)"

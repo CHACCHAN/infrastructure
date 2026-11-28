@@ -37,11 +37,8 @@ entries:
     identifiers:
       slug: {{ client.slug }}
     attrs:
-      name: {{ __authentik_application_settings.get(client.slug, {}).get('name', client.name) | to_json }}
+      name: {{ client.name | to_json }}
       provider: !KeyOf {{ client.slug }}-provider
-{% for field, value in __authentik_application_settings.get(client.slug, {}).items() if field != 'name' %}
-      {{ field }}: {{ value | to_json }}
-{% endfor %}
 {% endfor %}
 {% if authentik_login_failure_limit | int > 0 %}
   # ログインの失敗が重なった IP を、ログインのフローに入れない。このポリシーは、評価が閾値以下のときに一致する

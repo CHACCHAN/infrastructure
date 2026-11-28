@@ -11,7 +11,7 @@ import sys
 import tempfile
 import threading
 import unittest
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -39,25 +39,9 @@ class MockApi(http.server.BaseHTTPRequestHandler):
         state = self.server.state
         path = urlsplit(self.path)
         state["reads"].append(self.path)
-        if path.path == "/model/info":
-            self.reply({"data": state["models"]})
-        elif path.path == "/key/list":
+        if path.path == "/key/list":
             self.reply({"keys": list(state["keys"].values()), "total_count": len(state["keys"]),
                         "total_pages": 1 if state["keys"] else 0, "current_page": 1})
-        elif path.path == "/credentials":
-            self.reply({"success": True, "credentials": []})
-        elif path.path == "/router/settings":
-            self.reply({"current_values": {"routing_groups": state["routing_groups"],
-                                           "fallbacks": state["fallbacks"]},
-                        "source": {"routing_groups": "db", "fallbacks": "db"}})
-        elif path.path == "/api/v3/core/applications/":
-            query = parse_qs(path.query)
-            if query.get("superuser_full_list") != ["true"]:
-                return self.reply({"results": [], "pagination": {"count": 0, "total_pages": 0}})
-            page = int(query["page"][0])
-            apps = state["apps"]
-            self.reply({"results": apps[(page - 1) * 100:page * 100], "pagination": {
-                "count": len(apps), "total_pages": (len(apps) + 99) // 100, "current": page}})
         else:
             self.reply({}, 404)
 
@@ -80,9 +64,8 @@ class MockApi(http.server.BaseHTTPRequestHandler):
             state["keys"][key_hash] = {**old, "token": key_hash}
         elif self.path in ("/key/block", "/key/unblock"):
             state["keys"][body["key"]]["blocked"] = self.path.endswith("/block")
-        elif self.path == "/config/update":
-            # 管理画面と同じく、送った項目だけを置き換える。
-            state.update(body["router_settings"])
+        elif self.path == "/key/update":
+            state["keys"][body["key"]].update({key: value for key, value in body.items() if key != "key"})
         else:
             return self.reply({}, 404)
         if state["fail_after_commit"]:
@@ -90,23 +73,6 @@ class MockApi(http.server.BaseHTTPRequestHandler):
             self.reply({"error": "模擬的な応答失敗"}, 503)
         else:
             self.reply({"ok": True})
-
-    def do_PATCH(self):
-        state = self.server.state
-        body = self.body()
-        state["writes"].append((self.path, body))
-        if self.path.startswith("/api/v3/core/applications/"):
-            slug = self.path.rstrip("/").split("/")[-1]
-            app = next(row for row in state["apps"] if row["slug"] == slug)
-            app.update(body)
-        elif self.path.startswith("/model/"):
-            model_id = self.path.split("/")[2]
-            model = next(row for row in state["models"] if row["model_info"]["id"] == model_id)
-            model["model_name"] = body["model_name"]
-            model["litellm_params"].update(body["litellm_params"])
-        else:
-            return self.reply({}, 404)
-        self.reply({"ok": True})
 
 
 class ApiTaskTests(unittest.TestCase):
@@ -141,7 +107,7 @@ class ApiTaskTests(unittest.TestCase):
         self.password.write_text("local-test-password\n")
         self.password.chmod(0o600)
         self.key_file = self.work_path / "keys.yml"
-        self.state = {"keys": {}, "models": [], "routing_groups": [], "fallbacks": [], "apps": [], "reads": [], "writes": [], "fail_after_commit": False}
+        self.state = {"keys": {}, "reads": [], "writes": [], "fail_after_commit": False}
         self.server.state = self.state
         self.env = {"HOME": self.work.name, "PATH": os.environ["PATH"], "LANG": "C.UTF-8",
                     "ANSIBLE_CONFIG": str(ROOT / "ansible.cfg"),
@@ -222,7 +188,7 @@ class ApiTaskTests(unittest.TestCase):
         self.assertTrue(self.state["keys"][active["hash"]]["blocked"])
         ordinary = self.run_role("k3s_litellm", "manage", {
             "litellm_master_key": "sk-fake-master-for-local-tests", "litellm_management_url": self.url,
-            "litellm_managed_models": [], "litellm_managed_keys": [
+            "litellm_managed_keys": [
                 {"name": "client", "settings": {"key_alias": "test", "models": ["model"]}}],
             "litellm_key_material": self.registry()})
         self.assertIn("changed=0", ordinary)
@@ -273,7 +239,7 @@ class ApiTaskTests(unittest.TestCase):
     def test_manage_rejects_duplicate_key_hash_before_api_access(self):
         output = self.run_role("k3s_litellm", "manage", {
             "litellm_master_key": "sk-fake-master-for-local-tests", "litellm_management_url": self.url,
-            "litellm_managed_models": [], "litellm_managed_keys": [
+            "litellm_managed_keys": [
                 {"name": "first", "settings": {"rpm_limit": 10}},
                 {"name": "second", "settings": {"rpm_limit": 20}}],
             "litellm_key_material": {"first": {"hash": "a" * 64}, "second": {"hash": "a" * 64}},
@@ -282,102 +248,23 @@ class ApiTaskTests(unittest.TestCase):
         self.assertEqual(self.state["writes"], [])
         self.assertNotIn("a" * 64, output)
 
-    def test_manage_routing_groups_check_apply_and_idempotence(self):
-        self.state["routing_groups"] = [
-            {"group_name": "ui-only", "models": ["x"], "routing_strategy": "priority"},
-            {"group_name": "tier", "models": ["a"], "routing_strategy": "simple-shuffle",
-             "routing_strategy_args": None}]
-        variables = {
-            "litellm_master_key": "sk-fake-master-for-local-tests", "litellm_management_url": self.url,
-            "litellm_managed_models": [], "litellm_managed_keys": [], "litellm_key_material": {},
-            "litellm_managed_routing_groups": [
-                {"group_name": "tier", "models": ["a", "b"], "routing_strategy": "simple-shuffle"}]}
-        self.run_role("k3s_litellm", "manage", variables, check=True)
-        self.assertEqual(self.state["writes"], [])
-        self.run_role("k3s_litellm", "manage", variables)
-        self.assertEqual([path for path, _ in self.state["writes"]], ["/config/update"])
-        self.assertEqual(self.state["routing_groups"], [
-            {"group_name": "ui-only", "models": ["x"], "routing_strategy": "priority"},
-            {"group_name": "tier", "models": ["a", "b"], "routing_strategy": "simple-shuffle"}])
-        self.assertIn("changed=0", self.run_role("k3s_litellm", "manage", variables))
-        self.assertEqual(len(self.state["writes"]), 1)
-
-    def test_manage_fallbacks_merge_declared_and_keep_others(self):
-        self.state["routing_groups"] = [
-            {"group_name": name, "models": [name], "routing_strategy": "priority"} for name in ("a", "b", "c")]
-        self.state["fallbacks"] = [{"c": ["a"]}, {"a": ["c"]}]
-        variables = {
-            "litellm_master_key": "sk-fake-master-for-local-tests", "litellm_management_url": self.url,
-            "litellm_managed_models": [], "litellm_managed_keys": [], "litellm_key_material": {},
-            "litellm_managed_fallbacks": [{"a": ["b", "c"]}, {"b": ["a"]}]}
-        self.run_role("k3s_litellm", "manage", variables, check=True)
-        self.assertEqual(self.state["writes"], [])
-        self.run_role("k3s_litellm", "manage", variables)
-        self.assertEqual(self.state["writes"], [
-            ("/config/update", {"router_settings": {"fallbacks": [{"c": ["a"]}, {"a": ["b", "c"]}, {"b": ["a"]}]}})])
-        self.assertEqual(len(self.state["routing_groups"]), 3)
-        self.assertIn("changed=0", self.run_role("k3s_litellm", "manage", variables))
-        self.assertEqual(len(self.state["writes"]), 1)
-
-    def test_export_refuses_to_overwrite_key_registry(self):
+    def test_manage_keys_check_apply_and_idempotence(self):
         self.lifecycle("create")
-        encrypted_before = self.key_file.read_bytes()
-        reads_before = len(self.state["reads"])
-        self.run_role("k3s_litellm", "export", {
+        registry = self.registry()
+        variables = {
             "litellm_master_key": "sk-fake-master-for-local-tests", "litellm_management_url": self.url,
-            "litellm_export_file": str(self.key_file), "litellm_export_overwrite": True,
-        }, success=False)
-        self.run_role("k3s_authentik", "export", {
-            "authentik_api_token": "fake-token", "authentik_host": "auth.example.test",
-            "authentik_management_url": self.url, "authentik_export_file": str(self.key_file),
-            "authentik_export_overwrite": True,
-        }, success=False)
-        self.assertEqual(self.key_file.read_bytes(), encrypted_before)
-        self.assertEqual(len(self.state["reads"]), reads_before)
-        self.assertEqual(len(self.state["writes"]), 1)
-
-    def test_snapshot_exports_are_idempotent_and_reject_templates(self):
-        cases = [
-            ("k3s_litellm", "litellm", {"litellm_master_key": "fake-token", "litellm_management_url": self.url}),
-            ("k3s_authentik", "authentik", {"authentik_api_token": "fake-token",
-             "authentik_host": "auth.example.test", "authentik_management_url": self.url}),
-        ]
-        for role, prefix, variables in cases:
-            snapshot = self.work_path / (prefix + "_snapshot.yml")
-            variables = {**variables, prefix + "_export_file": str(snapshot), prefix + "_export_overwrite": True}
-            self.run_role(role, "export", variables)
-            encrypted_before = snapshot.read_bytes()
-            self.assertTrue(encrypted_before.startswith(b"$ANSIBLE_VAULT;"))
-            self.assertIn("changed=0", self.run_role(role, "export", variables))
-            self.assertEqual(snapshot.read_bytes(), encrypted_before)
-            self.assertEqual(self.state["writes"], [])
-        self.state["apps"] = [{"slug": "app", "name": "{{ 7 * 7 }}"}]
-        before = (self.work_path / "authentik_snapshot.yml").read_bytes()
-        self.run_role("k3s_authentik", "export", {
-            "authentik_api_token": "fake-token", "authentik_host": "auth.example.test",
-            "authentik_management_url": self.url,
-            "authentik_export_file": str(self.work_path / "authentik_snapshot.yml"),
-            "authentik_export_overwrite": True,
-        }, success=False)
-        self.assertEqual((self.work_path / "authentik_snapshot.yml").read_bytes(), before)
-
-    def test_authentik_pagination_and_patch_preserve_authorization(self):
-        self.state["apps"] = [{"slug": "app" + str(i), "name": "old", "provider": 42,
-                                "policy_engine_mode": "all"} for i in range(101)]
-        variables = {"authentik_management_url": self.url, "authentik_host": "auth.example.test",
-                     "authentik_api_token": "fake-token", "authentik_managed_applications": [
-                         {"slug": "app100", "settings": {"name": "new"}}]}
-        self.run_role("k3s_authentik", "manage", variables, check=True)
-        self.assertEqual(self.state["writes"], [])
-        self.assertEqual(self.state["apps"][100]["name"], "old")
-        self.run_role("k3s_authentik", "manage", variables)
-        self.assertEqual(self.state["writes"], [("/api/v3/core/applications/app100/", {"name": "new"})])
-        self.assertEqual(self.state["apps"][100]["provider"], 42)
-        self.assertEqual(self.state["apps"][100]["policy_engine_mode"], "all")
-        self.assertTrue(any("page=2" in path for path in self.state["reads"]))
-        self.assertIn("changed=0", self.run_role("k3s_authentik", "manage", variables))
-        self.assertEqual(len(self.state["writes"]), 1)
-
+            "litellm_managed_keys": [
+                {"name": "client", "settings": {"key_alias": "test", "models": ["model"], "rpm_limit": 10}}],
+            "litellm_key_material": registry}
+        writes = len(self.state["writes"])
+        self.run_role("k3s_litellm", "manage", variables, check=True)
+        self.assertEqual(len(self.state["writes"]), writes)
+        output = self.run_role("k3s_litellm", "manage", variables)
+        self.assertNotIn(registry["client"]["hash"], output)
+        self.assertEqual([path for path, _ in self.state["writes"][writes:]], ["/key/update"])
+        self.assertEqual(self.state["keys"][registry["client"]["hash"]]["rpm_limit"], 10)
+        self.assertIn("changed=0", self.run_role("k3s_litellm", "manage", variables))
+        self.assertEqual(len(self.state["writes"]), writes + 1)
 
 if __name__ == "__main__":
     unittest.main()

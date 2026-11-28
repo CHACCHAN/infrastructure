@@ -47,6 +47,6 @@ Authentik でグループやアプリケーションの結びつけを外して�
 ## 注意
 
 - Cloudflare の画面で、`gravitee.<lab_domain>` を Tunnel の経路表に足す(向け先は、ほかのホスト名と同じ Tunnel 専用の入口)。`gravitee-console.<lab_domain>` は Tunnel に載せない(ワイルドカードの DNS で `172.16.12.5` に届き、LAN と VPN からだけ使える)。
-- API・購読・API キー・ユーザーは DB に保存される(状態。バックアップは無い)。
+- API・購読・API キー・ユーザーは DB に保存される(状態。Longhorn のバックアップで守る)。
 - API の暗号化したプロパティは `vault_gravitee_properties_encryption_secret` で暗号化される。プロパティを置いたあとにこのキーを変えると、読めなくなる。
 - 技術 API(`services.core.http`)は無効にしている。Gateway のプローブは本体のポートを使う。

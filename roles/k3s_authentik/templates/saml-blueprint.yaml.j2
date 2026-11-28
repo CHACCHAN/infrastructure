@@ -1,0 +1,56 @@
+# Ansible(roles/k3s_authentik)が生成。手動編集は次回実行で上書きされる。
+# OIDC を持たず、SAML でログインするアプリ。OIDC クライアントの Blueprint と分け、片方の失敗がもう片方を止めないようにする。
+version: 1
+metadata:
+  name: saml-apps
+entries:{% if authentik_saml_apps | length == 0 %} []{% endif %}
+
+{% for app in authentik_saml_apps %}
+{% for attribute, field in app.attributes.items() %}
+  # アプリが読む属性の名前で、ユーザーの値を渡す
+  - model: authentik_providers_saml.samlpropertymapping
+    id: {{ app.slug }}-{{ attribute }}-mapping
+    identifiers:
+      name: {{ (app.name ~ ': ' ~ attribute) | to_json }}
+    attrs:
+      saml_name: {{ attribute | to_json }}
+      expression: return request.user.{{ field }}
+{% endfor %}
+  - model: authentik_providers_saml.samlprovider
+    id: {{ app.slug }}-provider
+    identifiers:
+      name: {{ app.name | to_json }}
+    attrs:
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      acs_url: {{ app.acs_url | to_json }}
+      audience: {{ app.audience | default('') | to_json }}
+      sp_binding: post
+      default_name_id_policy: urn:oasis:names:tc:SAML:2.0:nameid-format:persistent
+      signing_kp: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      sign_assertion: true
+      property_mappings:
+{% for attribute in app.attributes %}
+        - !KeyOf {{ app.slug }}-{{ attribute }}-mapping
+{% endfor %}
+  - model: authentik_core.application
+    id: {{ app.slug }}-application
+    identifiers:
+      slug: {{ app.slug }}
+    attrs:
+      name: {{ app.name | to_json }}
+      provider: !KeyOf {{ app.slug }}-provider
+  # アプリの側でグループを見られないため、使えるユーザーを Authentik でグループに絞る。グループが無い間は、誰も通さない
+  - model: authentik_policies_expression.expressionpolicy
+    id: {{ app.slug }}-access-policy
+    identifiers:
+      name: {{ ('saml-' ~ app.slug ~ '-access') | to_json }}
+    attrs:
+      expression: |
+        return any(ak_is_group_member(request.user, name=group) for group in {{ app.access_groups | to_json }})
+  - model: authentik_policies.policybinding
+    identifiers:
+      order: 0
+      target: !KeyOf {{ app.slug }}-application
+      policy: !KeyOf {{ app.slug }}-access-policy
+{% endfor %}

@@ -1,0 +1,21 @@
+---
+# 管理画面は LAN と VPN からだけ使う(docs/design/k3s.md)。Tunnel 専用の入口には載せない
+- name: 公開ホスト名を Cloudflare Tunnel に載せていないことを確認する
+  ansible.builtin.assert:
+    that: truecommand_host not in cloudflared_hosts | default([])
+    fail_msg: "TrueCommand は LAN と VPN からだけ使うため、cloudflared_hosts に {{ truecommand_host }} を入れない"
+    quiet: true
+
+- name: TrueCommand を適用する
+  ansible.builtin.include_role:
+    name: k3s
+  vars:
+    helm_release_name: "{{ truecommand_release_name }}"
+    helm_chart: "{{ truecommand_chart_url }}"
+    helm_chart_version: "{{ truecommand_chart_version }}"
+    helm_namespace: "{{ truecommand_namespace }}"
+    helm_values: "{{ __truecommand_values | combine(truecommand_values, recursive=True) }}"
+    helm_ingress:
+      host: "{{ truecommand_host }}"
+      service_port: "{{ truecommand_port }}"
+    helm_network_policy: true

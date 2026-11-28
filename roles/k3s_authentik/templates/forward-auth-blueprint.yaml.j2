@@ -28,14 +28,8 @@ entries:
     identifiers:
       slug: {{ app.slug }}
     attrs:
-      name: {{ __authentik_application_settings.get(app.slug, {}).get('name', app.name) | to_json }}
+      name: {{ app.name | to_json }}
       provider: !KeyOf {{ app.slug }}-provider
-{% for field, value in __authentik_application_settings.get(app.slug, {}).items() if field != 'name' %}
-      {{ field }}: {{ value | to_json }}
-{% endfor %}
-{% if 'meta_launch_url' not in __authentik_application_settings.get(app.slug, {}) %}
-      meta_launch_url: https://{{ app.host }}
-{% endif %}
   - model: authentik_policies.policybinding
     identifiers:
       order: 0

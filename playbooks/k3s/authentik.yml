@@ -1,4 +1,4 @@
-# Authentik を Helm で入れ、アプリの OIDC クライアントと認証プロキシを Blueprint で宣言する。
+# Authentik を Helm で入れ、アプリの OIDC クライアント・SAML のアプリケーション・認証プロキシを Blueprint で宣言する。
 # 実行例: ansible-playbook playbooks/k3s/authentik.yml [--check --diff] 2>&1 | cat
 ---
 - name: Authentik を適用する

@@ -17,7 +17,8 @@
     helm_timeout: "{{ longhorn_timeout }}"
     # 複製数と Pod の数はインベントリのホスト数から決まるため、全ホストが参加してから適用する
     helm_min_ready_nodes: "{{ groups['k3s'] | length }}"
-    helm_values: "{{ __longhorn_values | combine(longhorn_values, recursive=True) }}"
+    helm_values: "{{ __longhorn_values | combine(__longhorn_backup_values, longhorn_values, recursive=True) }}"
+    helm_manifests: "{{ __longhorn_backup_manifests if longhorn_backup_target | length > 0 else [] }}"
     helm_ingress:
       host: "{{ longhorn_host }}"
       service_name: longhorn-frontend

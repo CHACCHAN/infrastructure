@@ -2,7 +2,7 @@
 
 ## 現在の扱い
 
-暗号化ファイルは `vault/` 直下でサービスごとに分け、必要な playbook が `vars_files` で明示的に読む([規約](../conventions.md))。LiteLLM の基盤用の秘密と管理 API の取得結果は用途が異なるため、`litellm.yml`・`litellm_keys.yml`・`litellm_snapshot.yml` に分ける。モデルの非機密の宣言は `inventory/group_vars/litellm.yml` で管理する。API の取得結果には秘密を含む可能性のあるヘッダーやメタデータもあるため、取得記録全体を暗号化する。
+暗号化ファイルは `vault/` 直下でサービスごとに分け、必要な playbook が `vars_files` で明示的に読む([規約](../conventions.md))。LiteLLM の基盤用の秘密と仮想キーの台帳は用途が異なるため、`litellm.yml`・`litellm_keys.yml` に分ける。キーの利用範囲は `inventory/group_vars/litellm.yml` に宣言する。
 
 ## 提案: サービスごとのフォルダ
 
@@ -12,7 +12,6 @@
 - `oidc.yml`: Authentik と共有する OIDC の認証。Authentik の playbook はこのファイルだけを読む。
 - `providers.yml`: 上流プロバイダーの認証。実際に Ansible が必要とする場合だけ作る。
 - `keys.yml`: 発行済みキーのハッシュ・保存できた秘密・非公開の設定・処理中の操作。公開設定は inventory に置く。
-- `snapshot.yml`: API の参照用取得記録。通常適用は読まない。
 - `clients.yml`: 発行時に保管できたサービス用キー本体。管理台帳のハッシュと区別する。発行・配布方法を決めるまでは作らない。
 
 サービス固有の用途は、内容が分かる名前にする。k3s の `api.yml`・`cluster.yml`、Cloudflare の `dns.yml`、Authentik の `google.yml`、Nextcloud の `hermes.yml` はその例外で、以下の表を対応表とする。
@@ -30,15 +29,15 @@
 | `vault/openwebui.yml` | `vault/openwebui/service.yml` と `vault/openwebui/oidc.yml` | Authentik は OIDC だけを読む |
 | `vault/litellm.yml` | `vault/litellm/service.yml`・`oidc.yml`・必要なら `providers.yml` | 管理 API は service、Authentik は oidc、Helm は必要な用途だけを読む |
 | `vault/litellm_keys.yml` | `vault/litellm/keys.yml` | 通常のキー設定適用と、確認値を要求するキー操作 |
-| `vault/litellm_snapshot.yml` | `vault/litellm/snapshot.yml` | 取得記録だけ。宣言とキー台帳は変更しない |
-| `vault/authentik_snapshot.yml` | `vault/authentik/snapshot.yml` | アプリの取得記録だけ |
 | `vault/cliproxy.yml` | `vault/cliproxy/service.yml` | 管理認証と API キー初期値。稼働中の設定を初期値で上書きしない |
 | `vault/nextcloud.yml` | `vault/nextcloud/service.yml` と `vault/nextcloud/oidc.yml` | Authentik は OIDC だけを読む |
 | `vault/nextcloud_hermes.yml` | `vault/nextcloud/hermes.yml` | Hermes 専用ユーザーの認証とアプリパスワード |
 | `vault/gravitee.yml` | `vault/gravitee/service.yml` と `vault/gravitee/oidc.yml` | AM の OIDC クライアントとの共有値を分ける |
 | `vault/gravitee_am.yml` | `vault/gravitee_am/service.yml` と `vault/gravitee_am/oidc.yml` | Authentik は OIDC だけを読む |
-| `vault/hermes.yml` | `vault/hermes/oidc.yml` | Authentik の playbook |
-| `vault/opnsense.yml` | `vault/opnsense/oidc.yml` | Authentik の playbook |
+| `vault/hermes.yml` | `vault/hermes/oidc.yml` | Authentik の playbook。Hermes の Authentik のユーザーのパスワードと TOTP の種の置き先は決めていない |
+| `vault/opnsense.yml` | `vault/opnsense/oidc.yml` | Authentik の playbook。Hermes の API キー(控え)の置き先は決めていない |
+| `vault/truecommand.yml` | `vault/truecommand/service.yml` | どの playbook も読まない(緊急用の管理者の控え) |
+| `vault/truenas.yml` | `vault/truenas/service.yml` | どの playbook も読まない(TrueNAS の管理者の控え) |
 | `vault/ssh.yml` | `vault/ssh/service.yml` | VM 構築と SSH を使う単発ツール |
 
 変数名は既存の `vault_<サービス>_<用途>` を保ち、移動と変数名変更を同時に行わない。分割したファイルのパスは省略せず、playbook に列挙する。全ファイルを glob で読む処理は設けない。

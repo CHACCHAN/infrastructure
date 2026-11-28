@@ -1,0 +1,6 @@
+---
+__truecommand_values:
+  TZ: "{{ truecommand_timezone }}"
+  persistence:
+    data:
+      size: "{{ truecommand_storage_size }}"

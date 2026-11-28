@@ -1,4 +1,4 @@
-# Authentik(IdP)を Helm で入れ、アプリの OIDC クライアントと認証プロキシを Blueprint で宣言するロールの既定値。
+# Authentik(IdP)を Helm で入れ、アプリの OIDC クライアント・SAML のアプリケーション・認証プロキシを Blueprint で宣言するロールの既定値。
 # 秘密情報(authentik_secret_key など)と、公開ホスト名(authentik_host など)は、既定値を持たない。
 ---
 # チャートのバージョン
@@ -14,6 +14,8 @@ authentik_db_name: authentik
 authentik_oidc_clients: []
 # 認証プロキシ(forward auth)で守るアプリケーション。自前のログインを持たない画面(と、ログインが共有の鍵だけの画面)を、Traefik のミドルウェア(authentik_forward_auth_middleware)で守る
 authentik_proxy_apps: []
+# SAML でログインするアプリケーション(OIDC を持たないアプリ)。使えるユーザーは、アプリごとの access_groups のメンバーだけ
+authentik_saml_apps: []
 # 認証プロキシで守る画面を使える Authentik のグループ(どれかのメンバーなら通す。グループ自体と所属は、Authentik の画面で作る)
 authentik_proxy_access_groups:
   - admins
@@ -34,16 +36,3 @@ authentik_google_client_id: ""
 authentik_google_client_secret: ""
 # Helm values の上書き(基本値へ再帰的に合成する)
 authentik_values: {}
-# 管理 API は LAN 向けワイルドカード DNS と TLS を使い、Host は既存の Ingress に合わせる
-authentik_management_url: "https://{{ authentik_api_host }}"
-authentik_managed_applications: []
-authentik_managed_application_fields:
-  - name
-  - open_in_new_tab
-  - meta_launch_url
-  - meta_description
-  - meta_publisher
-  - group
-  - meta_hide
-authentik_export_file: "{{ role_path }}/../../vault/authentik_snapshot.yml"
-authentik_export_overwrite: false

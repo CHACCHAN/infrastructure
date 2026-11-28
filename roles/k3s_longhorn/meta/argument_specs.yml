@@ -30,6 +30,18 @@ argument_specs:
       longhorn_concurrent_rebuild_limit:
         type: int
         description: "ノードあたりの同時リビルド数"
+      longhorn_backup_target:
+        type: str
+        description: "バックアップ先(nfs://<IP>:/<エクスポートのパス>)。空なら、バックアップ先と定期バックアップを置かない"
+      longhorn_backup_cron:
+        type: str
+        description: "定期バックアップの時刻(cron。ノードの時刻は UTC)"
+      longhorn_backup_retain:
+        type: int
+        description: "定期バックアップで保つ世代数"
+      longhorn_backup_concurrency:
+        type: int
+        description: "同時にバックアップするボリュームの数"
       longhorn_host:
         type: str
         required: true

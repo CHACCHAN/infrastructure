@@ -16,3 +16,21 @@ __longhorn_values:
   defaultSettings:
     nodeDownPodDeletionPolicy: "{{ longhorn_node_down_pod_deletion_policy }}"
     concurrentReplicaRebuildPerNodeLimit: "{{ longhorn_concurrent_rebuild_limit }}"
+# バックアップ先。longhorn_backup_target が空なら、チャートに渡さない
+__longhorn_backup_values: "{{ {'defaultBackupStore': {'backupTarget': longhorn_backup_target}} if longhorn_backup_target | length > 0 else {} }}"
+# すべてのボリューム(default グループ)の定期バックアップ
+__longhorn_backup_manifests:
+  - apiVersion: longhorn.io/v1beta2
+    kind: RecurringJob
+    metadata:
+      name: backup-daily
+      namespace: "{{ longhorn_namespace }}"
+    spec:
+      name: backup-daily
+      task: backup
+      cron: "{{ longhorn_backup_cron }}"
+      retain: "{{ longhorn_backup_retain | int }}"
+      concurrency: "{{ longhorn_backup_concurrency | int }}"
+      groups:
+        - default
+      labels: {}

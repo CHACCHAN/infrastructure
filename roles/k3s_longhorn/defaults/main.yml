@@ -14,6 +14,14 @@ longhorn_control_replicas: "{{ groups['k3s'] | default([]) | length }}"
 longhorn_node_down_pod_deletion_policy: delete-both-statefulset-and-deployment-pod
 # ノードあたりの同時リビルド数(リビルド中の帯域の圧迫を抑える)
 longhorn_concurrent_rebuild_limit: 1
+# バックアップ先(TrueNAS の NFS 共有。nfs://<IP>:/<エクスポートのパス>)。空なら、バックアップ先と定期バックアップを置かない
+longhorn_backup_target: ""
+# 定期バックアップの時刻(cron。ノードの時刻は UTC で、18時は日本時間の3時)
+longhorn_backup_cron: "0 18 * * *"
+# 定期バックアップで保つ世代数
+longhorn_backup_retain: 7
+# 同時にバックアップするボリュームの数(ルータを通る帯域を抑える)
+longhorn_backup_concurrency: 1
 # 管理 UI の Ingress に掛ける、Authentik の認証プロキシのミドルウェア(管理 UI は認証を持たないため、必ず掛ける)
 longhorn_ingress_middleware: authentik-forward-auth@kubernetescrd
 # Ready を待つ時間
